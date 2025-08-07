@@ -4,6 +4,11 @@ import {
   logAgentDetails,
   validateEnvironment,
 } from "@helpers/client";
+import {
+  ContentTypeReaction,
+  ReactionCodec,
+  type Reaction,
+} from "@xmtp/content-type-reaction";
 import { Client, type XmtpEnv } from "@xmtp/node-sdk";
 
 /* Get the wallet key associated to the public key of
@@ -19,12 +24,16 @@ const { WALLET_KEY, ENCRYPTION_KEY, XMTP_ENV } = validateEnvironment([
 const signer = createSigner(WALLET_KEY);
 const dbEncryptionKey = getEncryptionKeyFromHex(ENCRYPTION_KEY);
 
+// Helper function to sleep for a specified number of milliseconds
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function main() {
   const client = await Client.create(signer, {
     dbEncryptionKey,
     env: XMTP_ENV as XmtpEnv,
+    codecs: [new ReactionCodec()],
   });
-  void logAgentDetails(client);
+  void logAgentDetails(client as Client);
 
   console.log("✓ Syncing conversations...");
   await client.conversations.sync();
@@ -50,19 +59,46 @@ async function main() {
       continue;
     }
 
-    // // Skip if the conversation is a group
-    // if (conversation instanceof Group) {
-    //   console.log("Conversation is a group, skipping");
-    //   continue;
-    // }
+    try {
+      const messageContent = message.content as string;
+      console.log(`Received message: ${messageContent}`);
 
-    //Getting the address from the inbox id
-    const inboxState = await client.preferences.inboxStateFromInboxIds([
-      message.senderInboxId,
-    ]);
-    const addressFromInboxId = inboxState[0].identifiers[0].identifier;
-    console.log(`Sending "gm" response to ${addressFromInboxId}...`);
-    await conversation.send("gm");
+      // Step 1: React with thinking emoji
+      console.log("🤔 Reacting with thinking emoji...");
+      await conversation.send(
+        {
+          action: "added",
+          content: "⏳",
+          reference: message.id,
+          schema: "shortcode",
+        } as Reaction,
+        ContentTypeReaction,
+      );
+
+      // Step 2: Sleep for 2 seconds
+      console.log("💤 Sleeping for 2 seconds...");
+      await sleep(2000);
+
+      // Step 3: Send response
+      console.log("💭 Sending response...");
+      await conversation.send(
+        "I've been thinking about your message and here's my response!",
+      );
+      await conversation.send(
+        {
+          action: "removed",
+          content: "⏳",
+          reference: message.id,
+          schema: "shortcode",
+        } as Reaction,
+        ContentTypeReaction,
+      );
+      console.log("✅ Response sent successfully");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("Error processing message:", errorMessage);
+    }
   }
 
   console.log("Message stream started");
