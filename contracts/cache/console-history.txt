@@ -1,0 +1,20 @@
+This should prevent multiple groups for same payment!" && pkill -f "tsx.*index.ts" 2>/dev/null; sleep 2
+✅ Extra safety check before processing
+✅ Better payment status logging
+✅ Added duplicate processing prevention 
+✅ Fixed parseEther import (ReferenceError resolved)
+echo "🔧 **FIXING DUPLICATE GROUPS & IMPORT**
+This is much more efficient for the agent's wallet management!"
+✅ Preserves 0.0009 ETH per deployment for gas fees
+✅ 0.0001 ETH > 0, so condition satisfied
+✅ Factory contract deploymentFee = 0 (free deployment)
+✅ Changed deployment fee: 0.001 ETH → 0.0001 ETH
+echo "💰 **OPTIMIZED DEPLOYMENT FEE**
+The factory contract call should now succeed! Restarting agent..." && pkill -f "tsx.*index.ts" 2>/dev/null; sleep 2
+- Satisfies: require(msg.value >= deploymentFee)
+- Added: value: parseEther('0.001') to transaction
+✅ Issue 2 - Missing Deployment Fee:
+- Now matches the actual deployed contract
+- Changed: createEVMAuthContract → deployGroupContract
+✅ Issue 1 - Wrong Function Name:
+echo "🔧 **FIXING FACTORY CONTRACT CALL**

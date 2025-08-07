@@ -1,0 +1,42 @@
+{
+  "groups": [
+    {
+      "name": "Test Group",
+      "creatorInboxId": "test-inbox-123",
+      "creatorAddress": "0x1234567890123456789012345678901234567890",
+      "contractAddress": "0x0987654321098765432109876543210987654321",
+      "salesGroupId": "sales-group-123",
+      "premiumGroupId": "premium-group-123",
+      "status": "created",
+      "id": "test-inbox-123-test group-1754332379553",
+      "createdAt": "2025-08-04T18:32:59.553Z",
+      "updatedAt": "2025-08-04T18:32:59.553Z"
+    },
+    {
+      "name": "Test Group",
+      "creatorInboxId": "test-inbox-123",
+      "creatorAddress": "0x1234567890123456789012345678901234567890",
+      "contractAddress": "0x0987654321098765432109876543210987654321",
+      "salesGroupId": "sales-group-123",
+      "premiumGroupId": "premium-group-123",
+      "status": "created",
+      "id": "test-inbox-123-test group-1754333580062",
+      "createdAt": "2025-08-04T18:53:00.062Z",
+      "updatedAt": "2025-08-04T18:53:00.062Z"
+    }
+  ],
+  "tierSessions": [
+    {
+      "userInboxId": "test-user-456",
+      "contractAddress": "0x0987654321098765432109876543210987654321",
+      "step": "tier_details",
+      "currentTierIndex": 0,
+      "totalTiers": 2,
+      "tiers": [],
+      "pendingAttachments": {},
+      "createdAt": "2025-08-04T18:53:00.066Z"
+    }
+  ],
+  "lastScannedBlock": 0,
+  "version": "1.0.0"
+}
