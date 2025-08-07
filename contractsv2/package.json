@@ -1,0 +1,35 @@
+{
+  "name": "@xmtpauth/contractsv2",
+  "version": "1.0.0",
+  "description": "EVMAuth V2 - Modular architecture with plugin extensions",
+  "keywords": [
+    "ethereum",
+    "smart-contracts",
+    "evmauth",
+    "xmtp",
+    "access-control",
+    "erc1155",
+    "modular",
+    "extensions"
+  ],
+  "license": "MIT",
+  "author": "XMTP Auth Team",
+  "main": "index.js",
+  "scripts": {
+    "clean": "hardhat clean",
+    "compile": "hardhat compile",
+    "deploy:base-mainnet": "hardhat run scripts/deploy.js --network baseMainnet",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "node": "hardhat node",
+    "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0"
+  }
+}
