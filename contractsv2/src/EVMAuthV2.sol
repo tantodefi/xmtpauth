@@ -319,4 +319,84 @@ contract EVMAuthV2 is EVMAuthExpiringERC1155 {
       emit TokenMetadataCreated(id, newMetadata);
     }
   }
+
+  /**
+   * @dev Purchase tokens with extension hooks
+   * Enhanced version of the base purchase function that notifies extensions
+   */
+  function purchaseWithHooks(
+    address account,
+    uint256 id,
+    uint256 amount
+  )
+    external
+    payable
+    nonReentrant
+    denyBlacklisted(account)
+    denyBlacklistedSender
+  {
+    // If account is zero, use the sender's address
+    if (account == address(0)) {
+      account = _msgSender();
+    }
+
+    // Verify token is for sale and get metadata
+    require(forSale(id), "Token not for sale");
+    uint256 tokenPrice = priceOf(id);
+    require(tokenPrice > 0, "Token has no price");
+
+    // Calculate the total price
+    uint256 totalPrice = tokenPrice * amount;
+    require(msg.value >= totalPrice, "Insufficient payment");
+
+    // Refund any excess payment
+    uint256 refund = msg.value - totalPrice;
+    if (refund > 0) {
+      payable(_msgSender()).transfer(refund);
+    }
+
+    // Transfer the payment to the wallet
+    payable(wallet).transfer(totalPrice);
+
+    // Mint the purchased tokens to the buyer
+    _mint(account, id, amount, "");
+
+    // Notify extensions about the purchase
+    _notifyExtensionsOfPurchase(account, id, amount, totalPrice);
+
+    emit TokenPurchased(account, id, amount);
+  }
+
+  /**
+   * @dev Notify all registered extensions about a token purchase
+   */
+  function _notifyExtensionsOfPurchase(
+    address buyer,
+    uint256 tokenId,
+    uint256 amount,
+    uint256 totalPrice
+  ) internal {
+    // Notify extensions using low-level calls to prevent revert if extension fails
+    bytes memory callData = abi.encodeWithSignature(
+      "onTokenPurchased(address,uint256,uint256,uint256)",
+      buyer,
+      tokenId,
+      amount,
+      totalPrice
+    );
+
+    // Call known extension types
+    address megapotExtension = extensions[keccak256("MEGAPOT_EXTENSION")];
+    if (megapotExtension != address(0)) {
+      // Use low-level call to prevent revert if extension fails
+      megapotExtension.call(callData);
+      // Silently continue if extension call fails
+    }
+
+    address xmtpExtension = extensions[keccak256("XMTP_GROUP_EXTENSION")];
+    if (xmtpExtension != address(0)) {
+      xmtpExtension.call(callData);
+      // Silently continue if extension call fails
+    }
+  }
 }

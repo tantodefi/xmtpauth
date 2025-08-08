@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/rob/xmtpauth/contractsv2/src/EVMAuthFactoryV2.sol": {
-      "lastModificationDate": 1754603269287,
-      "contentHash": "03a83e7bca11ae6c9afc8169c89604bb",
+      "lastModificationDate": 1754604973882,
+      "contentHash": "0c489e102876f35d4f199b04d924d9da",
       "sourceName": "src/EVMAuthFactoryV2.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -12,6 +12,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -43,8 +44,8 @@
       ]
     },
     "/Users/rob/xmtpauth/contractsv2/src/EVMAuthV2.sol": {
-      "lastModificationDate": 1754602274614,
-      "contentHash": "367debf0fec433d55c19b1f43a3be496",
+      "lastModificationDate": 1754613327911,
+      "contentHash": "41ca1a106874840a5599e45f50fc8182",
       "sourceName": "src/EVMAuthV2.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -53,6 +54,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -81,8 +83,8 @@
       ]
     },
     "/Users/rob/xmtpauth/contractsv2/src/extensions/XMTPGroupExtension.sol": {
-      "lastModificationDate": 1754603347691,
-      "contentHash": "39d560845a3845665fad92fd3f43b93f",
+      "lastModificationDate": 1754604974121,
+      "contentHash": "044c6679f098ac8a5b37b0ba56246979",
       "sourceName": "src/extensions/XMTPGroupExtension.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -91,6 +93,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -131,6 +134,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -167,6 +171,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -205,6 +210,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -243,6 +249,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -281,6 +288,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -321,6 +329,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -359,6 +368,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -403,6 +413,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -446,6 +457,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -484,6 +496,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -523,6 +536,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -559,6 +573,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -595,6 +610,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -635,6 +651,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -673,6 +690,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -709,6 +727,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -745,6 +764,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -781,6 +801,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -817,6 +838,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -855,6 +877,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -896,6 +919,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -934,6 +958,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -972,6 +997,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -1011,6 +1037,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -1047,6 +1074,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -1083,6 +1111,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -1119,6 +1148,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -1147,8 +1177,8 @@
       ]
     },
     "/Users/rob/xmtpauth/contractsv2/src/SimpleFactoryV2.sol": {
-      "lastModificationDate": 1754603854259,
-      "contentHash": "87b06dca68ca928361e96c8e4a2f8082",
+      "lastModificationDate": 1754608012502,
+      "contentHash": "d6c32c295c713463ac576aab317d24e7",
       "sourceName": "src/SimpleFactoryV2.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1157,6 +1187,7 @@
             "enabled": true,
             "runs": 100
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {
@@ -1177,6 +1208,7 @@
       "imports": [
         "./EVMAuthV2.sol",
         "./extensions/XMTPGroupExtension.sol",
+        "./extensions/MegapotExtension.sol",
         "@openzeppelin/contracts/access/Ownable.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
       ],
@@ -1185,6 +1217,86 @@
       ],
       "artifacts": [
         "SimpleFactoryV2"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/extensions/MegapotExtension.sol": {
+      "lastModificationDate": 1754613387508,
+      "contentHash": "0912dfe0aecdc1a8493899bf32d85717",
+      "sourceName": "src/extensions/MegapotExtension.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 100
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "../EVMAuthV2.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "IMegapot",
+        "MegapotExtension"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+      "lastModificationDate": 1754602860953,
+      "contentHash": "9261adf6457863de3e9892f51317ec89",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 100
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.4.16"
+      ],
+      "artifacts": [
+        "IERC20"
       ]
     }
   }

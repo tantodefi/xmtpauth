@@ -10,6 +10,7 @@ module.exports = {
         enabled: true,
         runs: 100, // Lower runs for smaller contract size
       },
+      viaIR: true, // Enable IR-based code generator to fix "Stack too deep" errors
     },
   },
   networks: {
