@@ -56,8 +56,10 @@ export class PaymentMonitor {
       conversation,
       timestamp: Date.now(),
     });
-    
-    console.log(`📝 Registered payment: ${paymentId} from ${memberAddress} to ${this.agentAddress}`);
+
+    console.log(
+      `📝 Registered payment: ${paymentId} from ${memberAddress} to ${this.agentAddress}`,
+    );
 
     console.log(
       `📝 Registered pending payment: ${paymentId} for group: ${groupName}`,
@@ -89,8 +91,10 @@ export class PaymentMonitor {
 
       // Check last 200 blocks for transactions to agent address (Base: ~6.7 minutes)
       const fromBlock = currentBlock - 200n;
-      
-      console.log(`🔍 Checking payments: blocks ${fromBlock} to ${currentBlock} (${this.pendingPayments.size} pending)`);
+
+      console.log(
+        `🔍 Checking payments: blocks ${fromBlock} to ${currentBlock} (${this.pendingPayments.size} pending)`,
+      );
 
       // Get recent transactions to agent address
       const block = await this.publicClient.getBlock({
@@ -159,12 +163,18 @@ export class PaymentMonitor {
     toBlock: bigint,
   ): Promise<boolean> {
     try {
-      console.log(`🔍 Checking blockchain payment from ${payment.memberAddress} to ${this.agentAddress}`);
-      
+      console.log(
+        `🔍 Checking blockchain payment from ${payment.memberAddress} to ${this.agentAddress}`,
+      );
+
       // Look for transactions from the payer to the agent
       // This is a simplified check - in production you'd want more robust verification
 
       // Get transaction history for the last few blocks
+      console.log(
+        `🔍 Scanning ${Number(toBlock - fromBlock + 1n)} blocks for payment...`,
+      );
+
       for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
         const block = await this.publicClient.getBlock({
           blockNumber: blockNum,
@@ -172,13 +182,21 @@ export class PaymentMonitor {
         });
 
         if (block.transactions) {
+          console.log(
+            `📦 Block ${blockNum}: ${block.transactions.length} transactions`,
+          );
+
+          let agentTxCount = 0;
           for (const tx of block.transactions) {
             if (typeof tx === "object" && tx.to && tx.from && tx.value) {
               // Debug: Log all transactions to agent address
               if (tx.to?.toLowerCase() === this.agentAddress.toLowerCase()) {
-                console.log(`💰 Found tx to agent: ${tx.hash} from ${tx.from} value ${tx.value}`);
+                agentTxCount++;
+                console.log(
+                  `💰 Found tx to agent: ${tx.hash} from ${tx.from} value ${tx.value}`,
+                );
               }
-              
+
               // Check if transaction is to agent address with expected amount
               if (
                 tx.to.toLowerCase() === this.agentAddress.toLowerCase() &&
@@ -197,9 +215,20 @@ export class PaymentMonitor {
               }
             }
           }
+
+          if (agentTxCount === 0) {
+            console.log(
+              `📦 Block ${blockNum}: No transactions to agent address`,
+            );
+          }
+        } else {
+          console.log(`📦 Block ${blockNum}: No transactions in block`);
         }
       }
 
+      console.log(
+        `🔍 Finished scanning blocks ${fromBlock} to ${toBlock} - no payment found`,
+      );
       return false;
     } catch (error) {
       console.error("Error checking blockchain for payment:", error);
