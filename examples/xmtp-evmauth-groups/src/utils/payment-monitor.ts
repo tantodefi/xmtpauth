@@ -56,6 +56,8 @@ export class PaymentMonitor {
       conversation,
       timestamp: Date.now(),
     });
+    
+    console.log(`📝 Registered payment: ${paymentId} from ${memberAddress} to ${this.agentAddress}`);
 
     console.log(
       `📝 Registered pending payment: ${paymentId} for group: ${groupName}`,
@@ -85,8 +87,10 @@ export class PaymentMonitor {
       // Get current block number
       const currentBlock = await this.publicClient.getBlockNumber();
 
-      // Check last 50 blocks for transactions to agent address
-      const fromBlock = currentBlock - 50n;
+      // Check last 200 blocks for transactions to agent address (Base: ~6.7 minutes)
+      const fromBlock = currentBlock - 200n;
+      
+      console.log(`🔍 Checking payments: blocks ${fromBlock} to ${currentBlock} (${this.pendingPayments.size} pending)`);
 
       // Get recent transactions to agent address
       const block = await this.publicClient.getBlock({
@@ -155,6 +159,8 @@ export class PaymentMonitor {
     toBlock: bigint,
   ): Promise<boolean> {
     try {
+      console.log(`🔍 Checking blockchain payment from ${payment.memberAddress} to ${this.agentAddress}`);
+      
       // Look for transactions from the payer to the agent
       // This is a simplified check - in production you'd want more robust verification
 
@@ -168,6 +174,11 @@ export class PaymentMonitor {
         if (block.transactions) {
           for (const tx of block.transactions) {
             if (typeof tx === "object" && tx.to && tx.from && tx.value) {
+              // Debug: Log all transactions to agent address
+              if (tx.to?.toLowerCase() === this.agentAddress.toLowerCase()) {
+                console.log(`💰 Found tx to agent: ${tx.hash} from ${tx.from} value ${tx.value}`);
+              }
+              
               // Check if transaction is to agent address with expected amount
               if (
                 tx.to.toLowerCase() === this.agentAddress.toLowerCase() &&
