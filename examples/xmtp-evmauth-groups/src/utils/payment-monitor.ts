@@ -22,6 +22,8 @@ export class PaymentMonitor {
       timestamp: number;
     }
   >;
+  private rpcEndpoints: string[];
+  private currentRpcIndex: number;
 
   constructor(
     rpcUrl: string,
@@ -29,14 +31,92 @@ export class PaymentMonitor {
     enhancedGroupManager: EnhancedGroupManager,
     groupConfigs: Map<string, DualGroupConfig>,
   ) {
-    this.publicClient = createPublicClient({
-      chain: base,
-      transport: http(rpcUrl),
-    });
+    // Define reliable Base mainnet RPC endpoints as fallbacks
+    this.rpcEndpoints = [
+      rpcUrl, // Use provided URL first
+      'https://mainnet.base.org',
+      'https://base.blockpi.network/v1/rpc/public',
+      'https://1rpc.io/base',
+      'https://base-pokt.nodies.app',
+      'https://base.meowrpc.com'
+    ];
+    this.currentRpcIndex = 0;
+    
+    this.publicClient = this.createPublicClient();
     this.agentAddress = agentAddress;
     this.enhancedGroupManager = enhancedGroupManager;
     this.groupConfigs = groupConfigs;
     this.pendingPayments = new Map();
+    
+    console.log(`💰 Payment monitor initialized with ${this.rpcEndpoints.length} RPC endpoints`);
+    console.log(`🔗 Primary RPC: ${this.rpcEndpoints[0]}`);
+  }
+
+  private createPublicClient() {
+    const currentUrl = this.rpcEndpoints[this.currentRpcIndex];
+    return createPublicClient({
+      chain: base,
+      transport: http(currentUrl, {
+        timeout: 30000, // 30 second timeout
+        retryCount: 2,
+        retryDelay: 1000,
+      }),
+    });
+  }
+
+  private async switchToNextRpc(): Promise<boolean> {
+    this.currentRpcIndex = (this.currentRpcIndex + 1) % this.rpcEndpoints.length;
+    const newUrl = this.rpcEndpoints[this.currentRpcIndex];
+    
+    console.log(`🔄 Switching to RPC endpoint: ${newUrl}`);
+    
+    this.publicClient = this.createPublicClient();
+    
+    // Test the new endpoint
+    try {
+      await this.publicClient.getBlockNumber();
+      console.log(`✅ Successfully connected to: ${newUrl}`);
+      return true;
+    } catch (error) {
+      console.log(`❌ Failed to connect to: ${newUrl}`);
+      return false;
+    }
+  }
+
+  private async executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
+    let attempts = 0;
+    const maxAttempts = this.rpcEndpoints.length;
+    
+    while (attempts < maxAttempts) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        attempts++;
+        
+        // Check if it's a rate limiting error
+        if (error.status === 429 || error.message?.includes('rate limit') || 
+            error.message?.includes('Too Many Requests')) {
+          console.log(`⚠️ Rate limited on ${this.rpcEndpoints[this.currentRpcIndex]}`);
+          
+          if (attempts < maxAttempts) {
+            const switched = await this.switchToNextRpc();
+            if (switched) {
+              continue; // Try with new endpoint
+            }
+          }
+        }
+        
+        // If it's the last attempt or not a rate limit error, throw
+        if (attempts >= maxAttempts) {
+          throw error;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempts));
+      }
+    }
+    
+    throw new Error('All RPC endpoints failed');
   }
 
   /**
@@ -72,10 +152,10 @@ export class PaymentMonitor {
   async startPaymentMonitoring() {
     console.log("👀 Starting payment monitoring...");
 
-    // Check for payments every 30 seconds
+    // Check for payments every 45 seconds (reduced frequency to avoid rate limits)
     setInterval(async () => {
       await this.checkForPayments();
-    }, 30000);
+    }, 45000);
 
     // Also check immediately
     await this.checkForPayments();
@@ -86,8 +166,10 @@ export class PaymentMonitor {
    */
   private async checkForPayments() {
     try {
-      // Get current block number
-      const currentBlock = await this.publicClient.getBlockNumber();
+      // Get current block number with retry mechanism
+      const currentBlock = await this.executeWithRetry(() => 
+        this.publicClient.getBlockNumber()
+      );
 
       // Check last 200 blocks for transactions to agent address (Base: ~6.7 minutes)
       const fromBlock = currentBlock - 200n;
@@ -95,12 +177,9 @@ export class PaymentMonitor {
       console.log(
         `🔍 Checking payments: blocks ${fromBlock} to ${currentBlock} (${this.pendingPayments.size} pending)`,
       );
+      console.log(`🔗 Using RPC: ${this.rpcEndpoints[this.currentRpcIndex]}`);
 
-      // Get recent transactions to agent address
-      const block = await this.publicClient.getBlock({
-        blockNumber: currentBlock,
-        includeTransactions: true,
-      });
+      // Skip the single block check - we'll do comprehensive scanning in checkBlockchainForPayment
 
       // Check pending payments
       for (const [paymentId, payment] of this.pendingPayments.entries()) {
@@ -176,10 +255,12 @@ export class PaymentMonitor {
       );
 
       for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
-        const block = await this.publicClient.getBlock({
-          blockNumber: blockNum,
-          includeTransactions: true,
-        });
+        const block = await this.executeWithRetry(() =>
+          this.publicClient.getBlock({
+            blockNumber: blockNum,
+            includeTransactions: true,
+          })
+        );
 
         if (block.transactions) {
           console.log(
@@ -204,9 +285,11 @@ export class PaymentMonitor {
                 BigInt(tx.value) >= parseEther("0.001") // At least 0.001 ETH
               ) {
                 // Get transaction receipt to confirm it was successful
-                const receipt = await this.publicClient.getTransactionReceipt({
-                  hash: tx.hash,
-                });
+                const receipt = await this.executeWithRetry(() =>
+                  this.publicClient.getTransactionReceipt({
+                    hash: tx.hash,
+                  })
+                );
 
                 if (receipt.status === "success") {
                   console.log(`✅ Found confirmed payment: ${tx.hash}`);
@@ -223,6 +306,11 @@ export class PaymentMonitor {
           }
         } else {
           console.log(`📦 Block ${blockNum}: No transactions in block`);
+        }
+
+        // Add small delay between block scans to avoid overwhelming RPC
+        if ((blockNum - fromBlock) % 10n === 0n && blockNum !== toBlock) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
@@ -267,20 +355,11 @@ export class PaymentMonitor {
           `⏳ This may take 30-60 seconds...`,
       );
 
-      // Create metadata for the group
-      const metadata = {
-        name: payment.groupName,
-        description: `Premium community for ${payment.groupName} with token-gated access`,
-        image:
-          "https://via.placeholder.com/400x400/6366f1/ffffff?text=Premium+Group",
-      };
-
       // Deploy the contract and create groups
       const result = await this.enhancedGroupManager.createDualGroupSystem(
         payment.groupName,
         payment.senderInboxId,
         payment.memberAddress,
-        metadata,
       );
 
       // Store the group configuration returned by manager (already complete)
