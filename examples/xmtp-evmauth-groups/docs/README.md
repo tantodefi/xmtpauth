@@ -252,7 +252,7 @@ cp .env.example .env
 # WALLET_KEY=0x...
 # ENCRYPTION_KEY=...
 # BASE_RPC_URL=https://sepolia.base.org
-# EVMAUTH_FACTORY_ADDRESS=0x... (from contract deployment)
+# EVMAUTH_FACTORY_ADDRESS=0xC40462bd398Ec8eDeC8318CFF429D2f37B6D305b (Base Sepolia v1.1 USDC)
 
 # 5. Deploy contracts (first time only)
 cd ../../contracts

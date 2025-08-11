@@ -49,6 +49,44 @@ export async function handleCreateGroupWithPayment(
       return;
     }
 
+    // Prevent duplicate premium groups for the same creator (persistent + in-memory)
+    try {
+      // Check persistent DB
+      if (database) {
+        const existing = await database.findGroupByName(
+          senderInboxId,
+          groupName,
+        );
+        if (existing) {
+          await conversation.send(
+            `❌ A premium group named "${groupName}" already exists for you.\n\n` +
+              `Contract: ${existing.contractAddress}\n` +
+              `Sales Group: ${existing.salesGroupId}\n` +
+              `Premium Group: ${existing.premiumGroupId}`,
+          );
+          return;
+        }
+      }
+
+      // Check in-memory configs as an extra guard
+      const dup = Array.from(groupConfigs.values()).find(
+        (cfg) =>
+          cfg.creatorInboxId === senderInboxId &&
+          cfg.metadata?.name?.toLowerCase() === groupName.toLowerCase(),
+      );
+      if (dup) {
+        await conversation.send(
+          `❌ A premium group named "${groupName}" already exists for you.\n\n` +
+            `Contract: ${dup.contractAddress}\n` +
+            `Sales Group: ${dup.salesGroupId}\n` +
+            `Premium Group: ${dup.premiumGroupId}`,
+        );
+        return;
+      }
+    } catch (e) {
+      // Non-fatal; continue
+    }
+
     await conversation.send(
       `🏗️ Creating Premium Community System\n\n` +
         `📋 Group Name: ${groupName}\n` +
@@ -91,7 +129,7 @@ export async function handleCreateGroupWithPayment(
     console.error("Error in create-group-with-payment:", errorMessage);
 
     await conversation.send(
-      `❌ **Failed to create premium community**\n\n` +
+      `❌ Failed to create premium community\n\n` +
         `Error: ${errorMessage}\n\n` +
         `Please try again or contact support if the issue persists.`,
     );
@@ -130,7 +168,8 @@ export async function handleGrantTrial(
 
     // Find the group configuration
     const groupConfig = Array.from(groupConfigs.values()).find(
-      (config) => config.groupName.toLowerCase() === groupName.toLowerCase(),
+      (config) =>
+        config.metadata?.name?.toLowerCase() === groupName.toLowerCase(),
     );
 
     if (!groupConfig) {
@@ -155,7 +194,7 @@ export async function handleGrantTrial(
     );
 
     await conversation.send(
-      `🎁 **Granting Trial Access**\n\n` +
+      `🎁 Granting Trial Access\n\n` +
         `📋 Group: ${groupName}\n` +
         `👤 Recipient: ${userAddress}\n` +
         `⏰ Duration: ${days} days\n\n` +
@@ -168,7 +207,7 @@ export async function handleGrantTrial(
     console.error("Error in grant-trial:", errorMessage);
 
     await conversation.send(
-      `❌ **Failed to grant trial access**\n\n` +
+      `❌ Failed to grant trial access\n\n` +
         `Error: ${errorMessage}\n\n` +
         `Please try again or contact support.`,
     );
@@ -182,34 +221,84 @@ export async function handleListGroups(
   conversation: any,
   senderInboxId: string,
   groupConfigs: Map<string, DualGroupConfig>,
+  database?: JSONDatabase,
+  evmAuthHandler?: any,
 ): Promise<void> {
   try {
-    // Find groups created by this user
-    const userGroups = Array.from(groupConfigs.values()).filter(
+    // Find groups created by this user (in-memory)
+    let userGroups = Array.from(groupConfigs.values()).filter(
       (config) => config.creatorInboxId === senderInboxId,
     );
 
+    // If none in memory, try persistent database
+    if (userGroups.length === 0 && database) {
+      try {
+        const dbGroups = await database.getUserGroups(senderInboxId);
+        // Convert DB records to display entries
+        userGroups = dbGroups.map((g) => ({
+          contractAddress: g.contractAddress,
+          salesGroupId: g.salesGroupId,
+          premiumGroupId: g.premiumGroupId,
+          metadata: { name: g.name, description: "", image: undefined },
+          creatorInboxId: g.creatorInboxId,
+        })) as unknown as DualGroupConfig[];
+      } catch {}
+    }
+
     if (userGroups.length === 0) {
       await conversation.send(
-        "📋 **Your Groups**: None\n\n" +
+        "📋 Your Groups: None\n\n" +
           'Use `/create-group "Name"` to create your first premium community!',
       );
       return;
     }
 
-    let response = "📋 **Your Premium Communities**\n\n";
+    let response = "📋 Your Premium Communities\n\n";
 
-    userGroups.forEach((group, index) => {
-      response += `${index + 1}. **${group.groupName}**\n`;
+    for (let i = 0; i < userGroups.length; i++) {
+      const group = userGroups[i];
+      response += `${i + 1}. ${group.metadata?.name || "Group"}\n`;
       response += `   📍 Contract: ${group.contractAddress.slice(0, 10)}...${group.contractAddress.slice(-8)}\n`;
       response += `   👥 Sales Group: ${group.salesGroupId}\n`;
-      response += `   🔒 Premium Group: ${group.premiumGroupId}\n\n`;
-    });
+      response += `   🔒 Premium Group: ${group.premiumGroupId}\n`;
+
+      // Add balance information if evmAuthHandler is available
+      if (evmAuthHandler) {
+        try {
+          const ethBalance = await evmAuthHandler.getContractBalance(
+            group.contractAddress,
+          );
+          const usdcBalance = await evmAuthHandler.getContractUSDCBalance(
+            group.contractAddress,
+          );
+
+          if (ethBalance > 0n || usdcBalance > 0n) {
+            response += `   💰 Available to withdraw:\n`;
+            if (ethBalance > 0n) {
+              const ethFormatted = (Number(ethBalance) / 1e18).toFixed(6);
+              response += `      • ${ethFormatted} ETH\n`;
+            }
+            if (usdcBalance > 0n) {
+              const usdcFormatted = (Number(usdcBalance) / 1e6).toFixed(2);
+              response += `      • $${usdcFormatted} USDC\n`;
+            }
+          }
+        } catch (error) {
+          console.warn(
+            `Failed to get balance for ${group.contractAddress}:`,
+            error,
+          );
+        }
+      }
+
+      response += "\n";
+    }
 
     response += "💡 **Creator Commands:**\n";
     response +=
       "• `/grant-trial <group_name> <user_address> <days>` - Grant free access\n";
     response += "• `/group-info <group_name>` - View group details\n";
+    response += "• `/withdraw <contract>` - Withdraw earnings\n";
 
     await conversation.send(response);
   } catch (error: unknown) {
@@ -217,7 +306,7 @@ export async function handleListGroups(
     console.error("Error in list-groups:", errorMessage);
 
     await conversation.send(
-      `❌ **Failed to list groups**\n\n` + `Error: ${errorMessage}`,
+      `❌ Failed to list groups\n\n` + `Error: ${errorMessage}`,
     );
   }
 }

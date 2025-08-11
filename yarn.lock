@@ -921,10 +921,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@examples/xmtp-evmauth-groups@workspace:examples/xmtp-evmauth-groups"
   dependencies:
+    "@xmtp/content-type-reaction": "npm:*"
+    "@xmtp/content-type-wallet-send-calls": "npm:*"
     "@xmtp/node-sdk": "npm:*"
     tsx: "npm:*"
     typescript: "npm:*"
-    viem: "npm:^2.21.0"
+    viem: "npm:^2.33.2"
   languageName: unknown
   linkType: soft
 
@@ -2116,7 +2118,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@xmtp/content-type-reaction@npm:^2.0.2":
+"@xmtp/content-type-reaction@npm:*, @xmtp/content-type-reaction@npm:^2.0.2":
   version: 2.0.2
   resolution: "@xmtp/content-type-reaction@npm:2.0.2"
   dependencies:
@@ -2151,6 +2153,15 @@ __metadata:
   dependencies:
     "@xmtp/content-type-primitives": "npm:^2.0.2"
   checksum: 10/37437069fe47812647f856f871d83d95e62a35dd297f30578a3857dc90575284dad56ad3d734eeb1fe3599aa43512c2ae9e492b41404c492bdd70f9e7d03f734
+  languageName: node
+  linkType: hard
+
+"@xmtp/content-type-wallet-send-calls@npm:*":
+  version: 2.0.0
+  resolution: "@xmtp/content-type-wallet-send-calls@npm:2.0.0"
+  dependencies:
+    "@xmtp/content-type-primitives": "npm:^2.0.2"
+  checksum: 10/95a6688873f1aae44d7675a06a758f4b85157abaa14dedbb4ca3c75205c642064167cb2b7d9d0f9286b5cacc5c34c2afbae8fce0cce094c6154f943062028b3b
   languageName: node
   linkType: hard
 
@@ -5633,9 +5644,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^2.21.0":
-  version: 2.33.2
-  resolution: "viem@npm:2.33.2"
+"viem@npm:^2.33.2":
+  version: 2.33.3
+  resolution: "viem@npm:2.33.3"
   dependencies:
     "@noble/curves": "npm:1.9.2"
     "@noble/hashes": "npm:1.8.0"
@@ -5650,7 +5661,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10/4256557e8656e7d32d47012277a361d77d9de10fecd6e738799b25c2e05e2dfcc94bb50026db33b7b1e90211d22395e3049dd004b77d27fd161af563a86b57c3
+  checksum: 10/647da778c95b5f12bbdaf4bb82b076d4f4b7792ab19767f84ac9e4c3328dc6ffbdeddb3a167ac2ccc0a0f93b83f294244a61fe01527c85a9917284a9cc6b3e00
   languageName: node
   linkType: hard
 

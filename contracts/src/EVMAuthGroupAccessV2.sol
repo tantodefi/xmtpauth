@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -15,6 +16,8 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   string public groupName;
   string public groupDescription;
   string public groupImageUrl;
+  // Optional ERC20 token (USDC) for purchases
+  address public usdcToken;
 
   // XMTP Group Integration
   struct XMTPGroupInfo {
@@ -37,6 +40,7 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   struct AccessTier {
     uint256 durationDays; // Duration in days
     uint256 priceWei; // Price in wei
+    uint256 priceUSDC; // Price in USDC (6 decimals)
     string name; // Tier name
     string description; // Tier description
     string imageHash; // IPFS hash for NFT image
@@ -93,10 +97,9 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
     string name
   );
 
-  event InboxIdStored(
-    address indexed user,
-    string indexed inboxId
-  );
+  event AccessTierUSDCPriceSet(uint256 indexed tokenId, uint256 priceUSDC);
+
+  event InboxIdStored(address indexed user, string indexed inboxId);
 
   constructor(
     address _factory,
@@ -127,7 +130,12 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
       _transferOwnership(_owner);
     }
 
-    emit XMTPGroupsLinked(_salesGroupId, _premiumGroupId, _botAddress, block.timestamp);
+    emit XMTPGroupsLinked(
+      _salesGroupId,
+      _premiumGroupId,
+      _botAddress,
+      block.timestamp
+    );
   }
 
   /**
@@ -143,12 +151,13 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
     string memory metadataUri
   ) external onlyOwner {
     require(durationDays > 0, "Duration must be positive");
-    require(priceWei > 0, "Price must be positive");
+    // priceWei can be zero when using USDC-only pricing
     require(bytes(name).length > 0, "Name required");
 
     accessTiers[tokenId] = AccessTier({
       durationDays: durationDays,
       priceWei: priceWei,
+      priceUSDC: 0,
       name: name,
       description: description,
       imageHash: imageHash,
@@ -161,10 +170,32 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   }
 
   /**
+   * @dev Set the ERC20 token address used for USDC purchases (owner only)
+   */
+  function setUSDCToken(address token) external onlyOwner {
+    usdcToken = token;
+  }
+
+  /**
+   * @dev Set USDC price for a given tier (owner only)
+   */
+  function setTierUSDCPrice(
+    uint256 tokenId,
+    uint256 priceUSDC
+  ) external onlyOwner {
+    require(accessTiers[tokenId].isActive, "Tier not active");
+    accessTiers[tokenId].priceUSDC = priceUSDC;
+    emit AccessTierUSDCPriceSet(tokenId, priceUSDC);
+  }
+
+  /**
    * @dev Store user inbox ID mapping (callable by bot)
    */
   function storeUserInboxId(address user, string memory inboxId) external {
-    require(msg.sender == xmtpInfo.botAddress || msg.sender == owner(), "Not authorized");
+    require(
+      msg.sender == xmtpInfo.botAddress || msg.sender == owner(),
+      "Not authorized"
+    );
     require(bytes(inboxId).length > 0, "Invalid inbox ID");
 
     // Clear previous mapping if exists
@@ -199,15 +230,17 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
 
     // Record purchase
     string memory userInboxId = userInboxIds[msg.sender];
-    purchaseHistory.push(PurchaseRecord({
-      user: msg.sender,
+    purchaseHistory.push(
+      PurchaseRecord({
+        user: msg.sender,
         userInboxId: userInboxId,
         tokenId: tokenId,
-      purchasePrice: msg.value,
+        purchasePrice: msg.value,
         purchasedAt: block.timestamp,
         expiresAt: expiresAt,
         isActive: true
-    }));
+      })
+    );
 
     userPurchases[msg.sender].push(purchaseHistory.length - 1);
 
@@ -223,14 +256,72 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   }
 
   /**
+   * @dev Purchase access token using USDC
+   */
+  function purchaseAccessUSDC(
+    uint256 tokenId,
+    uint256 amountUSDC
+  ) external nonReentrant {
+    AccessTier memory tier = accessTiers[tokenId];
+    require(tier.isActive, "Access tier not active");
+    require(usdcToken != address(0), "USDC token not set");
+    require(
+      amountUSDC >= tier.priceUSDC && tier.priceUSDC > 0,
+      "Insufficient USDC or price not set"
+    );
+
+    // Handle platform fees for USDC
+    _handleUSDCPlatformFees(amountUSDC);
+
+    // Transfer remaining USDC to owner (after fees)
+    uint256 creatorAmount = _calculateCreatorAmount(amountUSDC);
+    bool ok = IERC20(usdcToken).transferFrom(
+      msg.sender,
+      owner(),
+      creatorAmount
+    );
+    require(ok, "USDC transfer failed");
+
+    // Calculate expiry
+    uint256 expiresAt = block.timestamp + (tier.durationDays * 1 days);
+
+    // Mint token
+    _mint(msg.sender, tokenId, 1, "");
+
+    // Store expiry
+    userTokenExpiry[msg.sender][tokenId] = expiresAt;
+
+    // Record purchase
+    string memory userInboxId = userInboxIds[msg.sender];
+    purchaseHistory.push(
+      PurchaseRecord({
+        user: msg.sender,
+        userInboxId: userInboxId,
+        tokenId: tokenId,
+        purchasePrice: amountUSDC,
+        purchasedAt: block.timestamp,
+        expiresAt: expiresAt,
+        isActive: true
+      })
+    );
+
+    userPurchases[msg.sender].push(purchaseHistory.length - 1);
+
+    emit UserAccessGranted(msg.sender, userInboxId, tokenId, expiresAt);
+  }
+
+  /**
    * @dev Check if user has valid access
    */
   function hasValidAccess(address user) external view returns (bool) {
     // Check all token types for valid access
-    for (uint256 tokenId = 1; tokenId <= 10; tokenId++) { // Check first 10 token IDs
-      if (accessTiers[tokenId].isActive && 
-          balanceOf(user, tokenId) > 0 && 
-          userTokenExpiry[user][tokenId] > block.timestamp) {
+    for (uint256 tokenId = 1; tokenId <= 10; tokenId++) {
+      // Check first 10 token IDs
+      if (
+        accessTiers[tokenId].isActive &&
+        balanceOf(user, tokenId) > 0 &&
+        userTokenExpiry[user][tokenId] > block.timestamp
+      ) {
         return true;
       }
     }
@@ -240,17 +331,23 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   /**
    * @dev Check if inbox ID has valid access
    */
-  function hasValidAccessByInboxId(string memory inboxId) external view returns (bool) {
+  function hasValidAccessByInboxId(
+    string memory inboxId
+  ) external view returns (bool) {
     address user = inboxToAddress[inboxId];
     if (user == address(0)) return false;
-    
+
     return this.hasValidAccess(user);
   }
 
   /**
    * @dev Revoke user access (admin function)
    */
-  function revokeAccess(address user, uint256 tokenId, string memory reason) external onlyOwner {
+  function revokeAccess(
+    address user,
+    uint256 tokenId,
+    string memory reason
+  ) external onlyOwner {
     require(balanceOf(user, tokenId) > 0, "User has no tokens");
 
     // Burn the token
@@ -264,7 +361,7 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   }
 
   /**
-   * @dev Handle platform fees
+   * @dev Handle platform fees for ETH payments
    */
   function _handlePlatformFees(uint256 amount) internal {
     // Get fee configuration from factory
@@ -274,9 +371,7 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
     require(success, "Failed to get fee basis points");
     uint256 feeBasisPoints = abi.decode(data, (uint256));
 
-    (success, data) = factory.call(
-      abi.encodeWithSignature("feeRecipient()")
-    );
+    (success, data) = factory.call(abi.encodeWithSignature("feeRecipient()"));
     require(success, "Failed to get fee recipient");
     address feeRecipient = abi.decode(data, (address));
 
@@ -289,16 +384,66 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   }
 
   /**
+   * @dev Handle platform fees for USDC payments
+   */
+  function _handleUSDCPlatformFees(uint256 amount) internal {
+    // Get fee configuration from factory
+    (bool success, bytes memory data) = factory.call(
+      abi.encodeWithSignature("feeBasisPoints()")
+    );
+    require(success, "Failed to get fee basis points");
+    uint256 feeBasisPoints = abi.decode(data, (uint256));
+
+    (success, data) = factory.call(abi.encodeWithSignature("feeRecipient()"));
+    require(success, "Failed to get fee recipient");
+    address feeRecipient = abi.decode(data, (address));
+
+    if (feeBasisPoints > 0 && feeRecipient != address(0)) {
+      uint256 fee = (amount * feeBasisPoints) / 10000;
+      if (fee > 0) {
+        bool feeOk = IERC20(usdcToken).transferFrom(
+          msg.sender,
+          feeRecipient,
+          fee
+        );
+        require(feeOk, "Platform fee transfer failed");
+      }
+    }
+  }
+
+  /**
+   * @dev Calculate creator amount after platform fees
+   */
+  function _calculateCreatorAmount(uint256 amount) internal returns (uint256) {
+    // Get fee configuration from factory
+    (bool success, bytes memory data) = factory.call(
+      abi.encodeWithSignature("feeBasisPoints()")
+    );
+    require(success, "Failed to get fee basis points");
+    uint256 feeBasisPoints = abi.decode(data, (uint256));
+
+    if (feeBasisPoints > 0) {
+      uint256 fee = (amount * feeBasisPoints) / 10000;
+      return amount - fee;
+    }
+    return amount;
+  }
+
+  /**
    * @dev Get user's purchase history
    */
-  function getUserPurchases(address user) external view returns (uint256[] memory) {
+  function getUserPurchases(
+    address user
+  ) external view returns (uint256[] memory) {
     return userPurchases[user];
   }
 
   /**
    * @dev Get purchase record
    */
-  function getPurchaseRecord(uint256 index) external view returns (PurchaseRecord memory) {
+  function getPurchaseRecord(
+    uint256 index
+  ) external view returns (PurchaseRecord memory) {
     require(index < purchaseHistory.length, "Invalid index");
     return purchaseHistory[index];
   }
@@ -311,11 +456,16 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
     string memory _premiumGroupId,
     address _botAddress
   ) external onlyOwner {
-      xmtpInfo.salesGroupId = _salesGroupId;
+    xmtpInfo.salesGroupId = _salesGroupId;
     xmtpInfo.premiumGroupId = _premiumGroupId;
     xmtpInfo.botAddress = _botAddress;
 
-    emit XMTPGroupsLinked(_salesGroupId, _premiumGroupId, _botAddress, block.timestamp);
+    emit XMTPGroupsLinked(
+      _salesGroupId,
+      _premiumGroupId,
+      _botAddress,
+      block.timestamp
+    );
   }
 
   /**
@@ -324,7 +474,7 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   function withdraw() external onlyOwner {
     uint256 balance = address(this).balance;
     require(balance > 0, "No balance to withdraw");
-    
+
     payable(owner()).transfer(balance);
   }
 
@@ -349,7 +499,9 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   /**
    * @dev Batch check multiple users' access
    */
-  function batchCheckAccess(address[] memory users) external view returns (bool[] memory) {
+  function batchCheckAccess(
+    address[] memory users
+  ) external view returns (bool[] memory) {
     bool[] memory results = new bool[](users.length);
     for (uint256 i = 0; i < users.length; i++) {
       results[i] = this.hasValidAccess(users[i]);
@@ -363,20 +515,20 @@ contract EVMAuthGroupAccessV2 is ERC1155, Ownable, ReentrancyGuard {
   function getActiveTiers() external view returns (uint256[] memory) {
     uint256[] memory activeTiers = new uint256[](10); // Max 10 tiers for now
     uint256 count = 0;
-    
+
     for (uint256 i = 1; i <= 10; i++) {
       if (accessTiers[i].isActive) {
         activeTiers[count] = i;
         count++;
       }
     }
-    
+
     // Resize array to actual count
     uint256[] memory result = new uint256[](count);
     for (uint256 i = 0; i < count; i++) {
       result[i] = activeTiers[i];
     }
-    
+
     return result;
   }
 }

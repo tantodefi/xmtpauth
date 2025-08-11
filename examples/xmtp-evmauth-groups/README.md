@@ -62,7 +62,9 @@ cd ../examples/xmtp-evmauth-groups
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with contract addresses from Step 1
+# Edit .env with contract addresses from Step 1. Example:
+# EVMAUTH_FACTORY_ADDRESS=0xC40462bd398Ec8eDeC8318CFF429D2f37B6D305b
+# USDC_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 
 # 3. Generate bot credentials
 yarn gen:keys
@@ -71,6 +73,13 @@ yarn gen:keys
 yarn install
 yarn dev  # Development mode with hot reload
 ```
+
+## Deployments
+
+Base Sepolia:
+
+- EVMAuthFactory v1: `0xa8830a603ae5143a1f8baa46e28c36e4765ec754`
+- EVMAuthFactory v1.1 (USDC support): `0xC40462bd398Ec8eDeC8318CFF429D2f37B6D305b`
 
 ### Step 3: Integration Flow
 

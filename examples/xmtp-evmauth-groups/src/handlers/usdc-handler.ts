@@ -1,36 +1,43 @@
-import { createPublicClient, createWalletClient, http, getContract, parseUnits, formatUnits } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  formatUnits,
+  getContract,
+  http,
+  parseUnits,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 
 // USDC Contract ABI (essential functions)
 const USDC_ABI = [
   {
-    "inputs": [{"name": "account", "type": "address"}],
-    "name": "balanceOf",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
   },
   {
-    "inputs": [
-      {"name": "to", "type": "address"},
-      {"name": "amount", "type": "uint256"}
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    "name": "transfer",
-    "outputs": [{"name": "", "type": "bool"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
   },
   {
-    "inputs": [
-      {"name": "spender", "type": "address"},
-      {"name": "amount", "type": "uint256"}
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    "name": "approve",
-    "outputs": [{"name": "", "type": "bool"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
 
 // Base network USDC addresses
@@ -40,9 +47,9 @@ const USDC_ADDRESSES = {
 } as const;
 
 export interface USDCPriceConfig {
-  amountUSD: number;        // Price in USD (e.g., 5.99)
-  amountUSDC: string;       // Price in USDC wei (e.g., "5990000")
-  formattedUSDC: string;    // Human readable (e.g., "5.99 USDC")
+  amountUSD: number; // Price in USD (e.g., 5.99)
+  amountUSDC: string; // Price in USDC wei (e.g., "5990000")
+  formattedUSDC: string; // Human readable (e.g., "5.99 USDC")
 }
 
 export class USDCHandler {
@@ -51,14 +58,12 @@ export class USDCHandler {
   private usdcAddress: string;
   private account;
 
-  constructor(
-    rpcUrl: string,
-    privateKey: string,
-    isMainnet: boolean = false
-  ) {
+  constructor(rpcUrl: string, privateKey: string, isMainnet: boolean = false) {
     this.account = privateKeyToAccount(privateKey as `0x${string}`);
-    this.usdcAddress = isMainnet ? USDC_ADDRESSES.mainnet : USDC_ADDRESSES.testnet;
-    
+    this.usdcAddress = isMainnet
+      ? USDC_ADDRESSES.mainnet
+      : USDC_ADDRESSES.testnet;
+
     this.publicClient = createPublicClient({
       chain: base,
       transport: http(rpcUrl),
@@ -116,7 +121,10 @@ export class USDCHandler {
   /**
    * Create USDC transfer transaction data
    */
-  createUSDCTransferData(toAddress: string, amountUSDC: string): {
+  createUSDCTransferData(
+    toAddress: string,
+    amountUSDC: string,
+  ): {
     to: string;
     data: string;
     value: string; // Always "0" for USDC transfers
@@ -127,7 +135,7 @@ export class USDCHandler {
       const transferSelector = "0xa9059cbb"; // transfer(address,uint256)
       const paddedAddress = toAddress.slice(2).padStart(64, "0");
       const paddedAmount = BigInt(amountUSDC).toString(16).padStart(64, "0");
-      
+
       const data = transferSelector + paddedAddress + paddedAmount;
 
       return {
@@ -150,11 +158,11 @@ export class USDCHandler {
       // Remove $ symbol and whitespace
       const cleaned = input.replace(/[$\s]/g, "");
       const amount = parseFloat(cleaned);
-      
+
       if (isNaN(amount) || amount <= 0) {
         return null;
       }
-      
+
       return amount;
     } catch {
       return null;
@@ -168,16 +176,18 @@ export class USDCHandler {
     if (amount < 0.01) {
       return { valid: false, error: "Minimum price is $0.01" };
     }
-    
+
     if (amount > 1000) {
       return { valid: false, error: "Maximum price is $1000" };
     }
-    
-    // Check for reasonable decimal places (max 2)
-    if (Number((amount % 0.01).toFixed(2)) !== 0) {
+
+    // Check for max 2 decimal places using cents to avoid FP issues
+    const cents = Math.round(amount * 100);
+    const backToAmount = cents / 100;
+    if (Math.abs(amount - backToAmount) > 1e-6) {
       return { valid: false, error: "Price can only have 2 decimal places" };
     }
-    
+
     return { valid: true };
   }
 
@@ -196,14 +206,17 @@ export class USDCHandler {
   formatPriceDisplay(usdAmount: number, duration: number): string {
     const priceConfig = this.convertUSDToUSDC(usdAmount);
     const timeUnit = duration === 1 ? "day" : "days";
-    
+
     return `💰 **$${usdAmount.toFixed(2)} USD** (${priceConfig.formattedUSDC})\n⏰ **${duration} ${timeUnit}** access`;
   }
 
   /**
    * Create approval transaction for USDC spending
    */
-  createUSDCApprovalData(spenderAddress: string, amount: string): {
+  createUSDCApprovalData(
+    spenderAddress: string,
+    amount: string,
+  ): {
     to: string;
     data: string;
     value: string;
@@ -212,7 +225,7 @@ export class USDCHandler {
       const approveSelector = "0x095ea7b3"; // approve(address,uint256)
       const paddedSpender = spenderAddress.slice(2).padStart(64, "0");
       const paddedAmount = BigInt(amount).toString(16).padStart(64, "0");
-      
+
       const data = approveSelector + paddedSpender + paddedAmount;
 
       return {

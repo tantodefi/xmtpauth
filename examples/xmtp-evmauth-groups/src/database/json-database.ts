@@ -3,8 +3,8 @@
  * Prevents duplicates and provides persistence
  */
 
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 export interface GroupRecord {
   id: string;
@@ -14,7 +14,7 @@ export interface GroupRecord {
   contractAddress: string;
   salesGroupId: string;
   premiumGroupId: string;
-  status: 'created' | 'tiers_setup' | 'active';
+  status: "created" | "tiers_setup" | "active";
   createdAt: string;
   updatedAt: string;
   tiers?: AccessTierRecord[];
@@ -49,40 +49,47 @@ interface DatabaseSchema {
 
 export class JSONDatabase {
   private dbPath: string;
-  private data: DatabaseSchema;
+  private data: DatabaseSchema = {
+    groups: [],
+    tierSessions: [],
+    lastScannedBlock: 0,
+    version: "1.0",
+  };
 
-  constructor(dataDir: string = './.data') {
+  constructor(dataDir: string = "./.data") {
     // Ensure data directory exists
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    
-    this.dbPath = path.join(dataDir, 'groups-database.json');
+
+    this.dbPath = path.join(dataDir, "groups-database.json");
     this.loadDatabase();
   }
 
   private loadDatabase(): void {
     try {
       if (fs.existsSync(this.dbPath)) {
-        const rawData = fs.readFileSync(this.dbPath, 'utf8');
+        const rawData = fs.readFileSync(this.dbPath, "utf8");
         this.data = JSON.parse(rawData);
-        console.log(`📋 Loaded database: ${this.data.groups.length} groups, ${this.data.tierSessions.length} sessions`);
+        console.log(
+          `📋 Loaded database: ${this.data.groups.length} groups, ${this.data.tierSessions.length} sessions`,
+        );
       } else {
         this.data = {
           groups: [],
           tierSessions: [],
           lastScannedBlock: 0,
-          version: '1.0.0'
+          version: "1.0.0",
         };
         this.saveDatabase();
       }
     } catch (error) {
-      console.error('Error loading database:', error);
+      console.error("Error loading database:", error);
       this.data = {
         groups: [],
         tierSessions: [],
         lastScannedBlock: 0,
-        version: '1.0.0'
+        version: "1.0.0",
       };
     }
   }
@@ -91,84 +98,114 @@ export class JSONDatabase {
     try {
       fs.writeFileSync(this.dbPath, JSON.stringify(this.data, null, 2));
     } catch (error) {
-      console.error('Error saving database:', error);
+      console.error("Error saving database:", error);
     }
   }
 
   // Group Management
-  async createGroup(group: Omit<GroupRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<GroupRecord> {
+  async createGroup(
+    group: Omit<GroupRecord, "id" | "createdAt" | "updatedAt">,
+  ): Promise<GroupRecord> {
     const id = `${group.creatorInboxId}-${group.name.toLowerCase()}-${Date.now()}`;
     const now = new Date().toISOString();
-    
+
     const newGroup: GroupRecord = {
       ...group,
       id,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
-    
+
     this.data.groups.push(newGroup);
     this.saveDatabase();
-    
+
     console.log(`📝 Created group record: ${group.name} (${id})`);
     return newGroup;
   }
 
-  async findGroupByName(creatorInboxId: string, groupName: string): Promise<GroupRecord | null> {
-    return this.data.groups.find(g => 
-      g.creatorInboxId === creatorInboxId && 
-      g.name.toLowerCase() === groupName.toLowerCase()
-    ) || null;
+  async findGroupByName(
+    creatorInboxId: string,
+    groupName: string,
+  ): Promise<GroupRecord | null> {
+    return (
+      this.data.groups.find(
+        (g) =>
+          g.creatorInboxId === creatorInboxId &&
+          g.name.toLowerCase() === groupName.toLowerCase(),
+      ) || null
+    );
   }
 
-  async findGroupByContract(contractAddress: string): Promise<GroupRecord | null> {
-    return this.data.groups.find(g => g.contractAddress === contractAddress) || null;
+  async findGroupByContract(
+    contractAddress: string,
+  ): Promise<GroupRecord | null> {
+    return (
+      this.data.groups.find((g) => g.contractAddress === contractAddress) ||
+      null
+    );
   }
 
-  async updateGroup(id: string, updates: Partial<GroupRecord>): Promise<boolean> {
-    const index = this.data.groups.findIndex(g => g.id === id);
+  async updateGroup(
+    id: string,
+    updates: Partial<GroupRecord>,
+  ): Promise<boolean> {
+    const index = this.data.groups.findIndex((g) => g.id === id);
     if (index === -1) return false;
-    
+
     this.data.groups[index] = {
       ...this.data.groups[index],
       ...updates,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    
+
     this.saveDatabase();
     return true;
   }
 
   async getUserGroups(creatorInboxId: string): Promise<GroupRecord[]> {
-    return this.data.groups.filter(g => g.creatorInboxId === creatorInboxId);
+    return this.data.groups.filter((g) => g.creatorInboxId === creatorInboxId);
   }
 
   async getAllGroups(): Promise<GroupRecord[]> {
     return [...this.data.groups];
   }
 
+  // Helper to read a group by contract quickly
+  async requireGroupByContract(contract: string): Promise<GroupRecord | null> {
+    const rec = this.data.groups.find(
+      (g) => g.contractAddress.toLowerCase() === contract.toLowerCase(),
+    );
+    return rec || null;
+  }
+
   // Tier Session Management
   async saveTierSession(session: TierSession): Promise<void> {
-    const existingIndex = this.data.tierSessions.findIndex(s => s.userInboxId === session.userInboxId);
-    
+    const existingIndex = this.data.tierSessions.findIndex(
+      (s) => s.userInboxId === session.userInboxId,
+    );
+
     if (existingIndex >= 0) {
       this.data.tierSessions[existingIndex] = session;
     } else {
       this.data.tierSessions.push(session);
     }
-    
+
     this.saveDatabase();
     console.log(`💾 Saved tier session for ${session.userInboxId}`);
   }
 
   async getTierSession(userInboxId: string): Promise<TierSession | null> {
-    return this.data.tierSessions.find(s => s.userInboxId === userInboxId) || null;
+    return (
+      this.data.tierSessions.find((s) => s.userInboxId === userInboxId) || null
+    );
   }
 
   async deleteTierSession(userInboxId: string): Promise<boolean> {
-    const index = this.data.tierSessions.findIndex(s => s.userInboxId === userInboxId);
+    const index = this.data.tierSessions.findIndex(
+      (s) => s.userInboxId === userInboxId,
+    );
     if (index === -1) return false;
-    
+
     this.data.tierSessions.splice(index, 1);
     this.saveDatabase();
     return true;
@@ -176,20 +213,20 @@ export class JSONDatabase {
 
   // Cleanup old sessions (older than 24 hours)
   async cleanupOldSessions(): Promise<number> {
-    const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
     const initialCount = this.data.tierSessions.length;
-    
-    this.data.tierSessions = this.data.tierSessions.filter(session => {
+
+    this.data.tierSessions = this.data.tierSessions.filter((session) => {
       const sessionTime = new Date(session.createdAt).getTime();
       return sessionTime > cutoff;
     });
-    
+
     const cleaned = initialCount - this.data.tierSessions.length;
     if (cleaned > 0) {
       this.saveDatabase();
       console.log(`🧹 Cleaned up ${cleaned} old tier sessions`);
     }
-    
+
     return cleaned;
   }
 
@@ -207,9 +244,10 @@ export class JSONDatabase {
   getStats() {
     return {
       totalGroups: this.data.groups.length,
-      activeGroups: this.data.groups.filter(g => g.status === 'active').length,
+      activeGroups: this.data.groups.filter((g) => g.status === "active")
+        .length,
       pendingSessions: this.data.tierSessions.length,
-      lastScannedBlock: this.data.lastScannedBlock
+      lastScannedBlock: this.data.lastScannedBlock,
     };
   }
 }

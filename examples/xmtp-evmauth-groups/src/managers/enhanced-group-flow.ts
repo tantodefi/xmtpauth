@@ -2,28 +2,27 @@
  * Enhanced Group Management with Database Integration
  */
 
-import { Client, type Group, IdentifierKind } from "@xmtp/node-sdk";
+import { Client, IdentifierKind, type Group } from "@xmtp/node-sdk";
+import type { JSONDatabase } from "../database/json-database";
 import type { EVMAuthHandler } from "../handlers/evmauth-handler";
 import type { DualGroupConfig, GroupMetadata } from "../types/types";
-import type { JSONDatabase } from "../database/json-database";
 
-// Group configuration interface  
+// Group configuration interface
 interface GroupSettings {
   // Group metadata
   metadata: {
     name: string;
     description: string;
     image: string;
-    tiers: any[];
   };
-  
+
   // Group settings
   salesSettings: {
     welcomeMessage: string;
     availableTiers: string;
     helpMessage: string;
   };
-  
+
   premiumSettings: {
     welcomeMessage: string;
     rules?: string;
@@ -38,7 +37,11 @@ export class EnhancedGroupManager {
   public agentAddress: string;
   private database?: JSONDatabase;
 
-  constructor(client: Client, evmAuthHandler: EVMAuthHandler, database?: JSONDatabase) {
+  constructor(
+    client: Client,
+    evmAuthHandler: EVMAuthHandler,
+    database?: JSONDatabase,
+  ) {
     this.client = client;
     this.evmAuthHandler = evmAuthHandler;
     this.database = database;
@@ -47,12 +50,22 @@ export class EnhancedGroupManager {
   }
 
   /**
+   * Add a group configuration to the manager
+   */
+  addGroupConfig(contractAddress: string, config: DualGroupConfig): void {
+    this.groupConfigs.set(contractAddress, config);
+    console.log(
+      `📋 Added group config for ${contractAddress}: ${config.metadata?.name}`,
+    );
+  }
+
+  /**
    * Create dual-group system for a community
    */
   async createDualGroupSystem(
     groupName: string,
     creatorInboxId: string,
-    creatorAddress: string
+    creatorAddress: string,
   ): Promise<{
     contractAddress: string;
     salesGroup: Group;
@@ -70,7 +83,7 @@ export class EnhancedGroupManager {
           groupName: `🏪 ${groupName} - Sales`,
           groupDescription: `Public group for ${groupName} access sales and information`,
           groupImageUrlSquare: `https://via.placeholder.com/400x400/22c55e/ffffff?text=${encodeURIComponent(groupName)}+Sales`,
-        }
+        },
       );
 
       // 2. Create premium group
@@ -81,35 +94,35 @@ export class EnhancedGroupManager {
           groupName: `💎 ${groupName}`,
           groupDescription: `Premium access group for ${groupName}`,
           groupImageUrlSquare: `https://via.placeholder.com/400x400/6366f1/ffffff?text=${encodeURIComponent(groupName)}`,
-        }
+        },
       );
 
       // 3. Send welcome messages to both groups
       console.log("📝 Setting up welcome messages...");
-      
+
       // Sales group welcome message
       await salesGroup.send(
         `🎉 Welcome to ${groupName} Sales! 🎉\n\n` +
-        `This is where you can:\n` +
-        `🛒 Purchase access to our premium community\n` +
-        `📋 Learn about available tiers and pricing\n` +
-        `💬 Get support from our team\n\n` +
-        `Once tier setup is complete, you'll be able to use:\n` +
-        `• /buy-access to purchase premium access\n` +
-        `• /group-info to see pricing details\n\n` +
-        `🚀 Stay tuned for more updates!`
+          `This is where you can:\n` +
+          `🛒 Purchase access to our premium community\n` +
+          `📋 Learn about available tiers and pricing\n` +
+          `💬 Get support from our team\n\n` +
+          `Once tier setup is complete, you'll be able to use:\n` +
+          `• /buy-access to purchase premium access\n` +
+          `• /group-info to see pricing details\n\n` +
+          `🚀 Stay tuned for more updates!`,
       );
 
-      // Premium group welcome message  
+      // Premium group welcome message
       await premiumGroup.send(
         `💎 Welcome to ${groupName} Premium! 💎\n\n` +
-        `🎉 Congratulations! You now have exclusive access to our premium community.\n\n` +
-        `✨ Premium Benefits:\n` +
-        `• Exclusive content and discussions\n` +
-        `• Priority support\n` +
-        `• Special member privileges\n` +
-        `• Early access to new features\n\n` +
-        `Enjoy your premium experience! 🚀`
+          `🎉 Congratulations! You now have exclusive access to our premium community.\n\n` +
+          `✨ Premium Benefits:\n` +
+          `• Exclusive content and discussions\n` +
+          `• Priority support\n` +
+          `• Special member privileges\n` +
+          `• Early access to new features\n\n` +
+          `Enjoy your premium experience! 🚀`,
       );
 
       // 4. Deploy EVMAuth contract with actual group IDs
@@ -117,8 +130,8 @@ export class EnhancedGroupManager {
       const contractAddress = await this.evmAuthHandler.deployGroupContract(
         groupName,
         this.agentAddress, // Pass AGENT address as botAddress (not creator)
-        salesGroup.id,  // Pass actual sales group ID
-        premiumGroup.id // Pass actual premium group ID
+        salesGroup.id, // Pass actual sales group ID
+        premiumGroup.id, // Pass actual premium group ID
       );
 
       // 5. Create group configuration
@@ -128,23 +141,30 @@ export class EnhancedGroupManager {
         creatorInboxId,
         salesGroupId: salesGroup.id,
         premiumGroupId: premiumGroup.id,
-        groupName,
         createdAt: new Date(),
         metadata: {
           name: groupName,
           description: `Premium access to ${groupName}`,
           image: `https://via.placeholder.com/400x400/6366f1/ffffff?text=${encodeURIComponent(groupName)}`,
-          tiers: [] // Will be populated during tier setup
+        },
+        tiers: [],
+        creatorAddress,
+        isActive: true,
+        paymentConfig: {
+          acceptedTokens: ["ETH"],
+          defaultToken: "ETH",
         },
         salesSettings: {
           welcomeMessage: `Welcome to ${groupName}! 🎉\n\nThis is where you can purchase access to our premium community.\n\nUse /buy-access to get started!`,
-          availableTiers: "Premium tiers will be displayed here once configured.",
-          helpMessage: "Need help? Contact our support team or use /help for commands."
+          availableTiers:
+            "Premium tiers will be displayed here once configured.",
+          helpMessage:
+            "Need help? Contact our support team or use /help for commands.",
         },
         premiumSettings: {
           welcomeMessage: `🎉 Welcome to ${groupName} Premium! 🎉\n\nYou now have exclusive access to our premium community.\n\nEnjoy your time here!`,
-          description: `Exclusive premium access to ${groupName} with special benefits and content.`
-        }
+          description: `Exclusive premium access to ${groupName} with special benefits and content.`,
+        },
       };
 
       // 6. Store in in-memory config for immediate access
@@ -159,7 +179,7 @@ export class EnhancedGroupManager {
           contractAddress,
           salesGroupId: salesGroup.id,
           premiumGroupId: premiumGroup.id,
-          status: 'created'
+          status: "created",
         });
         console.log("💾 Saved group to database");
       }
@@ -173,9 +193,8 @@ export class EnhancedGroupManager {
         contractAddress,
         salesGroup,
         premiumGroup,
-        config: groupConfig
+        config: groupConfig,
       };
-
     } catch (error) {
       console.error("Error creating dual-group system:", error);
       throw error;
@@ -189,28 +208,34 @@ export class EnhancedGroupManager {
     contractAddress: string,
     userInboxId: string,
     tierName: string,
-    tokenId: number
+    tokenId: number,
   ): Promise<void> {
     try {
       const config = this.groupConfigs.get(contractAddress);
       if (!config) {
-        throw new Error(`Group configuration not found for contract ${contractAddress}`);
+        throw new Error(
+          `Group configuration not found for contract ${contractAddress}`,
+        );
       }
 
       // 1. Get premium group
-      const premiumGroup = await this.client.conversations.getConversationById(
-        config.premiumGroupId
-      ) as Group;
+      const premiumGroup = (await this.client.conversations.getConversationById(
+        config.premiumGroupId,
+      )) as Group;
 
       if (!premiumGroup) {
         throw new Error(`Premium group not found: ${config.premiumGroupId}`);
       }
 
       // 2. Add member to premium group
-      await premiumGroup.addMembers([userInboxId]);
+      const cleanInboxId = userInboxId.startsWith("0x")
+        ? userInboxId.slice(2)
+        : userInboxId;
+      console.log(`➕ Adding member to premium group: ${cleanInboxId}`);
+      await premiumGroup.addMembers([cleanInboxId]);
 
       // 3. Send welcome message
-      const welcomeMsg = 
+      const welcomeMsg =
         `🎉 Welcome to ${config.metadata.name} Premium!\n\n` +
         `✅ Access Tier: ${tierName}\n` +
         `🎫 Token ID: ${tokenId}\n` +
@@ -221,18 +246,17 @@ export class EnhancedGroupManager {
       await premiumGroup.send(welcomeMsg);
 
       // 3. Notify sales group (optional)
-      const salesGroup = await this.client.conversations.getConversationById(
-        config.salesGroupId
-      ) as Group;
+      const salesGroup = (await this.client.conversations.getConversationById(
+        config.salesGroupId,
+      )) as Group;
 
       if (salesGroup) {
         await salesGroup.send(
-          `🎉 New member joined the premium community! Welcome aboard! 🚀`
+          `🎉 New member joined the premium community! Welcome aboard! 🚀`,
         );
       }
 
       console.log(`✅ Successfully added ${userInboxId} to premium group`);
-
     } catch (error) {
       console.error(`Error adding member to premium group:`, error);
       throw error;
@@ -244,18 +268,20 @@ export class EnhancedGroupManager {
    */
   async removeMemberFromPremiumGroup(
     contractAddress: string,
-    userInboxId: string
+    userInboxId: string,
   ): Promise<void> {
     try {
       const config = this.groupConfigs.get(contractAddress);
       if (!config) {
-        console.error(`Group configuration not found for contract ${contractAddress}`);
+        console.error(
+          `Group configuration not found for contract ${contractAddress}`,
+        );
         return;
       }
 
-      const premiumGroup = await this.client.conversations.getConversationById(
-        config.premiumGroupId
-      ) as Group;
+      const premiumGroup = (await this.client.conversations.getConversationById(
+        config.premiumGroupId,
+      )) as Group;
 
       if (!premiumGroup) {
         console.error(`Premium group not found: ${config.premiumGroupId}`);
@@ -264,8 +290,9 @@ export class EnhancedGroupManager {
 
       // Remove member
       await premiumGroup.removeMembers([userInboxId]);
-      console.log(`✅ Removed ${userInboxId} from premium group (access expired)`);
-
+      console.log(
+        `✅ Removed ${userInboxId} from premium group (access expired)`,
+      );
     } catch (error) {
       console.error(`Error removing member from premium group:`, error);
     }
@@ -282,12 +309,14 @@ export class EnhancedGroupManager {
    * Update group configuration
    */
   async updateGroupConfig(
-    contractAddress: string, 
-    updates: Partial<DualGroupConfig>
+    contractAddress: string,
+    updates: Partial<DualGroupConfig>,
   ): Promise<void> {
     const existing = this.groupConfigs.get(contractAddress);
     if (!existing) {
-      throw new Error(`Group configuration not found for contract ${contractAddress}`);
+      throw new Error(
+        `Group configuration not found for contract ${contractAddress}`,
+      );
     }
 
     const updated = { ...existing, ...updates };
@@ -298,7 +327,7 @@ export class EnhancedGroupManager {
       const dbGroup = await this.database.findGroupByContract(contractAddress);
       if (dbGroup) {
         await this.database.updateGroup(dbGroup.id, {
-          status: updates.metadata?.tiers && updates.metadata.tiers.length > 0 ? 'active' : 'tiers_setup'
+          status: "tiers_setup",
         });
       }
     }
@@ -316,7 +345,109 @@ export class EnhancedGroupManager {
    */
   getGroupsForCreator(creatorInboxId: string): DualGroupConfig[] {
     return Array.from(this.groupConfigs.values()).filter(
-      config => config.creatorInboxId === creatorInboxId
+      (config) => config.creatorInboxId === creatorInboxId,
     );
+  }
+
+  /**
+   * Handle a successful token purchase by linking inboxId and adding to premium group
+   */
+  async handleTokenPurchase(
+    contractAddress: string,
+    userAddress: string,
+    userInboxId: string,
+    tokenId: number,
+    tierName: string,
+  ): Promise<void> {
+    // Persist inbox mapping on-chain so contract can validate by inboxId later
+    try {
+      await this.evmAuthHandler.storeUserInboxId(
+        contractAddress,
+        userAddress,
+        userInboxId,
+      );
+    } catch (error) {
+      // Non-fatal; continue to add to group
+      console.warn("storeUserInboxId failed (non-fatal):", error);
+    }
+
+    await this.addMemberToPremiumGroup(
+      contractAddress,
+      userInboxId,
+      tierName,
+      tokenId,
+    );
+  }
+
+  /**
+   * Remove an expired member with an optional reason
+   */
+  async removeExpiredMember(
+    contractAddress: string,
+    userInboxId: string,
+    reason: string = "Access expired",
+  ): Promise<void> {
+    await this.removeMemberFromPremiumGroup(contractAddress, userInboxId);
+  }
+
+  /**
+   * Audit premium group membership against on-chain token validity
+   */
+  async auditGroupMembership(contractAddress: string): Promise<{
+    addedMembers: string[];
+    removedMembers: string[];
+    validMembers: string[];
+  }> {
+    const config = this.groupConfigs.get(contractAddress);
+    const addedMembers: string[] = [];
+    const removedMembers: string[] = [];
+    const validMembers: string[] = [];
+
+    if (!config) {
+      return { addedMembers, removedMembers, validMembers };
+    }
+
+    const premiumGroup = (await this.client.conversations.getConversationById(
+      config.premiumGroupId,
+    )) as Group;
+    if (!premiumGroup) {
+      return { addedMembers, removedMembers, validMembers };
+    }
+
+    const members = await premiumGroup.members();
+    for (const member of members) {
+      // Skip bot and admins
+      if (
+        member.inboxId.toLowerCase() === this.client.inboxId.toLowerCase() ||
+        premiumGroup.isSuperAdmin(member.inboxId) ||
+        premiumGroup.isAdmin(member.inboxId)
+      ) {
+        validMembers.push(member.inboxId);
+        continue;
+      }
+
+      // Resolve wallet address from identifiers (prefer Ethereum)
+      const ethIdentifier = member.accountIdentifiers.find(
+        (id) => id.identifierKind === IdentifierKind.Ethereum,
+      );
+      const userAddress = ethIdentifier ? ethIdentifier.identifier : undefined;
+      if (!userAddress) {
+        // Cannot validate; remove conservatively or skip. We'll skip.
+        continue;
+      }
+
+      const hasAccess = await this.evmAuthHandler.checkTokenAccess(
+        contractAddress,
+        userAddress,
+      );
+      if (hasAccess) {
+        validMembers.push(member.inboxId);
+      } else {
+        await premiumGroup.removeMembers([member.inboxId]);
+        removedMembers.push(member.inboxId);
+      }
+    }
+
+    return { addedMembers, removedMembers, validMembers };
   }
 }

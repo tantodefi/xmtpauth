@@ -378,3 +378,4 @@ FEE_BASIS_POINTS=250                 # Platform fee (250 = 2.5%)
 INITIAL_OWNER=0x...                  # Contract owner
 BASESCAN_API_KEY=...                 # For contract verification
 ```
+

@@ -86,8 +86,10 @@ BASESCAN_API_KEY=...
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **EVMAuthFactory** | `0xa8830a603ae5143a1f8baa46e28c36e4765ec754` | Factory for deploying group contracts |
-| **Test Group Contract** | `TBD` | Example group access contract |
+| **EVMAuthFactory v1** | `0xa8830a603ae5143a1f8baa46e28c36e4765ec754` | Original factory (ETH-only tiers) |
+| **EVMAuthFactory v1.1 (USDC support)** | `0xC40462bd398Ec8eDeC8318CFF429D2f37B6D305b` | Updated factory with USDC-capable group contract |
+| **EVMAuthFactory v1.2 (USDC fees fixed)** | `0x0D9c7A9ADC117814ed98B57BF64e8437Da5d4ef4` | USDC fee bypass fixed, proper revenue sharing ⭐ **LATEST** |
+| **Test Group Contract** | `0x2c494F9F731C823fd29442421B50F59cA919fA91` | Example group access contract (v1.1) |
 
 ### Base Mainnet (Production)
 
@@ -233,6 +235,19 @@ npx hardhat verify --network baseSepolia <GROUP_ADDRESS> <FACTORY_ADDRESS> <GROU
 - **Input Validation**: Comprehensive parameter validation
 
 ## 🔄 Integration with XMTP Agent
+
+### Agent Configuration
+
+To use the latest factory deployment, update your agent's environment:
+
+```bash
+# Use the latest v1.2 factory with USDC fee fixes
+EVMAUTH_FACTORY_ADDRESS=0x0D9c7A9ADC117814ed98B57BF64e8437Da5d4ef4
+FEE_RECIPIENT=0x...  # Your agent's wallet for platform fees
+FEE_BASIS_POINTS=250 # 2.5% platform fee
+```
+
+### Integration
 
 The deployed contracts integrate seamlessly with the XMTP agent:
 
