@@ -3,7 +3,7 @@
  */
 
 import { createPublicClient, http, parseEther } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig } from "../types/types";
 
@@ -30,7 +30,7 @@ export class PaymentMonitor {
     groupConfigs: Map<string, DualGroupConfig>,
   ) {
     this.publicClient = createPublicClient({
-      chain: baseSepolia,
+      chain: base,
       transport: http(rpcUrl),
     });
     this.agentAddress = agentAddress;
