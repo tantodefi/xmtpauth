@@ -44,9 +44,9 @@ import {
   handleEnhancedBuyAccess,
   handleEnhancedCreateGroup,
 } from "./src/utils/enhanced-create-group";
-import { 
-  handleCreateGroupWithPayment, 
-  handleGrantTrial, 
+import {
+  handleCreateGroupWithPayment,
+  handleGrantTrial,
   handleListGroups,
 } from "./src/utils/enhanced-create-group-with-payment";
 import { PaymentMonitor } from "./src/utils/payment-monitor";
@@ -79,14 +79,26 @@ const userTokens = new Map<
   { groupId: string; tokenId: string; expiresAt: Date }[]
 >();
 
+// Helper function to get data directory path
+function getDataDir(): string {
+  return process.env.NODE_ENV === "production" ? "/app/data" : "./.data";
+}
+
 async function main() {
   /* Create the signer and initialize client */
   const signer = createSigner(WALLET_KEY);
   const dbEncryptionKey = getEncryptionKeyFromHex(ENCRYPTION_KEY);
 
+  // Configure XMTP database path for mounted disk
+  const xmtpDbPath =
+    process.env.NODE_ENV === "production"
+      ? `/app/data/xmtp-${XMTP_ENV}-${signer.getIdentifier().identifier}`
+      : undefined;
+
   const client = await Client.create(signer, {
     dbEncryptionKey,
     env: XMTP_ENV as XmtpEnv,
+    dbPath: xmtpDbPath,
     codecs: [new WalletSendCallsCodec(), new ReactionCodec()],
   });
 
@@ -100,14 +112,14 @@ async function main() {
     WALLET_KEY,
   );
 
-  // Initialize JSON database first
-  const database = new JSONDatabase();
+  // Initialize JSON database with mounted disk path
+  const database = new JSONDatabase(getDataDir());
   await database.cleanupOldSessions();
   console.log("📊 Database stats:", database.getStats());
 
   const usdcHandler = new USDCHandler(BASE_RPC_URL, WALLET_KEY, false); // false = testnet
   const ipfsHandler = new IPFSMetadataHandler();
-  
+
   // Enhanced dual-group manager with database
   // Narrow the client type to plain text to avoid union issues when adding codecs
   type PlainClient = Client<string>;
@@ -136,20 +148,20 @@ async function main() {
     groupConfigs,
   );
   const groupManager = new GroupManager(textClient, evmAuthHandler);
-  
+
   // Initialize enhanced tier setup with database
   const tierSetup = new EnhancedTierSetup(usdcHandler, ipfsHandler);
-  
+
   // Initialize comprehensive recovery system
   const comprehensiveRecovery = new ComprehensiveRecovery(
     textClient as any,
     database,
   );
-  
+
   // Initialize persistent state manager (keep for compatibility)
   const persistentState = new PersistentStateManager();
   persistentState.cleanupOldRecords();
-  
+
   // Payment monitoring system
   const paymentMonitor = new PaymentMonitor(
     BASE_RPC_URL,
@@ -172,14 +184,14 @@ async function main() {
   console.log("🔄 Attempting to recover existing group configurations...");
   try {
     const recoveredConfigs = await recoveryManager.performFullRecovery();
-    
+
     // Merge recovered configs with current groupConfigs
     for (const [contractAddress, config] of recoveredConfigs.entries()) {
       groupConfigs.set(contractAddress, config);
       // Add to event listening
       await eventAccessManager.addContractToListen(contractAddress, config);
     }
-    
+
     if (recoveredConfigs.size > 0) {
       console.log(`✅ Recovered ${recoveredConfigs.size} group configurations`);
     } else {
@@ -250,7 +262,7 @@ async function main() {
 
   // Start enhanced membership management background task
   void startEnhancedMembershipManager(textClient as any, enhancedGroupManager);
-  
+
   // Start event-driven access management with improved polling system
   void eventAccessManager.startEventListening();
 
@@ -366,16 +378,16 @@ async function main() {
       let tierSetupHandled = false;
       if (tierSetup.getSession(message.senderInboxId)) {
         tierSetupHandled = await tierSetup.handleTierSetupMessage(
-        message.senderInboxId,
-        messageContent,
-        conversation,
+          message.senderInboxId,
+          messageContent,
+          conversation,
           undefined,
-        async (tiers: AccessTier[]) => {
-          // Callback when tiers are completed
+          async (tiers: AccessTier[]) => {
+            // Callback when tiers are completed
             const groupConfig = groupConfigs.get(
               tierSetup.getSession(message.senderInboxId)?.groupId || "",
             );
-          if (groupConfig) {
+            if (groupConfig) {
               // Persist DB first
               try {
                 const rec = await database.findGroupByContract(
@@ -397,7 +409,7 @@ async function main() {
               } catch {}
 
               // Update memory
-            groupConfig.tiers = tiers;
+              groupConfig.tiers = tiers;
 
               // Configure on-chain using agent's wallet (better UX than 5 user signatures)
               await evmAuthHandler.setupAccessTiers(
@@ -545,7 +557,7 @@ async function main() {
             tiers.length > 0
               ? tiers.join("\n")
               : "Tiers coming soon. Please check back later.";
-        await conversation.send(
+          await conversation.send(
             `🏪 ${groupName} — Sales\n\n` +
               `👤 Creator: ${creator}\n` +
               `📋 Available Tiers:\n${tiersText}`,
@@ -654,11 +666,11 @@ async function handleEnhancedSetupTiers(
   }
 
   const identifier = parts[1];
-  
+
   // Find group by name OR contract address
   let groupConfig: DualGroupConfig | undefined;
   let contractAddress: string | undefined;
-  
+
   // First try to find by contract address (exact match)
   if (identifier.startsWith("0x")) {
     groupConfig = groupConfigs.get(identifier);
@@ -703,7 +715,7 @@ async function handleEnhancedSetupTiers(
       await conversation.send(
         "❌ Group not found. Use `/list-groups` to see available groups.\n\nIf you just paid to create a group, wait for the confirmation message (contract + group IDs). Then run `/setup-tiers <group_name_or_contract>`.",
       );
-    return;
+      return;
     }
   }
 
@@ -762,11 +774,11 @@ async function handleBuyAccess(
 
     await conversation.send(
       `💰 Purchase ${tier.name}\n\n` +
-      `🎯 Group: ${groupConfig.metadata.name}\n` +
-      `⏰ Duration: ${tier.durationDays} days\n` +
-      `💎 Price: ${parseFloat(tier.priceWei) / 1e18} ETH\n\n` +
-      `Transaction details:\n` +
-      `\`\`\`json\n${JSON.stringify(walletSendCalls, null, 2)}\n\`\`\`\n\n` +
+        `🎯 Group: ${groupConfig.metadata.name}\n` +
+        `⏰ Duration: ${tier.durationDays} days\n` +
+        `💎 Price: ${parseFloat(tier.priceWei) / 1e18} ETH\n\n` +
+        `Transaction details:\n` +
+        `\`\`\`json\n${JSON.stringify(walletSendCalls, null, 2)}\n\`\`\`\n\n` +
         `Please use your wallet to send the transaction above.`,
     );
   } catch (error) {
@@ -777,7 +789,7 @@ async function handleBuyAccess(
 
 async function handleMyTokens(conversation: any, senderInboxId: string) {
   const tokens = userTokens.get(senderInboxId) || [];
-  
+
   if (tokens.length === 0) {
     await conversation.send("📭 You don't have any access tokens yet.");
     return;
@@ -789,7 +801,7 @@ async function handleMyTokens(conversation: any, senderInboxId: string) {
       const groupName = groupConfig?.metadata.name || "Unknown Group";
       const isExpired = token.expiresAt < new Date();
       const status = isExpired ? "❌ Expired" : "✅ Active";
-      
+
       return (
         `🎫 ${groupName}\n` +
         `   Token ID: ${token.tokenId}\n` +
@@ -836,10 +848,12 @@ async function handleGroupInfo(conversation: any, messageContent: string) {
     try {
       let rec;
       try {
-        rec = await new JSONDatabase().requireGroupByContract(groupId);
+        rec = await new JSONDatabase(getDataDir()).requireGroupByContract(
+          groupId,
+        );
       } catch {
         // Try by name
-        const db = new JSONDatabase();
+        const db = new JSONDatabase(getDataDir());
         const allGroups = await db.getAllGroups();
         rec = allGroups.find(
           (g) => g.name.toLowerCase() === groupId.toLowerCase(),
@@ -879,7 +893,7 @@ async function handleGroupInfo(conversation: any, messageContent: string) {
       "0x0000000000000000000000000000000000000000",
     process.env.WALLET_KEY || "0x",
   );
-  const db = new JSONDatabase();
+  const db = new JSONDatabase(getDataDir());
   const dbRecord = await db.requireGroupByContract(groupConfig.contractAddress);
   const dbPrices: Record<number, number> = {};
   if (dbRecord && dbRecord.tiers) {
@@ -1291,18 +1305,18 @@ async function handleEarnings(
 async function handleHelp(conversation: any) {
   await conversation.send(
     `🤖 EVMAuth Groups Agent - Enhanced Edition\n\n` +
-    `Create and monetize premium XMTP groups with custom USDC pricing and NFT images!\n\n` +
+      `Create and monetize premium XMTP groups with custom USDC pricing and NFT images!\n\n` +
       `Commands:\n` +
-    `📊 \`/create-group <name>\` - Create a new paid group\n` +
-    `⚙️ \`/setup-tiers <group_id>\` - Interactive tier setup with custom pricing\n` +
-    `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
-    `🎫 \`/my-tokens\` - View your access tokens\n` +
-    `📄 \`/group-info <group_id>\` - Get group information\n` +
+      `📊 \`/create-group <name>\` - Create a new paid group\n` +
+      `⚙️ \`/setup-tiers <group_id>\` - Interactive tier setup with custom pricing\n` +
+      `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
+      `🎫 \`/my-tokens\` - View your access tokens\n` +
+      `📄 \`/group-info <group_id>\` - Get group information\n` +
       `🔍 \`/check-purchase <contract>\` - Check for recent NFT purchase\n` +
       `💰 \`/withdraw <contract>\` - Withdraw earnings from your groups\n` +
       `🔧 \`/fix-access <contract>\` - Manually add yourself to premium group if you have NFT\n` +
       `🧪 \`/test-expiration\` - Test token expiration with ultra-short tokens\n` +
-    `❓ \`/help\` - Show this help message\n\n` +
+      `❓ \`/help\` - Show this help message\n\n` +
       `Enhanced Features:\n` +
       `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
       `🎨 Custom NFT Images: Upload your own artwork for access tokens\n` +
@@ -1311,10 +1325,10 @@ async function handleHelp(conversation: any) {
       `⚖️ Base Network: Low gas fees, fast transactions\n` +
       `⏰ Time-bound Access: Automatic expiry and membership management\n\n` +
       `Example Tier Setup:\n` +
-    `Format: \`Name | Price | Duration\`\n` +
-    `• \`Basic Access | $5 | 7 days\`\n` +
-    `• \`Premium | $15.99 | 30 days\`\n` +
-    `• \`VIP Membership | $50 | 90 days\`\n\n` +
+      `Format: \`Name | Price | Duration\`\n` +
+      `• \`Basic Access | $5 | 7 days\`\n` +
+      `• \`Premium | $15.99 | 30 days\`\n` +
+      `• \`VIP Membership | $50 | 90 days\`\n\n` +
       `Start by creating a group, then setup your custom tiers!`,
   );
 }
@@ -1324,32 +1338,32 @@ async function startEnhancedMembershipManager(
   enhancedGroupManager: EnhancedGroupManager,
 ) {
   console.log("🔄 Starting enhanced membership manager...");
-  
+
   setInterval(async () => {
     try {
       console.log("🔍 Running membership audit...");
-      
+
       for (const [contractAddress, config] of groupConfigs.entries()) {
         // Safe access to config properties
         const groupName = config.metadata?.name || "Unknown Group";
         console.log(`Auditing group: ${groupName} (${contractAddress})`);
-        
+
         const auditResults =
           await enhancedGroupManager.auditGroupMembership(contractAddress);
-        
+
         if (auditResults.addedMembers.length > 0) {
           console.log(
             `✅ Added ${auditResults.addedMembers.length} new members`,
           );
         }
-        
+
         if (auditResults.removedMembers.length > 0) {
           console.log(
             `❌ Removed ${auditResults.removedMembers.length} expired members`,
           );
         }
       }
-      
+
       console.log("✅ Membership audit complete");
     } catch (error) {
       console.error("Error in enhanced membership manager:", error);
@@ -1442,13 +1456,13 @@ async function handleTestSystem(
 ) {
   await conversation.send(
     `🧪 Running System Test\n\n` +
-    `Testing all enhanced features...\n` +
+      `Testing all enhanced features...\n` +
       `This may take 1-2 minutes.`,
   );
 
   try {
     const testResults = await testFlowManager.runCompleteTest();
-    
+
     await conversation.send(
       `🧪 Test Results\n\n` +
         `Overall: ${testResults.success ? "🎉 SUCCESS" : "❌ FAILED"}\n\n` +

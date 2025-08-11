@@ -5,6 +5,10 @@ services:
     plan: starter
     buildCommand: yarn install --immutable
     startCommand: yarn render:agent
+    disk:
+      name: xmtp-agent-data
+      mountPath: /app/data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
