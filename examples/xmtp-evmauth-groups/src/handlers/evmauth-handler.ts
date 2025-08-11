@@ -191,7 +191,7 @@ export class EVMAuthHandler {
   constructor(rpcUrl: string, factoryAddress: string, privateKey: string) {
     this.factoryAddress = factoryAddress;
     this.account = privateKeyToAccount(privateKey as `0x${string}`);
-
+    
     this.publicClient = createPublicClient({
       chain: baseSepolia,
       transport: http(rpcUrl),
@@ -208,9 +208,9 @@ export class EVMAuthHandler {
    * Deploy a new EVMAuth contract for a group
    */
   async deployGroupContract(
-    groupName: string,
+    groupName: string, 
     botAddress: string,
-    salesGroupId: string,
+    salesGroupId: string, 
     premiumGroupId: string,
   ): Promise<string> {
     try {
@@ -232,11 +232,11 @@ export class EVMAuthHandler {
 
       const hash = await factoryContract.write.deployGroupContract(
         [
-          groupName, // groupName
-          `Premium access to ${groupName}`, // groupDescription
-          "https://via.placeholder.com/400x400/6366f1/ffffff?text=Premium+Group", // groupImageUrl
-          salesGroupId, // actual salesGroupId
-          premiumGroupId, // actual premiumGroupId
+        groupName, // groupName
+        `Premium access to ${groupName}`, // groupDescription
+        "https://via.placeholder.com/400x400/6366f1/ffffff?text=Premium+Group", // groupImageUrl  
+        salesGroupId, // actual salesGroupId
+        premiumGroupId, // actual premiumGroupId
           botAddress as `0x${string}`,
         ],
         {
@@ -397,7 +397,7 @@ export class EVMAuthHandler {
 
           const hash = await contract.write.setupAccessTier(
             [
-              BigInt(tokenId),
+          BigInt(tokenId),
               BigInt(tier.durationDays),
               ethPrice,
               tier.name,
@@ -413,7 +413,7 @@ export class EVMAuthHandler {
           await this.publicClient.waitForTransactionReceipt({ hash });
           await new Promise((r) => setTimeout(r, 2000)); // Even longer delay between transactions
 
-          console.log(`✅ Setup tier ${tier.name} (Token ID: ${tokenId})`);
+        console.log(`✅ Setup tier ${tier.name} (Token ID: ${tokenId})`);
 
           // If USD price present, set tier USDC price
           if (typeof tier.priceUSD === "number" && tier.priceUSD! > 0) {
@@ -473,7 +473,7 @@ export class EVMAuthHandler {
       });
 
       const hasAccess = await contract.read.hasValidAccess([
-        userAddress as `0x${string}`,
+          userAddress as `0x${string}`,
       ]);
       return Boolean(hasAccess);
     } catch (error) {
@@ -584,9 +584,9 @@ export class EVMAuthHandler {
     userAddress: string,
   ): Promise<
     Array<{
-      tokenId: number;
-      balance: bigint;
-      expiresAt: Date;
+    tokenId: number;
+    balance: bigint;
+    expiresAt: Date;
     }>
   > {
     try {
@@ -667,7 +667,7 @@ export class EVMAuthHandler {
       // This would require a withdraw function in the EVMAuth contract
       // Implementation depends on the specific contract design
       console.log(`Withdrawing ${amount} wei from ${contractAddress}`);
-
+      
       // Placeholder - implement based on actual contract
       return "0x"; // Transaction hash
     } catch (error) {

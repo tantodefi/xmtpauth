@@ -43,8 +43,8 @@
       ]
     },
     "/Users/rob/xmtpauth/contracts/src/EVMAuthGroupAccessV2.sol": {
-      "lastModificationDate": 1754885634296,
-      "contentHash": "6eb1bb41f776eca40354eb6962f15052",
+      "lastModificationDate": 1754910771739,
+      "contentHash": "ac959b99fbf2f3802dfc8c9f8432873a",
       "sourceName": "src/EVMAuthGroupAccessV2.sol",
       "solcConfig": {
         "version": "0.8.20",

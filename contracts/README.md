@@ -95,10 +95,10 @@ BASESCAN_API_KEY=...
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **EVMAuthFactory** | `TBD` | Factory for deploying group contracts |
+| **EVMAuthFactory v1** | `0xa8830A603aE5143a1f8BAA46e28C36e4765EC754` | Factory for deploying group contracts ⭐ **LIVE** |
 | **Production Groups** | `TBD` | Live group access contracts |
 
-> **Note**: Contract addresses will be updated after mainnet deployment.
+> **Note**: Factory deployed to Base mainnet. Group contracts will be deployed as needed.
 
 ## 📋 Deployment
 
