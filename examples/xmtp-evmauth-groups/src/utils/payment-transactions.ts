@@ -16,7 +16,7 @@ export function createGroupCreationPayment(
   return {
     version: "1.0",
     from: fromAddress as `0x${string}`,
-    chainId: "0x14a34", // Base Sepolia chain ID (84532 in hex)
+    chainId: "0x2105", // Base mainnet chain ID (8453 in hex)
     calls: [
       {
         to: agentAddress as `0x${string}`,

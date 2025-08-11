@@ -1,10 +1,10 @@
 services:
-  - type: web
+  - type: worker
     name: xmtp-evmauth-agent
     env: node
     plan: starter
     buildCommand: yarn install --immutable
-    startCommand: yarn start:prod
+    startCommand: yarn render:agent
     envVars:
       - key: NODE_ENV
         value: production
