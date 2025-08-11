@@ -81,6 +81,14 @@ const GROUP_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  // owner (Ownable)
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
   // balanceOf (ERC1155)
   {
     inputs: [
@@ -370,8 +378,6 @@ export class EVMAuthHandler {
           let metadataUri = "";
           if (tier.metadata?.ipfsHash) {
             metadataUri = `ipfs://${tier.metadata.ipfsHash}`;
-          } else if (tier.metadataUri) {
-            metadataUri = tier.metadataUri;
           } else {
             // Generate basic metadata JSON structure
             const metadata = {
@@ -381,7 +387,7 @@ export class EVMAuthHandler {
               attributes: [
                 { trait_type: "Tier", value: tier.name },
                 { trait_type: "Duration", value: `${tier.durationDays} days` },
-                { trait_type: "Price", value: `$${tier.priceUsd || "N/A"}` },
+                { trait_type: "Price", value: `$${tier.priceUSD || "N/A"}` },
               ],
             };
             console.log(`📝 Generated metadata for ${tier.name}:`, metadata);
@@ -618,20 +624,7 @@ export class EVMAuthHandler {
     }
   }
 
-  /**
-   * Get contract balance for fee collection
-   */
-  async getContractBalance(contractAddress: string): Promise<bigint> {
-    try {
-      const balance = await this.publicClient.getBalance({
-        address: contractAddress as `0x${string}`,
-      });
-      return balance;
-    } catch (error) {
-      console.error("Error getting contract balance:", error);
-      return 0n;
-    }
-  }
+  // Removed duplicate getContractBalance (defined later)
 
   /**
    * Read tier info from contract
@@ -751,7 +744,9 @@ export class EVMAuthHandler {
         client: this.publicClient,
       });
 
-      return await usdcContract.read.balanceOf([contractAddress]);
+      return await usdcContract.read.balanceOf([
+        contractAddress as `0x${string}`,
+      ]);
     } catch (error) {
       console.error("Error getting USDC balance:", error);
       return 0n;
@@ -814,13 +809,126 @@ export class EVMAuthHandler {
           client: this.publicClient,
         });
 
-        usdcBalance = await usdcContract.read.balanceOf([agentAddress]);
+        usdcBalance = await usdcContract.read.balanceOf([
+          agentAddress as `0x${string}`,
+        ]);
       }
 
       return { eth: ethBalance, usdc: usdcBalance };
     } catch (error) {
       console.error("Error getting agent fee balances:", error);
       return { eth: 0n, usdc: 0n };
+    }
+  }
+
+  /**
+   * Compute lifetime USDC payouts to the contract owner by scanning
+   * UserAccessGranted events and summing USDC Transfer logs to owner
+   */
+  async getTotalUSDCCreatorPayouts(
+    contractAddress: string,
+  ): Promise<{ total: bigint; ok: boolean }> {
+    try {
+      const groupContract = getContract({
+        address: contractAddress as `0x${string}`,
+        abi: GROUP_ABI,
+        client: this.publicClient,
+      });
+
+      // Read USDC token and owner address
+      const usdcAddressRaw = await groupContract.read.usdcToken();
+      const usdcAddress = (usdcAddressRaw ??
+        "0x0000000000000000000000000000000000000000") as `0x${string}`;
+      if (
+        !usdcAddress ||
+        usdcAddress === "0x0000000000000000000000000000000000000000"
+      ) {
+        return 0n;
+      }
+      const ownerAddressRaw = await groupContract.read.owner();
+      const ownerAddress = (ownerAddressRaw ??
+        "0x0000000000000000000000000000000000000000") as `0x${string}`;
+
+      // Fetch all UserAccessGranted events for this contract
+      let events: any[] = [];
+      let fetched = false;
+      for (let attempt = 0; attempt < 3 && !fetched; attempt++) {
+        try {
+          events = (await this.publicClient.getContractEvents({
+            address: contractAddress as `0x${string}`,
+            abi: [
+              {
+                inputs: [
+                  { indexed: true, name: "user", type: "address" },
+                  { indexed: true, name: "userInboxId", type: "string" },
+                  { indexed: true, name: "tokenId", type: "uint256" },
+                  { indexed: false, name: "expiresAt", type: "uint256" },
+                ],
+                name: "UserAccessGranted",
+                type: "event",
+              },
+            ] as const,
+            fromBlock: 0n,
+            toBlock: "latest",
+          })) as any[];
+          fetched = true;
+        } catch {
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 750));
+          }
+        }
+      }
+
+      if (!events || events.length === 0) {
+        return { total: 0n, ok: fetched };
+      }
+
+      const TRANSFER_TOPIC =
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"; // keccak256(Transfer(address,address,uint256))
+      const ownerTopic = ("0x" +
+        (ownerAddress as string)
+          .toLowerCase()
+          .slice(2)
+          .padStart(64, "0")) as `0x${string}`;
+
+      let total: bigint = 0n;
+      for (const ev of events) {
+        const txHash = (ev as any).transactionHash as `0x${string}` | undefined;
+        if (!txHash) continue;
+
+        try {
+          const receipt = await this.publicClient.getTransactionReceipt({
+            hash: txHash,
+          });
+
+          const logs = (receipt as any).logs as Array<any> | undefined;
+          for (const log of logs ?? []) {
+            if (
+              (log.address as string).toLowerCase() !==
+              (usdcAddress as string).toLowerCase()
+            )
+              continue;
+            if (log.topics && (log.topics as string[]).length >= 3) {
+              if (
+                (log.topics[0] as string).toLowerCase() === TRANSFER_TOPIC &&
+                (log.topics[2] as string).toLowerCase() ===
+                  (ownerTopic as string)
+              ) {
+                // data is value (uint256) encoded
+                try {
+                  const value = BigInt(log.data as string);
+                  total += value;
+                } catch {}
+              }
+            }
+          }
+        } catch {}
+      }
+
+      return { total, ok: true };
+    } catch (error) {
+      console.error("Error computing total USDC payouts:", error);
+      return { total: 0n, ok: false };
     }
   }
 }

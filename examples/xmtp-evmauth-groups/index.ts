@@ -206,11 +206,29 @@ async function main() {
           salesGroupId: group.salesGroupId,
           premiumGroupId: group.premiumGroupId,
           creatorInboxId: group.creatorInboxId,
-          metadata: { name: group.name },
-          tiers: group.tiers || [],
+          metadata: { name: group.name, description: "" },
+          tiers: (group.tiers || []).map((t: any, idx: number) => ({
+            id: String(t?.id ?? idx + 1),
+            name: t?.name ?? `Tier ${idx + 1}`,
+            durationDays: Number(t?.durationDays ?? 30),
+            priceWei: "0",
+            priceUSD:
+              typeof t?.priceUsd === "number" && t?.priceUsd > 0
+                ? t.priceUsd
+                : undefined,
+            description: t?.description ?? "",
+          })),
           premiumSettings: {
             welcomeMessage: `Welcome to ${group.name}! 🎉`,
+            description: "",
           },
+          // Fill required fields with safe defaults
+          salesSettings: { description: "" } as any,
+          groupId: group.premiumGroupId,
+          creatorAddress: "",
+          createdAt: new Date(),
+          isActive: true,
+          paymentConfig: { currency: "USDC" } as any,
         };
 
         groupConfigs.set(group.contractAddress, config);
@@ -226,6 +244,9 @@ async function main() {
   } catch (dbError) {
     console.error("⚠️ Database fallback failed:", dbError);
   }
+
+  // Track conversations where welcome message has been sent
+  const welcomeSentConversations = new Set<string>();
 
   // Start enhanced membership management background task
   void startEnhancedMembershipManager(textClient as any, enhancedGroupManager);
@@ -251,6 +272,9 @@ async function main() {
   console.log("  /buy-access <group_id> <tier_id> - Purchase access with USDC");
   console.log("  /my-tokens - View your access tokens");
   console.log("  /group-info <group_id> - Get group information and pricing");
+  console.log(
+    "  /test-expiration - Test token expiration with ultra-short tokens",
+  );
   console.log("  /help - Show this help message");
   console.log("");
   console.log("💡 Features:");
@@ -338,49 +362,52 @@ async function main() {
     }
 
     try {
-      // Check if user is in tier setup session first
-      const tierSetupHandled = await tierSetup.handleTierSetupMessage(
-        message.senderInboxId,
-        messageContent,
-        conversation,
-        undefined,
-        async (tiers: AccessTier[]) => {
-          // Callback when tiers are completed
-          const groupConfig = groupConfigs.get(
-            tierSetup.getSession(message.senderInboxId)?.groupId || "",
-          );
-          if (groupConfig) {
-            // Persist DB first
-            try {
-              const rec = await database.findGroupByContract(
-                groupConfig.contractAddress,
-              );
-              if (rec) {
-                const mapped = tiers.map((t, idx) => ({
-                  id: idx + 1,
-                  name: t.name,
-                  priceUsd: typeof t.priceUSD === "number" ? t.priceUSD : 0,
-                  durationDays: t.durationDays,
-                  imageUrl: t.imageUrl,
-                  metadataUri: t.metadata?.ipfsHash
-                    ? `ipfs://${t.metadata.ipfsHash}`
-                    : undefined,
-                }));
-                await database.updateGroup(rec.id, { tiers: mapped });
-              }
-            } catch {}
-
-            // Update memory
-            groupConfig.tiers = tiers;
-
-            // Configure on-chain using agent's wallet (better UX than 5 user signatures)
-            await evmAuthHandler.setupAccessTiers(
-              groupConfig.contractAddress,
-              tiers,
+      // Check if user is in tier setup session first - only if they have an active session
+      let tierSetupHandled = false;
+      if (tierSetup.getSession(message.senderInboxId)) {
+        tierSetupHandled = await tierSetup.handleTierSetupMessage(
+          message.senderInboxId,
+          messageContent,
+          conversation,
+          undefined,
+          async (tiers: AccessTier[]) => {
+            // Callback when tiers are completed
+            const groupConfig = groupConfigs.get(
+              tierSetup.getSession(message.senderInboxId)?.groupId || "",
             );
-          }
-        },
-      );
+            if (groupConfig) {
+              // Persist DB first
+              try {
+                const rec = await database.findGroupByContract(
+                  groupConfig.contractAddress,
+                );
+                if (rec) {
+                  const mapped = tiers.map((t, idx) => ({
+                    id: idx + 1,
+                    name: t.name,
+                    priceUsd: typeof t.priceUSD === "number" ? t.priceUSD : 0,
+                    durationDays: t.durationDays,
+                    imageUrl: t.imageUrl,
+                    metadataUri: t.metadata?.ipfsHash
+                      ? `ipfs://${t.metadata.ipfsHash}`
+                      : undefined,
+                  }));
+                  await database.updateGroup(rec.id, { tiers: mapped });
+                }
+              } catch {}
+
+              // Update memory
+              groupConfig.tiers = tiers;
+
+              // Configure on-chain using agent's wallet (better UX than 5 user signatures)
+              await evmAuthHandler.setupAccessTiers(
+                groupConfig.contractAddress,
+                tiers,
+              );
+            }
+          },
+        );
+      }
 
       if (tierSetupHandled) {
         // Message was handled by tier setup
@@ -465,6 +492,15 @@ async function main() {
           groupConfigs,
           database,
         );
+      } else if (command.startsWith("/earnings")) {
+        await handleEarnings(
+          conversation,
+          message.senderInboxId,
+          messageContent,
+          evmAuthHandler,
+          groupConfigs,
+          database,
+        );
       } else if (command.startsWith("/fix-access")) {
         await handleFixAccess(
           conversation,
@@ -475,12 +511,23 @@ async function main() {
           database,
           textClient,
         );
+      } else if (command.startsWith("/test-expiration")) {
+        await handleTestExpiration(
+          conversation,
+          message.senderInboxId,
+          messageContent,
+          evmAuthHandler,
+          enhancedGroupManager,
+          eventAccessManager,
+          recoveryManager,
+          groupConfigs,
+        );
       } else if (command === "/help") {
         await handleHelp(conversation);
       } else if (command === "/test-system") {
         await handleTestSystem(conversation, testFlowManager);
       } else {
-        // Contextual welcome/help
+        // Contextual welcome/help - only send once per conversation
         if (isSalesGroup && matchedConfig) {
           const groupName = matchedConfig.metadata?.name || "Premium Group";
           const creator = matchedConfig.creatorAddress
@@ -503,7 +550,8 @@ async function main() {
               `👤 Creator: ${creator}\n` +
               `📋 Available Tiers:\n${tiersText}`,
           );
-        } else {
+        } else if (!welcomeSentConversations.has(conversation.id)) {
+          // Only send welcome message once per conversation
           await conversation.send(
             "👋 Welcome to the XMTP EVMAuth Groups Agent!\n\n" +
               "Create and monetize premium XMTP groups with time-bound NFT access.\n\n" +
@@ -514,6 +562,9 @@ async function main() {
               "• /list-groups — see your groups\n" +
               "• /help — full guide",
           );
+
+          // Mark welcome as sent for this conversation
+          welcomeSentConversations.add(conversation.id);
         }
       }
     } catch (error: unknown) {
@@ -1089,7 +1140,7 @@ async function handleWithdraw(
     if (userGroups.length === 0 && database) {
       try {
         const dbGroups = await database.getUserGroups(senderInboxId);
-        userGroups = dbGroups.map((g) => ({
+        userGroups = dbGroups.map((g: any) => ({
           contractAddress: g.contractAddress,
           creatorInboxId: g.creatorInboxId,
         }));
@@ -1114,12 +1165,19 @@ async function handleWithdraw(
     const usdcBalance =
       await evmAuthHandler.getContractUSDCBalance(contractAddress);
 
+    // Compute lifetime USDC payouts to creator
+    const payoutsRes =
+      await evmAuthHandler.getTotalUSDCCreatorPayouts(contractAddress);
+
     if (ethBalance === 0n && usdcBalance === 0n) {
       await conversation.send(
         "💰 No funds to withdraw from this contract.\n\n" +
           `Contract: ${contractAddress}\n` +
           "ETH Balance: 0.000000 ETH\n" +
-          "USDC Balance: $0.00 USDC",
+          "USDC Balance: $0.00 USDC\n" +
+          (payoutsRes.ok
+            ? `Total USDC Payouts (lifetime): $${(Number(payoutsRes.total) / 1e6).toFixed(2)}`
+            : `Total USDC Payouts (lifetime): temporarily unavailable`),
       );
       return;
     }
@@ -1128,7 +1186,10 @@ async function handleWithdraw(
       "💰 Withdrawing funds...\n\n" +
         `Contract: ${contractAddress}\n` +
         `ETH Balance: ${(Number(ethBalance) / 1e18).toFixed(6)} ETH\n` +
-        `USDC Balance: $${(Number(usdcBalance) / 1e6).toFixed(2)} USDC\n\n` +
+        `USDC Balance: $${(Number(usdcBalance) / 1e6).toFixed(2)} USDC\n` +
+        (payoutsRes.ok
+          ? `Total USDC Payouts (lifetime): $${(Number(payoutsRes.total) / 1e6).toFixed(2)}\n\n`
+          : `Total USDC Payouts (lifetime): temporarily unavailable\n\n`) +
         "⏳ Processing withdrawal...",
     );
 
@@ -1160,6 +1221,73 @@ async function handleWithdraw(
   }
 }
 
+async function handleEarnings(
+  conversation: any,
+  senderInboxId: string,
+  messageContent: string,
+  evmAuthHandler: any,
+  groupConfigs: Map<string, any>,
+  database?: any,
+) {
+  const parts = messageContent.trim().split(" ");
+  if (parts.length < 2) {
+    await conversation.send(
+      "Usage: /earnings <contract_address>\nExample: /earnings 0x602EC5228FD577757ee15ffD6afaf86BFB85805d",
+    );
+    return;
+  }
+
+  const contractAddress = parts[1];
+
+  try {
+    // Optional: verify ownership like /withdraw
+    let userGroups = Array.from(groupConfigs.values()).filter(
+      (config: any) => config.creatorInboxId === senderInboxId,
+    );
+    if (userGroups.length === 0 && database) {
+      try {
+        const dbGroups = await database.getUserGroups(senderInboxId);
+        userGroups = dbGroups.map((g: any) => ({
+          contractAddress: g.contractAddress,
+          creatorInboxId: g.creatorInboxId,
+        }));
+      } catch {}
+    }
+    const userGroup = userGroups.find(
+      (group) =>
+        group.contractAddress.toLowerCase() === contractAddress.toLowerCase(),
+    );
+    if (!userGroup) {
+      await conversation.send(
+        "❌ You don't own this contract or it doesn't exist.\n\nUse `/list-groups` to see your contracts.",
+      );
+      return;
+    }
+
+    const ethBalance = await evmAuthHandler.getContractBalance(contractAddress);
+    const usdcBalance =
+      await evmAuthHandler.getContractUSDCBalance(contractAddress);
+    const payouts =
+      await evmAuthHandler.getTotalUSDCCreatorPayouts(contractAddress);
+
+    await conversation.send(
+      "📈 Earnings Summary\n\n" +
+        `Contract: ${contractAddress}\n` +
+        `ETH (withdrawable): ${(Number(ethBalance) / 1e18).toFixed(6)} ETH\n` +
+        `USDC (stuck on contract): $${(Number(usdcBalance) / 1e6).toFixed(2)} USDC\n` +
+        (payouts.ok
+          ? `Total USDC Payouts to Creator (lifetime): $${(Number(payouts.total) / 1e6).toFixed(2)}\n`
+          : `Total USDC Payouts to Creator (lifetime): temporarily unavailable\n`) +
+        `Note: USDC purchases pay the creator directly; ETH shows in contract balance.`,
+    );
+  } catch (error) {
+    console.error("Error in earnings:", error);
+    await conversation.send(
+      `❌ Failed to fetch earnings: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 async function handleHelp(conversation: any) {
   await conversation.send(
     `🤖 EVMAuth Groups Agent - Enhanced Edition\n\n` +
@@ -1173,6 +1301,7 @@ async function handleHelp(conversation: any) {
       `🔍 \`/check-purchase <contract>\` - Check for recent NFT purchase\n` +
       `💰 \`/withdraw <contract>\` - Withdraw earnings from your groups\n` +
       `🔧 \`/fix-access <contract>\` - Manually add yourself to premium group if you have NFT\n` +
+      `🧪 \`/test-expiration\` - Test token expiration with ultra-short tokens\n` +
       `❓ \`/help\` - Show this help message\n\n` +
       `Enhanced Features:\n` +
       `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
@@ -1226,6 +1355,85 @@ async function startEnhancedMembershipManager(
       console.error("Error in enhanced membership manager:", error);
     }
   }, 60000); // Check every minute
+}
+
+async function handleTestExpiration(
+  conversation: any,
+  senderInboxId: string,
+  messageContent: string,
+  evmAuthHandler: any,
+  enhancedGroupManager: any,
+  eventAccessManager: any,
+  recoveryManager: any,
+  groupConfigs: Map<string, any>,
+) {
+  await conversation.send(
+    `🧪 Starting Token Expiration Test\n\n` +
+      `This test will:\n` +
+      `1️⃣ Create a test group with 1-minute expiration tiers\n` +
+      `2️⃣ Purchase ultra-short tokens\n` +
+      `3️⃣ Wait for expiration\n` +
+      `4️⃣ Verify access changes\n` +
+      `5️⃣ Test manual token burning\n\n` +
+      `⏰ Total time: ~2 minutes\n` +
+      `💰 Cost: Very low (test tokens)\n\n` +
+      `Starting test...`,
+  );
+
+  try {
+    // Import the test class
+    const { TokenExpirationTest } = await import(
+      "./src/test/token-expiration-test"
+    );
+
+    // Create test instance
+    const test = new TokenExpirationTest(
+      {} as any, // Mock XMTP client for now
+      evmAuthHandler,
+      enhancedGroupManager,
+      eventAccessManager,
+      recoveryManager,
+    );
+
+    // Run the test
+    const testResults = await test.runCompleteTest();
+
+    // Send results
+    await conversation.send(
+      `🧪 Token Expiration Test Complete\n\n` +
+        `Overall: ${testResults.success ? "🎉 SUCCESS" : "❌ FAILED"}\n\n` +
+        `Test Results:\n` +
+        `• Group Creation: ${testResults.results.groupCreation ? "✅" : "❌"}\n` +
+        `• Tier Setup: ${testResults.results.tierSetup ? "✅" : "❌"}\n` +
+        `• Token Purchase: ${testResults.results.tokenPurchase ? "✅" : "❌"}\n` +
+        `• Access Verification: ${testResults.results.accessVerification ? "✅" : "❌"}\n` +
+        `• Expiration Waiting: ${testResults.results.expirationWaiting ? "✅" : "❌"}\n` +
+        `• Expired Access Check: ${testResults.results.expiredAccessCheck ? "✅" : "❌"}\n` +
+        `• Manual Expiration: ${testResults.results.manualExpiration ? "✅" : "❌"}\n` +
+        `• Group Access Update: ${testResults.results.groupAccessUpdate ? "✅" : "❌"}\n\n` +
+        (testResults.success && testResults.details.contractAddress
+          ? `📋 Test Details:\n` +
+            `• Contract: ${testResults.details.contractAddress}\n` +
+            `• Short Tier: ${testResults.details.shortTierId}\n` +
+            `• Long Tier: ${testResults.details.longTierId}\n` +
+            `• Purchase Hash: ${testResults.details.purchaseHash}\n` +
+            `• Manual Burn Hash: ${testResults.details.manualBurnHash}\n\n`
+          : "") +
+        (testResults.errors.length > 0
+          ? `🐛 Errors:\n${testResults.errors.map((e) => `• ${e}`).join("\n")}`
+          : `🎯 All expiration tests passed! Tokens correctly expire and can be manually burned.`),
+    );
+  } catch (error) {
+    await conversation.send(
+      `❌ Expiration Test Failed\n\n` +
+        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        `💡 This test requires:\n` +
+        `• Active XMTP connection\n` +
+        `• Valid contract deployment\n` +
+        `• USDC token setup\n` +
+        `• Proper event listening`,
+    );
+  }
 }
 
 async function handleTestSystem(

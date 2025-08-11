@@ -117,8 +117,8 @@ export function createAccessPurchase(
   };
 }
 
-// USDC and Purchase ABI
-const USDC_PURCHASE_ABI = [
+// USDC Token ABI (for approve function)
+const USDC_TOKEN_ABI = [
   {
     inputs: [
       { name: "spender", type: "address" },
@@ -129,6 +129,10 @@ const USDC_PURCHASE_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+] as const;
+
+// Contract Purchase ABI (for purchaseAccessUSDC function)
+const CONTRACT_PURCHASE_ABI = [
   {
     inputs: [
       { name: "tokenId", type: "uint256" },
@@ -152,17 +156,25 @@ export function createUSDCApprovalAndPurchase(
 ): WalletSendCallsParams {
   // USDC approve call
   const approveData = encodeFunctionData({
-    abi: USDC_PURCHASE_ABI,
+    abi: USDC_TOKEN_ABI,
     functionName: "approve",
     args: [spenderContract as `0x${string}`, BigInt(amountUSDC)],
   });
 
   // purchaseAccessUSDC call
   const purchaseData = encodeFunctionData({
-    abi: USDC_PURCHASE_ABI,
+    abi: CONTRACT_PURCHASE_ABI,
     functionName: "purchaseAccessUSDC",
     args: [BigInt(tokenId), BigInt(amountUSDC)],
   });
+
+  console.log("🔧 Debug USDC transaction:");
+  console.log(`  USDC Address: ${usdcAddress}`);
+  console.log(`  Contract Address: ${contractAddress}`);
+  console.log(`  Amount USDC: ${amountUSDC} (${BigInt(amountUSDC)})`);
+  console.log(`  Token ID: ${tokenId}`);
+  console.log(`  Approve Data: ${approveData}`);
+  console.log(`  Purchase Data: ${purchaseData}`);
 
   return {
     version: "1.0",
