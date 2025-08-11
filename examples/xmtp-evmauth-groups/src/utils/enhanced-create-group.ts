@@ -44,13 +44,13 @@ export async function handleEnhancedCreateGroup(
 
     if (!memberAddress || memberAddress === "Unknown") {
       await conversation.send(
-        "❌ **Unable to create group**\n\nI couldn't determine your wallet address. Please make sure you're messaging from a wallet-connected XMTP client.",
+        "❌ Unable to create group\n\nI couldn't determine your wallet address. Please make sure you're messaging from a wallet-connected XMTP client.",
       );
       return;
     }
 
     await conversation.send(
-      `🏗️ **Creating Premium Community System**\n\n` +
+      `🏗️ Creating Premium Community System\n\n` +
         `📋 Group Name: ${groupName}\n` +
         `⚙️ Setting up dual-group architecture...\n\n` +
         `This may take 30-60 seconds:`,
@@ -76,17 +76,17 @@ export async function handleEnhancedCreateGroup(
 
     // Send success message with details
     await conversation.send(
-      `🎉 **Premium Community Created Successfully!**\n\n` +
-        `📋 **Contract**: \`${result.contractAddress}\`\n` +
-        `🏪 **Sales Group**: Join to browse and purchase access\n` +
-        `💎 **Premium Group**: Exclusive content for token holders\n\n` +
-        `**Next Steps:**\n` +
+      `🎉 Premium Community Created Successfully!\n\n` +
+        `📋 Contract: \`${result.contractAddress}\`\n` +
+        `🏪 Sales Group: Join to browse and purchase access\n` +
+        `💎 Premium Group: Exclusive content for token holders\n\n` +
+        `Next Steps:\n` +
         `1️⃣ Setup custom tiers: \`/setup-tiers ${result.contractAddress.slice(0, 8)}...\`\n` +
         `2️⃣ Configure pricing in USD\n` +
         `3️⃣ Upload custom NFT images\n` +
         `4️⃣ Start selling access!\n\n` +
-        `**Sales Group Link**: Share this for discovery\n` +
-        `**Premium Group**: Automatic access after purchase\n\n` +
+        `Sales Group Link: Share this for discovery\n` +
+        `Premium Group: Automatic access after purchase\n\n` +
         `🚀 Your monetized community is ready!`,
     );
 
@@ -99,7 +99,7 @@ export async function handleEnhancedCreateGroup(
     console.error("Error creating enhanced group:", errorMessage);
 
     await conversation.send(
-      `❌ **Failed to create premium community**\n\n` +
+      `❌ Failed to create premium community\n\n` +
         `Error: ${errorMessage}\n\n` +
         `Please try again or contact support if the issue persists.`,
     );
@@ -393,7 +393,7 @@ export async function handleEnhancedBuyAccess(
     console.error("Error processing purchase:", errorMessage);
 
     await conversation.send(
-      `❌ **Purchase Failed**\n\n` +
+      `❌ Purchase Failed\n\n` +
         `Error: ${errorMessage}\n\n` +
         `Please try again or contact support.`,
     );

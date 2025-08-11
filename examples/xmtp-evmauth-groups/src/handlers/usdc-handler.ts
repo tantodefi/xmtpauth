@@ -207,7 +207,7 @@ export class USDCHandler {
     const priceConfig = this.convertUSDToUSDC(usdAmount);
     const timeUnit = duration === 1 ? "day" : "days";
 
-    return `💰 **$${usdAmount.toFixed(2)} USD** (${priceConfig.formattedUSDC})\n⏰ **${duration} ${timeUnit}** access`;
+    return `💰 $${usdAmount.toFixed(2)} USD (${priceConfig.formattedUSDC})\n⏰ ${duration} ${timeUnit} access`;
   }
 
   /**

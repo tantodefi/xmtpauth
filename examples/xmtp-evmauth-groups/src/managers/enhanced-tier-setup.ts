@@ -245,13 +245,13 @@ export class EnhancedTierSetup {
       confirmationText += `   ⏰ ${tier.durationDays} days access\n\n`;
     });
 
-    confirmationText += `💡 **What happens next:**\n`;
+    confirmationText += `💡 What happens next:\n`;
     confirmationText += `1. Images will be uploaded to IPFS\n`;
     confirmationText += `2. NFT metadata will be created\n`;
     confirmationText += `3. Smart contract tiers will be configured\n`;
     confirmationText += `4. Your group will be ready for sales!\n\n`;
 
-    confirmationText += `**Commands:**\n`;
+    confirmationText += `Commands:\n`;
     confirmationText += `• Type \`confirm\` to create these tiers\n`;
     confirmationText += `• Type \`cancel\` to start over\n`;
     confirmationText += `• Type \`edit N\` to modify tier N`;
@@ -319,7 +319,7 @@ export class EnhancedTierSetup {
       }
     } else {
       await conversation.send(
-        `❌ **Invalid command**\n\n` +
+        `❌ Invalid command\n\n` +
           `Please type:\n` +
           `• \`confirm\` to create tiers\n` +
           `• \`cancel\` to cancel\n` +

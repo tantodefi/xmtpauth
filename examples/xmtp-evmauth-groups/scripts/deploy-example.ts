@@ -1,4 +1,4 @@
-/**
+/
  * Example deployment script for EVMAuth Groups Agent
  * This demonstrates how to set up the agent for production use
  */
@@ -84,7 +84,7 @@ export const EXAMPLE_TIERS = {
   ] as AccessTier[],
 };
 
-/**
+/
  * Example deployment function
  */
 export async function deployExample() {
@@ -150,11 +150,11 @@ export async function deployExample() {
   }
 }
 
-/**
+/
  * Utility functions for common operations
  */
 export class DeploymentUtils {
-  /**
+  /
    * Calculate total cost for access tiers
    */
   static calculateTierCosts(tiers: AccessTier[]): {
@@ -172,7 +172,7 @@ export class DeploymentUtils {
     return { tierCosts, totalRevenuePotential };
   }
 
-  /**
+  /
    * Validate tier configuration
    */
   static validateTiers(tiers: AccessTier[]): { valid: boolean; errors: string[] } {
@@ -210,7 +210,7 @@ export class DeploymentUtils {
     return { valid: errors.length === 0, errors };
   }
 
-  /**
+  /
    * Generate markdown documentation for tiers
    */
   static generateTierDocs(tiers: AccessTier[]): string {
@@ -219,13 +219,13 @@ export class DeploymentUtils {
     tiers.forEach((tier, index) => {
       const priceETH = (parseFloat(tier.priceWei) / 1e18).toFixed(4);
       docs += `## ${index + 1}. ${tier.name}\n\n`;
-      docs += `- **Duration**: ${tier.durationDays} days\n`;
-      docs += `- **Price**: ${priceETH} ETH\n`;
+      docs += `- Duration: ${tier.durationDays} days\n`;
+      docs += `- Price: ${priceETH} ETH\n`;
       if (tier.description) {
-        docs += `- **Description**: ${tier.description}\n`;
+        docs += `- Description: ${tier.description}\n`;
       }
       if (tier.maxSupply) {
-        docs += `- **Max Supply**: ${tier.maxSupply}\n`;
+        docs += `- Max Supply: ${tier.maxSupply}\n`;
       }
       docs += "\n";
     });

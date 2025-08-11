@@ -1,3 +1,8 @@
+import { formatUnits, toHex } from "viem";
+import { base } from "viem/chains";
+import { EVMAuthHandler } from "../handlers/evmauth-handler";
+import type { AccessTier } from "../types/types";
+
 // Wallet send calls interface (would come from @xmtp/content-type-wallet-send-calls if installed)
 interface WalletSendCallsParams {
   version: string;
@@ -10,10 +15,6 @@ interface WalletSendCallsParams {
     metadata?: Record<string, any>; // Make metadata more flexible
   }>;
 }
-import { formatUnits, toHex } from "viem";
-import { base } from "viem/chains";
-import { EVMAuthHandler } from "../handlers/evmauth-handler";
-import type { AccessTier } from "../types/types";
 
 export class TokenSalesHandler {
   private evmAuthHandler: EVMAuthHandler;
@@ -23,7 +24,7 @@ export class TokenSalesHandler {
   constructor(
     evmAuthHandler: EVMAuthHandler,
     feeRecipient: string,
-    feeBasisPoints: number
+    feeBasisPoints: number,
   ) {
     this.evmAuthHandler = evmAuthHandler;
     this.feeRecipient = feeRecipient;
@@ -37,7 +38,7 @@ export class TokenSalesHandler {
     userAddress: string,
     contractAddress: string,
     tier: AccessTier,
-    tokenId: number = 1
+    tokenId: number = 1,
   ): Promise<WalletSendCallsParams> {
     try {
       const price = BigInt(tier.priceWei);
@@ -49,7 +50,7 @@ export class TokenSalesHandler {
         contractAddress,
         userAddress,
         tier,
-        tokenId
+        tokenId,
       );
 
       const calls = [
@@ -108,7 +109,7 @@ export class TokenSalesHandler {
   async createBulkPurchaseTransaction(
     userAddress: string,
     contractAddress: string,
-    purchases: Array<{ tier: AccessTier; tokenId: number; quantity?: number }>
+    purchases: Array<{ tier: AccessTier; tokenId: number; quantity?: number }>,
   ): Promise<WalletSendCallsParams> {
     try {
       const calls = [];
@@ -123,7 +124,7 @@ export class TokenSalesHandler {
           contractAddress,
           userAddress,
           purchase.tier,
-          purchase.tokenId
+          purchase.tokenId,
         );
 
         calls.push({
@@ -187,7 +188,7 @@ export class TokenSalesHandler {
     contractAddress: string,
     tier: AccessTier,
     tokenId: number = 1,
-    message?: string
+    message?: string,
   ): Promise<WalletSendCallsParams> {
     try {
       const price = BigInt(tier.priceWei);
@@ -198,7 +199,7 @@ export class TokenSalesHandler {
         contractAddress,
         recipientAddress, // Mint to recipient, not purchaser
         tier,
-        tokenId
+        tokenId,
       );
 
       const calls = [
@@ -207,7 +208,7 @@ export class TokenSalesHandler {
           data: mintTx.data as `0x${string}`,
           value: BigInt(mintTx.value),
           metadata: {
-            description: message 
+            description: message
               ? `Gift: ${tier.name} access token - "${message}"`
               : `Gift: ${tier.name} access token`,
             transactionType: "nft-gift" as const,
@@ -287,12 +288,12 @@ export class TokenSalesHandler {
    */
   formatPricingDisplay(tier: AccessTier): string {
     const pricing = this.calculatePricing(tier);
-    
+
     return (
-      `💰 **${tier.name}** - ${tier.durationDays} days\n` +
+      `💰 ${tier.name} - ${tier.durationDays} days\n` +
       `   Base Price: ${pricing.basePriceFormatted} ETH\n` +
       `   Platform Fee: ${pricing.feeFormatted} ETH (${pricing.feePercentage}%)\n` +
-      `   **Total: ${pricing.totalPriceFormatted} ETH**\n` +
+      `   Total: ${pricing.totalPriceFormatted} ETH\n` +
       `   ${tier.description || ""}`
     );
   }
@@ -303,7 +304,7 @@ export class TokenSalesHandler {
   validatePurchase(
     userAddress: string,
     contractAddress: string,
-    tier: AccessTier
+    tier: AccessTier,
   ): { valid: boolean; error?: string } {
     // Basic validation
     if (!userAddress.startsWith("0x") || userAddress.length !== 42) {
@@ -337,12 +338,12 @@ export class TokenSalesHandler {
     userAddress: string,
     contractAddress: string,
     tokenId: number,
-    reason?: string
+    reason?: string,
   ): Promise<WalletSendCallsParams> {
     try {
       // This would require a refund function in the EVMAuth contract
       // Implementation depends on the specific contract design
-      
+
       const calls = [
         {
           to: contractAddress as `0x${string}`,
@@ -385,9 +386,11 @@ export class TokenSalesHandler {
     try {
       // This would require events/logs analysis from the contract
       // For now, return placeholder data
-      
-      const totalSales = await this.evmAuthHandler.getContractBalance(contractAddress);
-      const totalFees = (totalSales * BigInt(this.feeBasisPoints)) / BigInt(10000);
+
+      const totalSales =
+        await this.evmAuthHandler.getContractBalance(contractAddress);
+      const totalFees =
+        (totalSales * BigInt(this.feeBasisPoints)) / BigInt(10000);
 
       return {
         totalSales,

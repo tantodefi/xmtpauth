@@ -16,7 +16,10 @@ export { RecoveryManager } from "./managers/recovery-mechanisms";
 
 // Utils
 export { TokenSalesHandler } from "./utils/token-sales";
-export { handleEnhancedCreateGroup, handleEnhancedBuyAccess } from "./utils/enhanced-create-group";
+export {
+  handleEnhancedCreateGroup,
+  handleEnhancedBuyAccess,
+} from "./utils/enhanced-create-group";
 
 // Test
 export { TestFlowManager } from "./test/test-flow";

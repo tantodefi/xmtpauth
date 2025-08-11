@@ -23,7 +23,7 @@ export interface AccessTier {
   /** Whether this tier is currently active for purchase */
   isActive?: boolean;
   /** Payment token type */
-  paymentToken?: 'ETH' | 'USDC';
+  paymentToken?: "ETH" | "USDC";
   /** IPFS metadata information */
   metadata?: {
     ipfsHash?: string;
@@ -90,9 +90,9 @@ export interface GroupConfig {
  */
 export interface PaymentConfig {
   /** Accepted payment tokens */
-  acceptedTokens: ('ETH' | 'USDC')[];
+  acceptedTokens: ("ETH" | "USDC")[];
   /** Default payment token */
-  defaultToken: 'ETH' | 'USDC';
+  defaultToken: "ETH" | "USDC";
   /** USDC contract address */
   usdcAddress?: string;
   /** Automatic price conversion */
@@ -147,7 +147,7 @@ export interface UserToken {
   /** Purchase price and currency */
   purchasePrice: {
     amount: string;
-    currency: 'ETH' | 'USDC';
+    currency: "ETH" | "USDC";
     usdAmount?: number;
   };
   /** Transaction hash of the purchase */
@@ -176,7 +176,7 @@ export interface PurchaseDetails {
   quantity?: number;
   /** Payment configuration */
   payment: {
-    token: 'ETH' | 'USDC';
+    token: "ETH" | "USDC";
     amount: string;
     usdAmount?: number;
   };
@@ -231,7 +231,7 @@ export interface TierCreationSession {
   /** Creator inbox ID */
   creatorInboxId: string;
   /** Current step in the process */
-  step: 'count' | 'details' | 'image' | 'confirm' | 'complete';
+  step: "count" | "details" | "image" | "confirm" | "complete";
   /** Current tier being configured */
   currentTierIndex: number;
   /** Total number of tiers */
@@ -265,12 +265,15 @@ export interface SalesStats {
   /** Total tokens sold */
   tokensSold: number;
   /** Revenue by tier */
-  revenueByTier: Record<string, {
-    usd: number;
-    eth?: string;
-    usdc?: string;
-    count: number;
-  }>;
+  revenueByTier: Record<
+    string,
+    {
+      usd: number;
+      eth?: string;
+      usdc?: string;
+      count: number;
+    }
+  >;
   /** Revenue by payment method */
   revenueByPayment: {
     eth: { amount: string; usd: number; count: number };
@@ -367,8 +370,8 @@ export interface FeeConfig {
   maximumFee?: string;
   /** Different fees for different payment methods */
   paymentMethodFees?: {
-    eth: number;    // basis points
-    usdc: number;   // basis points
+    eth: number; // basis points
+    usdc: number; // basis points
   };
 }
 
@@ -411,7 +414,7 @@ export interface TransactionMetadata {
   /** USD equivalent */
   amountUSD?: number;
   /** Payment currency */
-  currency: 'ETH' | 'USDC';
+  currency: "ETH" | "USDC";
   /** Token tier */
   tier?: AccessTier;
   /** Additional details */
@@ -425,16 +428,34 @@ export interface TransactionMetadata {
 /**
  * Event types for the agent
  */
-export type AgentEvent = 
+export type AgentEvent =
   | { type: "GROUP_CREATED"; data: GroupConfig }
   | { type: "TOKEN_PURCHASED"; data: PurchaseDetails }
-  | { type: "MEMBER_ADDED"; data: { groupId: string; userInboxId: string; tierName: string } }
-  | { type: "MEMBER_REMOVED"; data: { groupId: string; userInboxId: string; reason: string } }
-  | { type: "TOKEN_EXPIRED"; data: { groupId: string; userAddress: string; tokenId: string } }
+  | {
+      type: "MEMBER_ADDED";
+      data: { groupId: string; userInboxId: string; tierName: string };
+    }
+  | {
+      type: "MEMBER_REMOVED";
+      data: { groupId: string; userInboxId: string; reason: string };
+    }
+  | {
+      type: "TOKEN_EXPIRED";
+      data: { groupId: string; userAddress: string; tokenId: string };
+    }
   | { type: "TIER_UPDATED"; data: { groupId: string; tier: AccessTier } }
-  | { type: "GROUP_SETTINGS_UPDATED"; data: { groupId: string; settings: GroupSettings } }
-  | { type: "IMAGE_UPLOADED"; data: { groupId: string; ipfsHash: string; url: string } }
-  | { type: "METADATA_CREATED"; data: { groupId: string; tierId: string; metadataHash: string } };
+  | {
+      type: "GROUP_SETTINGS_UPDATED";
+      data: { groupId: string; settings: GroupSettings };
+    }
+  | {
+      type: "IMAGE_UPLOADED";
+      data: { groupId: string; ipfsHash: string; url: string };
+    }
+  | {
+      type: "METADATA_CREATED";
+      data: { groupId: string; tierId: string; metadataHash: string };
+    };
 
 /**
  * Command handler result
@@ -457,16 +478,16 @@ export interface CommandResult {
  */
 export interface DualGroupConfig extends GroupConfig {
   // XMTP Group IDs
-  salesGroupId: string;      // Public sales/info group
-  premiumGroupId: string;    // Private premium group
-  
+  salesGroupId: string; // Public sales/info group
+  premiumGroupId: string; // Private premium group
+
   // Group settings
   salesSettings: {
     welcomeMessage: string;
     availableTiers: string;
     helpMessage: string;
   };
-  
+
   premiumSettings: {
     welcomeMessage: string;
     rules?: string;
@@ -500,7 +521,7 @@ export interface AgentConfig {
   };
   /** File upload limits */
   fileUploadLimits: {
-    maxSize: number;        // bytes
+    maxSize: number; // bytes
     allowedTypes: string[]; // file extensions
   };
 }

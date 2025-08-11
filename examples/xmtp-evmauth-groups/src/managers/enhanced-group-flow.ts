@@ -218,30 +218,89 @@ export class EnhancedGroupManager {
         );
       }
 
-      // 1. Get premium group
-      const premiumGroup = (await this.client.conversations.getConversationById(
+      // 1. Get premium group with retry and sync
+      console.log(`🔍 Finding premium group: ${config.premiumGroupId}`);
+
+      // First, sync conversations to ensure we have the latest state
+      await this.client.conversations.sync();
+
+      let premiumGroup = (await this.client.conversations.getConversationById(
         config.premiumGroupId,
       )) as Group;
 
       if (!premiumGroup) {
-        throw new Error(`Premium group not found: ${config.premiumGroupId}`);
+        console.log(`⚠️ Premium group not found, attempting recovery...`);
+        // Try to find by iterating all conversations
+        const allConversations = await this.client.conversations.list();
+        const foundGroup = allConversations.find(
+          (conv) => conv.id === config.premiumGroupId,
+        );
+
+        if (foundGroup && foundGroup.constructor.name === "Group") {
+          premiumGroup = foundGroup as Group;
+          console.log(`✅ Found premium group via conversation list`);
+        } else {
+          throw new Error(`Premium group not found: ${config.premiumGroupId}`);
+        }
       }
 
-      // 2. Add member to premium group
+      // 2. Add member to premium group with retry logic
       const cleanInboxId = userInboxId.startsWith("0x")
         ? userInboxId.slice(2)
         : userInboxId;
       console.log(`➕ Adding member to premium group: ${cleanInboxId}`);
-      await premiumGroup.addMembers([cleanInboxId]);
 
-      // 3. Send welcome message
+      // Check if user is already a member first
+      const members = await premiumGroup.members();
+      const isAlreadyMember = members.some(
+        (member) => member.inboxId.toLowerCase() === cleanInboxId.toLowerCase(),
+      );
+
+      if (isAlreadyMember) {
+        console.log(`✅ User ${cleanInboxId} is already a member`);
+      } else {
+        try {
+          await premiumGroup.addMembers([cleanInboxId]);
+          console.log(`✅ Successfully added ${cleanInboxId} to premium group`);
+        } catch (addError) {
+          console.error(`❌ Failed to add member: ${addError}`);
+          // Try one more time after a short delay
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          try {
+            await this.client.conversations.sync();
+            await premiumGroup.addMembers([cleanInboxId]);
+            console.log(`✅ Successfully added ${cleanInboxId} on retry`);
+          } catch (retryError) {
+            console.error(`❌ Failed to add member on retry: ${retryError}`);
+            throw retryError;
+          }
+        }
+      }
+
+      // 3. Get user's address and try to resolve ENS/Basename
+      const inboxState = await this.client.preferences.inboxStateFromInboxIds([
+        cleanInboxId,
+      ]);
+      const userAddress =
+        inboxState[0]?.identifiers[0]?.identifier || "Unknown";
+
+      // Try to resolve ENS/Basename (simplified - in production you'd use a proper resolver)
+      let userTag = userAddress;
+      if (userAddress !== "Unknown") {
+        // Format as @address for now - could be enhanced with ENS/Basename resolution
+        const shortAddress = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+        userTag = `@${shortAddress}`;
+      }
+
+      // 4. Send welcome message with user tag
       const welcomeMsg =
-        `🎉 Welcome to ${config.metadata.name} Premium!\n\n` +
+        `🎉 Welcome to ${config.metadata.name} Premium, ${userTag}!\n\n` +
         `✅ Access Tier: ${tierName}\n` +
         `🎫 Token ID: ${tokenId}\n` +
-        `💎 NFT: Check your wallet for your access token\n\n` +
-        `${config.premiumSettings.welcomeMessage}\n\n` +
-        `Need help? Message the bot directly.`;
+        `💎 NFT: Check your wallet for your access token\n` +
+        `⏰ Access expires: Check your NFT for expiry date\n\n` +
+        `${config.premiumSettings?.welcomeMessage || "Enjoy your premium access!"}\n\n` +
+        `Need help? Message me directly or ask in this group! 🚀`;
 
       await premiumGroup.send(welcomeMsg);
 

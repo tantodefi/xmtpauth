@@ -65,6 +65,22 @@ const GROUP_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  // get USDC token address
+  {
+    inputs: [],
+    name: "usdcToken",
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // withdraw ETH (owner only)
+  {
+    inputs: [],
+    name: "withdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
   // balanceOf (ERC1155)
   {
     inputs: [

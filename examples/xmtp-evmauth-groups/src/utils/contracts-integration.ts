@@ -3,7 +3,13 @@
  * This replaces the mock implementation with actual contract calls
  */
 
-import { createPublicClient, createWalletClient, http, getContract, encodeFunctionData } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  encodeFunctionData,
+  getContract,
+  http,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import type { AccessTier } from "../types/types";
@@ -11,109 +17,103 @@ import type { AccessTier } from "../types/types";
 // Factory Contract ABI (essential functions only)
 const FACTORY_ABI = [
   {
-    "inputs": [
-      {"name": "name", "type": "string"},
-      {"name": "symbol", "type": "string"},
-      {"name": "groupName", "type": "string"},
-      {"name": "groupDescription", "type": "string"},
-      {"name": "baseURI", "type": "string"}
+    inputs: [
+      { name: "name", type: "string" },
+      { name: "symbol", type: "string" },
+      { name: "groupName", type: "string" },
+      { name: "groupDescription", type: "string" },
+      { name: "baseURI", type: "string" },
     ],
-    "name": "deployGroupContract",
-    "outputs": [{"name": "", "type": "address"}],
-    "stateMutability": "payable",
-    "type": "function"
+    name: "deployGroupContract",
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "payable",
+    type: "function",
   },
   {
-    "inputs": [],
-    "name": "deploymentFee",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  }
+    inputs: [],
+    name: "deploymentFee",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
-// Group Contract ABI (essential functions only)  
+// Group Contract ABI (essential functions only)
 const GROUP_ABI = [
   {
-    "inputs": [
-      {"name": "tokenId", "type": "uint256"},
-      {"name": "price", "type": "uint256"},
-      {"name": "durationDays", "type": "uint256"},
-      {"name": "maxSupply", "type": "uint256"},
-      {"name": "tierName", "type": "string"},
-      {"name": "description", "type": "string"},
-      {"name": "imageURI", "type": "string"}
+    inputs: [
+      { name: "tokenId", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "durationDays", type: "uint256" },
+      { name: "maxSupply", type: "uint256" },
+      { name: "tierName", type: "string" },
+      { name: "description", type: "string" },
+      { name: "imageURI", type: "string" },
     ],
-    "name": "createTier",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: "createTier",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
   },
   {
-    "inputs": [
-      {"name": "tokenId", "type": "uint256"}
-    ],
-    "name": "purchaseAccess",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    name: "purchaseAccess",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
   },
   {
-    "inputs": [
-      {"name": "user", "type": "address"}
-    ],
-    "name": "hasValidAccess",
-    "outputs": [{"name": "", "type": "bool"}],
-    "stateMutability": "view",
-    "type": "function"
+    inputs: [{ name: "user", type: "address" }],
+    name: "hasValidAccess",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
   },
   {
-    "inputs": [
-      {"name": "user", "type": "address"},
-      {"name": "tokenId", "type": "uint256"}
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "tokenId", type: "uint256" },
     ],
-    "name": "hasValidAccessForTier",
-    "outputs": [{"name": "", "type": "bool"}],
-    "stateMutability": "view",
-    "type": "function"
+    name: "hasValidAccessForTier",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
   },
   {
-    "inputs": [
-      {"name": "user", "type": "address"},
-      {"name": "tokenId", "type": "uint256"}
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "tokenId", type: "uint256" },
     ],
-    "name": "getUserTokenExpiration",
-    "outputs": [
-      {"name": "expiresAt", "type": "uint256"},
-      {"name": "exists", "type": "bool"}
+    name: "getUserTokenExpiration",
+    outputs: [
+      { name: "expiresAt", type: "uint256" },
+      { name: "exists", type: "bool" },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: "view",
+    type: "function",
   },
   {
-    "inputs": [
-      {"name": "tokenId", "type": "uint256"}
-    ],
-    "name": "getTier",
-    "outputs": [
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    name: "getTier",
+    outputs: [
       {
-        "components": [
-          {"name": "price", "type": "uint256"},
-          {"name": "duration", "type": "uint256"},
-          {"name": "maxSupply", "type": "uint256"},
-          {"name": "totalMinted", "type": "uint256"},
-          {"name": "active", "type": "bool"},
-          {"name": "name", "type": "string"},
-          {"name": "description", "type": "string"},
-          {"name": "imageURI", "type": "string"}
+        components: [
+          { name: "price", type: "uint256" },
+          { name: "duration", type: "uint256" },
+          { name: "maxSupply", type: "uint256" },
+          { name: "totalMinted", type: "uint256" },
+          { name: "active", type: "bool" },
+          { name: "name", type: "string" },
+          { name: "description", type: "string" },
+          { name: "imageURI", type: "string" },
         ],
-        "name": "",
-        "type": "tuple"
-      }
+        name: "",
+        type: "tuple",
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
-  }
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 export class RealEVMAuthHandler {
@@ -125,7 +125,7 @@ export class RealEVMAuthHandler {
   constructor(rpcUrl: string, factoryAddress: string, privateKey: string) {
     this.factoryAddress = factoryAddress;
     this.account = privateKeyToAccount(privateKey as `0x${string}`);
-    
+
     this.publicClient = createPublicClient({
       chain: base,
       transport: http(rpcUrl),
@@ -141,7 +141,10 @@ export class RealEVMAuthHandler {
   /**
    * Deploy a new EVMAuth contract for a group
    */
-  async deployGroupContract(groupName: string, ownerAddress: string): Promise<string> {
+  async deployGroupContract(
+    groupName: string,
+    ownerAddress: string,
+  ): Promise<string> {
     try {
       const factoryContract = getContract({
         address: this.factoryAddress as `0x${string}`,
@@ -153,24 +156,30 @@ export class RealEVMAuthHandler {
       const deploymentFee = await factoryContract.read.deploymentFee();
 
       // Deploy contract
-      const hash = await factoryContract.write.deployGroupContract([
-        `${groupName} Access`,  // name
-        "ACCESS",               // symbol
-        groupName,              // groupName
-        `Premium access to ${groupName}`, // groupDescription
-        "https://example.com/metadata/",  // baseURI
-      ], {
-        value: deploymentFee,
-      });
+      const hash = await factoryContract.write.deployGroupContract(
+        [
+          `${groupName} Access`, // name
+          "ACCESS", // symbol
+          groupName, // groupName
+          `Premium access to ${groupName}`, // groupDescription
+          "https://example.com/metadata/", // baseURI
+        ],
+        {
+          value: deploymentFee,
+        },
+      );
 
       // Wait for transaction and get receipt
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
-      
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash,
+      });
+
       // Parse logs to get the deployed contract address
       // In a real implementation, you'd decode the ContractDeployed event
       // For now, we'll extract from transaction logs
-      const deployedAddress = receipt.logs[0]?.address || receipt.contractAddress;
-      
+      const deployedAddress =
+        receipt.logs[0]?.address || receipt.contractAddress;
+
       if (!deployedAddress) {
         throw new Error("Failed to get deployed contract address");
       }
@@ -186,7 +195,10 @@ export class RealEVMAuthHandler {
   /**
    * Setup access tiers for a group contract
    */
-  async setupAccessTiers(contractAddress: string, tiers: AccessTier[]): Promise<void> {
+  async setupAccessTiers(
+    contractAddress: string,
+    tiers: AccessTier[],
+  ): Promise<void> {
     try {
       const contract = getContract({
         address: contractAddress as `0x${string}`,
@@ -197,7 +209,7 @@ export class RealEVMAuthHandler {
       for (let i = 0; i < tiers.length; i++) {
         const tier = tiers[i];
         const tokenId = i + 1; // Token IDs start from 1
-        
+
         await contract.write.createTier([
           BigInt(tokenId),
           BigInt(tier.priceWei),
@@ -219,7 +231,10 @@ export class RealEVMAuthHandler {
   /**
    * Check if a user has valid (non-expired) access tokens
    */
-  async checkTokenAccess(contractAddress: string, userAddress: string): Promise<boolean> {
+  async checkTokenAccess(
+    contractAddress: string,
+    userAddress: string,
+  ): Promise<boolean> {
     try {
       const contract = getContract({
         address: contractAddress as `0x${string}`,
@@ -227,7 +242,9 @@ export class RealEVMAuthHandler {
         client: this.publicClient,
       });
 
-      const hasAccess = await contract.read.hasValidAccess([userAddress as `0x${string}`]);
+      const hasAccess = await contract.read.hasValidAccess([
+        userAddress as `0x${string}`,
+      ]);
       return hasAccess;
     } catch (error) {
       console.error("Error checking token access:", error);
@@ -242,7 +259,7 @@ export class RealEVMAuthHandler {
     contractAddress: string,
     userAddress: string,
     tier: AccessTier,
-    tokenId: number
+    tokenId: number,
   ): Promise<{
     to: string;
     data: string;
@@ -280,11 +297,16 @@ export class RealEVMAuthHandler {
   /**
    * Get token information for a user
    */
-  async getUserTokens(contractAddress: string, userAddress: string): Promise<Array<{
-    tokenId: number;
-    expiresAt: Date;
-    isActive: boolean;
-  }>> {
+  async getUserTokens(
+    contractAddress: string,
+    userAddress: string,
+  ): Promise<
+    Array<{
+      tokenId: number;
+      expiresAt: Date;
+      isActive: boolean;
+    }>
+  > {
     try {
       const contract = getContract({
         address: contractAddress as `0x${string}`,
@@ -297,10 +319,11 @@ export class RealEVMAuthHandler {
       // Check tokens 1-10 (in a real implementation, you'd track available token IDs)
       for (let tokenId = 1; tokenId <= 10; tokenId++) {
         try {
-          const [expiresAt, exists] = await contract.read.getUserTokenExpiration([
-            userAddress as `0x${string}`,
-            BigInt(tokenId),
-          ]);
+          const [expiresAt, exists] =
+            await contract.read.getUserTokenExpiration([
+              userAddress as `0x${string}`,
+              BigInt(tokenId),
+            ]);
 
           if (exists) {
             const isActive = await contract.read.hasValidAccessForTier([
@@ -330,7 +353,10 @@ export class RealEVMAuthHandler {
   /**
    * Get tier information from contract
    */
-  async getTierInfo(contractAddress: string, tokenId: number): Promise<{
+  async getTierInfo(
+    contractAddress: string,
+    tokenId: number,
+  ): Promise<{
     price: string;
     duration: number;
     name: string;
@@ -347,7 +373,7 @@ export class RealEVMAuthHandler {
       });
 
       const tier = await contract.read.getTier([BigInt(tokenId)]);
-      
+
       return {
         price: tier.price.toString(),
         duration: Number(tier.duration),

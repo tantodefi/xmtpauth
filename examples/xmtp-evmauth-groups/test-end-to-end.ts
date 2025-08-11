@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-/**
+/
  * End-to-End Test Script
  * Tests the complete flow with low-cost tiers and real XMTP interactions
  */
@@ -19,18 +19,18 @@ const XMTP_ENV = process.env.XMTP_ENV || "dev";
 const EVMAUTH_FACTORY_ADDRESS = process.env.EVMAUTH_FACTORY_ADDRESS as `0x${string}`;
 
 async function testEndToEndFlow() {
-  console.log("🎯 **END-TO-END FLOW TEST**\n");
+  console.log("🎯 END-TO-END FLOW TEST\n");
 
   try {
     // Step 1: Verify agent is running
-    console.log("📡 **STEP 1: Verify Agent Status**");
+    console.log("📡 STEP 1: Verify Agent Status");
     const database = new JSONDatabase();
     const stats = database.getStats();
     console.log(`✅ Database accessible: ${stats.totalGroups} groups`);
     console.log("");
 
     // Step 2: Create test client (simulate user)
-    console.log("👤 **STEP 2: Create Test User Client**");
+    console.log("👤 STEP 2: Create Test User Client");
     const signer = createSigner(WALLET_KEY);
     const dbEncryptionKey = getEncryptionKeyFromHex(ENCRYPTION_KEY);
     const client = await Client.create(signer, {
@@ -41,7 +41,7 @@ async function testEndToEndFlow() {
     console.log("");
 
     // Step 3: Test transaction creation
-    console.log("💳 **STEP 3: Test Transaction Creation**");
+    console.log("💳 STEP 3: Test Transaction Creation");
     const { groupTx, tierTx } = await TransactionButtonFix.testTransactionCreation();
     
     const isGroupTxValid = TransactionButtonFix.validateTransactionPayload(groupTx);
@@ -52,7 +52,7 @@ async function testEndToEndFlow() {
     console.log("");
 
     // Step 4: Test low-cost tier pricing
-    console.log("💰 **STEP 4: Low-Cost Tier Validation**");
+    console.log("💰 STEP 4: Low-Cost Tier Validation");
     const testTiers = [
       { name: "Test Basic", priceUsd: 0.01, durationDays: 1 },
       { name: "Test Premium", priceUsd: 0.05, durationDays: 7 }
@@ -68,7 +68,7 @@ async function testEndToEndFlow() {
     console.log("");
 
     // Step 5: Test conversation finding (agent discovery)
-    console.log("🔍 **STEP 5: Agent Discovery Test**");
+    console.log("🔍 STEP 5: Agent Discovery Test");
     await client.conversations.sync();
     const conversations = await client.conversations.list();
     
@@ -98,7 +98,7 @@ async function testEndToEndFlow() {
     console.log("");
 
     // Step 6: Test commands to send
-    console.log("📝 **STEP 6: Test Commands Ready**");
+    console.log("📝 STEP 6: Test Commands Ready");
     console.log("Ready to test these commands:");
     console.log(`   1. /create-group "Test Community"`);
     console.log(`   2. /setup-tiers (then configure 2 tiers)`);
@@ -108,7 +108,7 @@ async function testEndToEndFlow() {
     console.log("");
 
     // Step 7: Database state check
-    console.log("💾 **STEP 7: Database State Check**");
+    console.log("💾 STEP 7: Database State Check");
     const allGroups = await database.getAllGroups();
     const activeSessions = await database.getStats();
     
@@ -123,16 +123,16 @@ async function testEndToEndFlow() {
     }
     console.log("");
 
-    console.log("🎉 **END-TO-END SETUP COMPLETE!**");
+    console.log("🎉 END-TO-END SETUP COMPLETE!");
     console.log("");
-    console.log("✅ **SYSTEM IS READY FOR:**");
+    console.log("✅ SYSTEM IS READY FOR:");
     console.log("   • Agent is running in background");
     console.log("   • Database persistence working");
     console.log("   • Low-cost test tiers configured");
     console.log("   • Transaction validation working");
     console.log("   • XMTP client can connect to agent");
     console.log("");
-    console.log("💡 **NEXT: Test in XMTP client:**");
+    console.log("💡 NEXT: Test in XMTP client:");
     console.log("   1. Open XMTP chat with agent: 0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc");
     console.log("   2. Send: /create-group \"Test Community\"");
     console.log("   3. Approve 0.0001 ETH transaction");
@@ -142,7 +142,7 @@ async function testEndToEndFlow() {
     console.log("");
 
   } catch (error) {
-    console.error("❌ **END-TO-END TEST FAILED:**", error);
+    console.error("❌ END-TO-END TEST FAILED:", error);
     process.exit(1);
   }
 }

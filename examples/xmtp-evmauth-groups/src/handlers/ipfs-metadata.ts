@@ -48,12 +48,12 @@ export class IPFSMetadataHandler {
     try {
       // For demo purposes, we'll create a mock IPFS hash
       // In production, use a service like Pinata, NFT.Storage, or Web3.Storage
-      
-      const hash = createHash('sha256').update(imageBuffer).digest('hex');
+
+      const hash = createHash("sha256").update(imageBuffer).digest("hex");
       const mockIPFSHash = `Qm${hash.substring(0, 44)}`;
-      
+
       console.log(`📁 Uploaded ${filename} to IPFS: ${mockIPFSHash}`);
-      
+
       // In production, you'd do:
       // const formData = new FormData();
       // formData.append('file', new Blob([imageBuffer]), filename);
@@ -64,7 +64,7 @@ export class IPFSMetadataHandler {
       // });
       // const result = await response.json();
       // return result.IpfsHash;
-      
+
       return mockIPFSHash;
     } catch (error) {
       console.error("Error uploading image to IPFS:", error);
@@ -82,38 +82,40 @@ export class IPFSMetadataHandler {
     durationDays: number,
     priceUSD: number,
     creatorAddress: string,
-    imageIPFSHash?: string
+    imageIPFSHash?: string,
   ): GroupNFTMetadata {
     const metadata: GroupNFTMetadata = {
       name: `${groupName} - ${tierName}`,
       description: `Access token for ${groupName}. Grants ${durationDays} days of premium group access.`,
-      image: imageIPFSHash ? `${this.config.gateway}${imageIPFSHash}` : this.generateDefaultImage(tierName),
+      image: imageIPFSHash
+        ? `${this.config.gateway}${imageIPFSHash}`
+        : this.generateDefaultImage(tierName),
       external_url: `https://xmtp.chat/conversations/${groupId}`,
       attributes: [
         {
           trait_type: "Access Duration",
-          value: `${durationDays} days`
+          value: `${durationDays} days`,
         },
         {
           trait_type: "Access Tier",
-          value: tierName
+          value: tierName,
         },
         {
           trait_type: "Price USD",
-          value: priceUSD
+          value: priceUSD,
         },
         {
           trait_type: "Group Name",
-          value: groupName
+          value: groupName,
         },
         {
           trait_type: "Token Type",
-          value: "Access Token"
+          value: "Access Token",
         },
         {
           trait_type: "Platform",
-          value: "XMTP"
-        }
+          value: "XMTP",
+        },
       ],
       group_id: groupId,
       group_name: groupName,
@@ -132,15 +134,15 @@ export class IPFSMetadataHandler {
   async uploadMetadata(metadata: GroupNFTMetadata): Promise<string> {
     try {
       const metadataJSON = JSON.stringify(metadata, null, 2);
-      const metadataBuffer = Buffer.from(metadataJSON, 'utf-8');
-      
+      const metadataBuffer = Buffer.from(metadataJSON, "utf-8");
+
       // Create mock IPFS hash for metadata
-      const hash = createHash('sha256').update(metadataBuffer).digest('hex');
+      const hash = createHash("sha256").update(metadataBuffer).digest("hex");
       const mockIPFSHash = `Qm${hash.substring(0, 44)}`;
-      
+
       console.log(`📄 Uploaded metadata to IPFS: ${mockIPFSHash}`);
       console.log(`📄 Metadata URL: ${this.config.gateway}${mockIPFSHash}`);
-      
+
       // In production:
       // const formData = new FormData();
       // formData.append('file', new Blob([metadataBuffer]), 'metadata.json');
@@ -151,7 +153,7 @@ export class IPFSMetadataHandler {
       // });
       // const result = await response.json();
       // return result.IpfsHash;
-      
+
       return mockIPFSHash;
     } catch (error) {
       console.error("Error uploading metadata to IPFS:", error);
@@ -165,40 +167,52 @@ export class IPFSMetadataHandler {
   private generateDefaultImage(tierName: string): string {
     // In production, you'd have default tier images stored on IPFS
     const tierImages = {
-      'basic': 'QmBasicTierImageHash',
-      'premium': 'QmPremiumTierImageHash',
-      'vip': 'QmVIPTierImageHash',
+      basic: "QmBasicTierImageHash",
+      premium: "QmPremiumTierImageHash",
+      vip: "QmVIPTierImageHash",
     };
 
-    const normalizedTier = (tierName && typeof tierName === 'string') ? tierName.toLowerCase() : 'default';
-    const imageHash = tierImages[normalizedTier as keyof typeof tierImages] || tierImages.basic;
-    
+    const normalizedTier =
+      tierName && typeof tierName === "string"
+        ? tierName.toLowerCase()
+        : "default";
+    const imageHash =
+      tierImages[normalizedTier as keyof typeof tierImages] || tierImages.basic;
+
     return `${this.config.gateway}${imageHash}`;
   }
 
   /**
    * Process attachment from XMTP message
    */
-  async processAttachment(attachmentData: Uint8Array, filename: string): Promise<{
+  async processAttachment(
+    attachmentData: Uint8Array,
+    filename: string,
+  ): Promise<{
     ipfsHash: string;
     url: string;
     size: number;
   }> {
     try {
       // Validate file type (images only)
-      const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-      const fileExtension = (filename && typeof filename === 'string') 
-        ? filename.toLowerCase().substring(filename.lastIndexOf('.')) 
-        : '.png';
-      
+      const allowedTypes = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+      const fileExtension =
+        filename && typeof filename === "string"
+          ? filename.toLowerCase().substring(filename.lastIndexOf("."))
+          : ".png";
+
       if (!allowedTypes.includes(fileExtension)) {
-        throw new Error(`Unsupported file type: ${fileExtension}. Supported: ${allowedTypes.join(', ')}`);
+        throw new Error(
+          `Unsupported file type: ${fileExtension}. Supported: ${allowedTypes.join(", ")}`,
+        );
       }
 
       // Validate file size (max 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (attachmentData && attachmentData.length > maxSize) {
-        throw new Error(`File too large: ${attachmentData.length} bytes. Max size: ${maxSize} bytes`);
+        throw new Error(
+          `File too large: ${attachmentData.length} bytes. Max size: ${maxSize} bytes`,
+        );
       }
 
       // Upload to IPFS
@@ -230,7 +244,7 @@ export class IPFSMetadataHandler {
     imageAttachment?: {
       data: Uint8Array;
       filename: string;
-    }
+    },
   ): Promise<{
     metadata: GroupNFTMetadata;
     metadataIPFSHash: string;
@@ -243,7 +257,7 @@ export class IPFSMetadataHandler {
       if (imageAttachment) {
         const imageResult = await this.processAttachment(
           imageAttachment.data,
-          imageAttachment.filename
+          imageAttachment.filename,
         );
         imageIPFSHash = imageResult.ipfsHash;
         console.log(`✅ Image uploaded: ${imageResult.url}`);
@@ -257,7 +271,7 @@ export class IPFSMetadataHandler {
         durationDays,
         priceUSD,
         creatorAddress,
-        imageIPFSHash
+        imageIPFSHash,
       );
 
       // Upload metadata to IPFS
@@ -281,7 +295,7 @@ export class IPFSMetadataHandler {
     try {
       const url = `${this.config.gateway}${ipfsHash}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch metadata: ${response.statusText}`);
       }

@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-/**
+/
  * Comprehensive System Test Script
  * Tests database, recovery, and low-cost tier creation
  */
@@ -36,11 +36,11 @@ if (!EVMAUTH_FACTORY_ADDRESS) {
 }
 
 async function runSystemTests() {
-  console.log("🧪 **COMPREHENSIVE SYSTEM TESTS**\n");
+  console.log("🧪 COMPREHENSIVE SYSTEM TESTS\n");
 
   try {
     // Test 1: Database System
-    console.log("📋 **TEST 1: JSON Database System**");
+    console.log("📋 TEST 1: JSON Database System");
     const database = new JSONDatabase("./test-data");
     
     // Create test group record
@@ -79,7 +79,7 @@ async function runSystemTests() {
     console.log("");
 
     // Test 2: XMTP Client & Recovery (if env vars available)
-    console.log("🔗 **TEST 2: XMTP Client & Recovery System**");
+    console.log("🔗 TEST 2: XMTP Client & Recovery System");
     
     if (WALLET_KEY && ENCRYPTION_KEY) {
       const signer = createSigner(WALLET_KEY);
@@ -105,7 +105,7 @@ async function runSystemTests() {
     console.log("");
 
     // Test 3: EVMAuth Handler (if env vars available)
-    console.log("⚙️ **TEST 3: EVMAuth Handler**");
+    console.log("⚙️ TEST 3: EVMAuth Handler");
     
     if (BASE_RPC_URL && EVMAUTH_FACTORY_ADDRESS && WALLET_KEY) {
       const evmAuthHandler = new EVMAuthHandler(
@@ -121,7 +121,7 @@ async function runSystemTests() {
     console.log("");
 
     // Test 4: Enhanced Group Manager (if previous tests passed)
-    console.log("🏗️ **TEST 4: Enhanced Group Manager**");
+    console.log("🏗️ TEST 4: Enhanced Group Manager");
     
     if (WALLET_KEY && ENCRYPTION_KEY && BASE_RPC_URL && EVMAUTH_FACTORY_ADDRESS) {
       // Re-create these for the group manager test
@@ -139,7 +139,7 @@ async function runSystemTests() {
     console.log("");
 
     // Test 5: Low-Cost Test Tiers
-    console.log("💰 **TEST 5: Low-Cost Test Tier Configuration**");
+    console.log("💰 TEST 5: Low-Cost Test Tier Configuration");
     
     const testTiers = [
       {
@@ -165,7 +165,7 @@ async function runSystemTests() {
     console.log("");
 
     // Test 6: System Integration
-    console.log("🔄 **TEST 6: System Integration Check**");
+    console.log("🔄 TEST 6: System Integration Check");
     
     // Test that all components work together
     const allGroups = await database.getAllGroups();
@@ -179,9 +179,9 @@ async function runSystemTests() {
     console.log("✅ Old sessions cleaned up");
     
     console.log("");
-    console.log("🎉 **ALL TESTS PASSED!**");
+    console.log("🎉 ALL TESTS PASSED!");
     console.log("");
-    console.log("✅ **SYSTEM READY FOR:**");
+    console.log("✅ SYSTEM READY FOR:");
     console.log("   • Group creation with payment");
     console.log("   • Tier setup with low-cost testing");
     console.log("   • Contract deployment (0.0001 ETH)");
@@ -189,7 +189,7 @@ async function runSystemTests() {
     console.log("   • Recovery after restart");
     console.log("   • Duplicate prevention");
     console.log("");
-    console.log("💡 **NEXT STEPS:**");
+    console.log("💡 NEXT STEPS:");
     console.log("   1. Start agent: yarn dev");
     console.log("   2. Create test group: /create-group \"Test Community\"");
     console.log("   3. Setup tiers: /setup-tiers");
@@ -197,7 +197,7 @@ async function runSystemTests() {
     console.log("");
 
   } catch (error) {
-    console.error("❌ **TEST FAILED:**", error);
+    console.error("❌ TEST FAILED:", error);
     process.exit(1);
   }
 }

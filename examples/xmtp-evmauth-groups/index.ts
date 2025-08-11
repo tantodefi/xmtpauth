@@ -465,6 +465,16 @@ async function main() {
           groupConfigs,
           database,
         );
+      } else if (command.startsWith("/fix-access")) {
+        await handleFixAccess(
+          conversation,
+          message.senderInboxId,
+          messageContent,
+          enhancedGroupManager,
+          groupConfigs,
+          database,
+          textClient,
+        );
       } else if (command === "/help") {
         await handleHelp(conversation);
       } else if (command === "/test-system") {
@@ -762,9 +772,28 @@ async function handleGroupInfo(conversation: any, messageContent: string) {
     }
   }
   if (!groupConfig) {
-    // Fallback to DB
+    // Try lookup by group name in memory
+    for (const [addr, cfg] of groupConfigs.entries()) {
+      if (cfg.metadata?.name?.toLowerCase() === groupId.toLowerCase()) {
+        groupConfig = cfg;
+        break;
+      }
+    }
+  }
+  if (!groupConfig) {
+    // Fallback to DB - try by contract first, then by name
     try {
-      const rec = await new JSONDatabase().requireGroupByContract(groupId);
+      let rec;
+      try {
+        rec = await new JSONDatabase().requireGroupByContract(groupId);
+      } catch {
+        // Try by name
+        const db = new JSONDatabase();
+        const allGroups = await db.getAllGroups();
+        rec = allGroups.find(
+          (g) => g.name.toLowerCase() === groupId.toLowerCase(),
+        );
+      }
       if (rec) {
         groupConfig = {
           groupId: rec.premiumGroupId,
@@ -844,7 +873,7 @@ async function handleGroupInfo(conversation: any, messageContent: string) {
       }
     }
     lines.push(
-      `💎 **${tier.name}** (\`${tier.id}\`)\n` +
+      `💎 ${tier.name} (\`${tier.id}\`)\n` +
         `   ${tier.durationDays} days - ${priceDisplay}\n` +
         `   ${tier.description ?? ""}\n`,
     );
@@ -910,6 +939,124 @@ async function handleCheckPurchase(
     console.error("Error checking purchase:", error);
     await conversation.send(
       `❌ Error checking purchase: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+async function handleFixAccess(
+  conversation: any,
+  senderInboxId: string,
+  messageContent: string,
+  enhancedGroupManager: any,
+  groupConfigs: Map<string, any>,
+  database?: any,
+  client?: any,
+) {
+  const parts = messageContent.trim().split(" ");
+  if (parts.length < 2) {
+    await conversation.send(
+      "Usage: /fix-access <contract_address>\n" +
+        "This command manually adds you to the premium group if you have a valid NFT but weren't added automatically.\n\n" +
+        "Example: /fix-access 0x4B45A8Bd08bBD9F82bEBf261A255881E57786A51",
+    );
+    return;
+  }
+
+  const contractAddress = parts[1];
+
+  try {
+    await conversation.send(
+      "🔍 Checking your NFT access and fixing group membership...",
+    );
+
+    // Find the group config
+    let groupConfig = groupConfigs.get(contractAddress);
+    if (!groupConfig && database) {
+      try {
+        const rec = await database.requireGroupByContract(contractAddress);
+        if (rec) {
+          groupConfig = {
+            contractAddress: rec.contractAddress,
+            premiumGroupId: rec.premiumGroupId,
+            salesGroupId: rec.salesGroupId,
+            metadata: { name: rec.name },
+            tiers: rec.tiers || [],
+          };
+        }
+      } catch {}
+    }
+
+    if (!groupConfig) {
+      await conversation.send("❌ Group not found for this contract address.");
+      return;
+    }
+
+    // Get user's address
+    const cleanSenderInboxId = senderInboxId.startsWith("0x")
+      ? senderInboxId.slice(2)
+      : senderInboxId;
+    const inboxState = await client.preferences.inboxStateFromInboxIds([
+      cleanSenderInboxId,
+    ]);
+
+    if (!inboxState || inboxState.length === 0) {
+      await conversation.send("❌ Could not find your wallet address");
+      return;
+    }
+
+    const userAddress = inboxState[0].identifiers[0].identifier;
+
+    // Use existing evmAuthHandler instance
+    const tempEvmAuthHandler = new EVMAuthHandler(
+      process.env.BASE_RPC_URL || "",
+      process.env.EVMAUTH_FACTORY_ADDRESS || "",
+      process.env.WALLET_KEY || "0x",
+    );
+
+    const hasAccess = await tempEvmAuthHandler.checkTokenAccess(
+      contractAddress,
+      userAddress,
+    );
+
+    if (!hasAccess) {
+      await conversation.send(
+        "❌ You don't have a valid NFT for this group.\n\n" +
+          `Contract: ${contractAddress}\n` +
+          `Your address: ${userAddress}\n\n` +
+          "Purchase access first with /buy-access",
+      );
+      return;
+    }
+
+    // User has valid access, try to add them to premium group
+    await conversation.send(
+      "✅ Valid NFT found! Adding you to the premium group...\n\n" +
+        `Group: ${groupConfig.metadata.name}\n` +
+        `Address: ${userAddress}`,
+    );
+
+    // Find the best tier for this user
+    const tier = groupConfig.tiers?.[0] || { name: "Premium", id: "1" };
+
+    // Use the enhanced group manager to add the user
+    await enhancedGroupManager.handleTokenPurchase(
+      contractAddress,
+      userAddress,
+      senderInboxId,
+      1, // Default to token ID 1
+      tier.name,
+    );
+
+    await conversation.send(
+      "🎉 Successfully added you to the premium group!\n\n" +
+        "You should now be able to access the premium community. " +
+        "Check your XMTP conversations for the premium group!",
+    );
+  } catch (error) {
+    console.error("Error in fix-access:", error);
+    await conversation.send(
+      `❌ Error fixing access: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        "Please try again or contact support.",
     );
   }
 }
@@ -1015,9 +1162,9 @@ async function handleWithdraw(
 
 async function handleHelp(conversation: any) {
   await conversation.send(
-    `🤖 **EVMAuth Groups Agent - Enhanced Edition**\n\n` +
+    `🤖 EVMAuth Groups Agent - Enhanced Edition\n\n` +
       `Create and monetize premium XMTP groups with custom USDC pricing and NFT images!\n\n` +
-      `**Commands:**\n` +
+      `Commands:\n` +
       `📊 \`/create-group <name>\` - Create a new paid group\n` +
       `⚙️ \`/setup-tiers <group_id>\` - Interactive tier setup with custom pricing\n` +
       `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
@@ -1025,15 +1172,16 @@ async function handleHelp(conversation: any) {
       `📄 \`/group-info <group_id>\` - Get group information\n` +
       `🔍 \`/check-purchase <contract>\` - Check for recent NFT purchase\n` +
       `💰 \`/withdraw <contract>\` - Withdraw earnings from your groups\n` +
+      `🔧 \`/fix-access <contract>\` - Manually add yourself to premium group if you have NFT\n` +
       `❓ \`/help\` - Show this help message\n\n` +
-      `**Enhanced Features:**\n` +
-      `💵 **USDC Pricing**: Set prices in USD (e.g., $5.99 for 30 days)\n` +
-      `🎨 **Custom NFT Images**: Upload your own artwork for access tokens\n` +
-      `📁 **IPFS Storage**: Decentralized metadata and image storage\n` +
-      `🔧 **Interactive Setup**: Guided tier creation process\n` +
-      `⚖️ **Base Network**: Low gas fees, fast transactions\n` +
-      `⏰ **Time-bound Access**: Automatic expiry and membership management\n\n` +
-      `**Example Tier Setup:**\n` +
+      `Enhanced Features:\n` +
+      `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
+      `🎨 Custom NFT Images: Upload your own artwork for access tokens\n` +
+      `📁 IPFS Storage: Decentralized metadata and image storage\n` +
+      `🔧 Interactive Setup: Guided tier creation process\n` +
+      `⚖️ Base Network: Low gas fees, fast transactions\n` +
+      `⏰ Time-bound Access: Automatic expiry and membership management\n\n` +
+      `Example Tier Setup:\n` +
       `Format: \`Name | Price | Duration\`\n` +
       `• \`Basic Access | $5 | 7 days\`\n` +
       `• \`Premium | $15.99 | 30 days\`\n` +
@@ -1085,7 +1233,7 @@ async function handleTestSystem(
   testFlowManager: TestFlowManager,
 ) {
   await conversation.send(
-    `🧪 **Running System Test**\n\n` +
+    `🧪 Running System Test\n\n` +
       `Testing all enhanced features...\n` +
       `This may take 1-2 minutes.`,
   );
@@ -1094,21 +1242,21 @@ async function handleTestSystem(
     const testResults = await testFlowManager.runCompleteTest();
 
     await conversation.send(
-      `🧪 **Test Results**\n\n` +
+      `🧪 Test Results\n\n` +
         `Overall: ${testResults.success ? "🎉 SUCCESS" : "❌ FAILED"}\n\n` +
-        `**Component Tests:**\n` +
+        `Component Tests:\n` +
         `• Group Creation: ${testResults.results.groupCreation ? "✅" : "❌"}\n` +
         `• Tier Setup: ${testResults.results.tierSetup ? "✅" : "❌"}\n` +
         `• Membership Mgmt: ${testResults.results.membershipManagement ? "✅" : "❌"}\n` +
         `• Event Listening: ${testResults.results.eventListening ? "✅" : "❌"}\n` +
         `• Recovery: ${testResults.results.recovery ? "✅" : "❌"}\n\n` +
         (testResults.errors.length > 0
-          ? `**Errors:**\n${testResults.errors.map((e) => `• ${e}`).join("\n")}`
+          ? `Errors:\n${testResults.errors.map((e) => `• ${e}`).join("\n")}`
           : `All systems operational! 🚀`),
     );
   } catch (error) {
     await conversation.send(
-      `❌ **Test Failed**\n\n` +
+      `❌ Test Failed\n\n` +
         `Error: ${error instanceof Error ? error.message : String(error)}`,
     );
   }

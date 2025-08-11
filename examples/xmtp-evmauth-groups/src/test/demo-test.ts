@@ -10,12 +10,12 @@ import {
   validateEnvironment,
 } from "@helpers/client";
 import { Client, type XmtpEnv } from "@xmtp/node-sdk";
-import { TestFlowManager } from "./test-flow";
-import { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import { EventDrivenAccessManager } from "../handlers/event-driven-access";
-import { RecoveryManager } from "../managers/recovery-mechanisms";
 import { EVMAuthHandler } from "../handlers/evmauth-handler";
+import { EnhancedGroupManager } from "../managers/enhanced-group-flow";
+import { RecoveryManager } from "../managers/recovery-mechanisms";
 import type { DualGroupConfig } from "../types/types";
+import { TestFlowManager } from "./test-flow";
 
 /* Environment variables validation */
 const {
@@ -28,7 +28,7 @@ const {
   "WALLET_KEY",
   "ENCRYPTION_KEY",
   "XMTP_ENV",
-  "BASE_RPC_URL", 
+  "BASE_RPC_URL",
   "EVMAUTH_FACTORY_ADDRESS",
 ]);
 
@@ -40,7 +40,7 @@ async function runDemo() {
     // Initialize client
     const signer = createSigner(WALLET_KEY);
     const dbEncryptionKey = getEncryptionKeyFromHex(ENCRYPTION_KEY);
-    
+
     const client = await Client.create(signer, {
       dbEncryptionKey,
       env: XMTP_ENV as XmtpEnv,
@@ -53,13 +53,25 @@ async function runDemo() {
     const evmAuthHandler = new EVMAuthHandler(
       BASE_RPC_URL,
       EVMAUTH_FACTORY_ADDRESS,
-      WALLET_KEY
+      WALLET_KEY,
     );
 
     const groupConfigs = new Map<string, DualGroupConfig>();
-    const enhancedGroupManager = new EnhancedGroupManager(client, evmAuthHandler);
-    const eventAccessManager = new EventDrivenAccessManager(client, BASE_RPC_URL, enhancedGroupManager, groupConfigs);
-    const recoveryManager = new RecoveryManager(client, BASE_RPC_URL, enhancedGroupManager);
+    const enhancedGroupManager = new EnhancedGroupManager(
+      client,
+      evmAuthHandler,
+    );
+    const eventAccessManager = new EventDrivenAccessManager(
+      client,
+      BASE_RPC_URL,
+      enhancedGroupManager,
+      groupConfigs,
+    );
+    const recoveryManager = new RecoveryManager(
+      client,
+      BASE_RPC_URL,
+      enhancedGroupManager,
+    );
 
     console.log("✅ All handlers initialized");
 
@@ -69,7 +81,7 @@ async function runDemo() {
       enhancedGroupManager,
       eventAccessManager,
       recoveryManager,
-      groupConfigs
+      groupConfigs,
     );
 
     console.log("✅ Test framework ready");
@@ -90,13 +102,23 @@ async function runDemo() {
 
     console.log("\n📊 Final Test Results:");
     console.log("======================");
-    console.log(`Overall Success: ${testResults.success ? '🎉' : '❌'}`);
+    console.log(`Overall Success: ${testResults.success ? "🎉" : "❌"}`);
     console.log(`\nComponent Results:`);
-    console.log(`  • Group Creation: ${testResults.results.groupCreation ? '✅' : '❌'}`);
-    console.log(`  • Tier Setup: ${testResults.results.tierSetup ? '✅' : '❌'}`);
-    console.log(`  • Membership Management: ${testResults.results.membershipManagement ? '✅' : '❌'}`);
-    console.log(`  • Event Listening: ${testResults.results.eventListening ? '✅' : '❌'}`);
-    console.log(`  • Recovery Mechanisms: ${testResults.results.recovery ? '✅' : '❌'}`);
+    console.log(
+      `  • Group Creation: ${testResults.results.groupCreation ? "✅" : "❌"}`,
+    );
+    console.log(
+      `  • Tier Setup: ${testResults.results.tierSetup ? "✅" : "❌"}`,
+    );
+    console.log(
+      `  • Membership Management: ${testResults.results.membershipManagement ? "✅" : "❌"}`,
+    );
+    console.log(
+      `  • Event Listening: ${testResults.results.eventListening ? "✅" : "❌"}`,
+    );
+    console.log(
+      `  • Recovery Mechanisms: ${testResults.results.recovery ? "✅" : "❌"}`,
+    );
 
     if (testResults.errors.length > 0) {
       console.log(`\n🐛 Errors Encountered:`);
@@ -109,10 +131,12 @@ async function runDemo() {
     if (testResults.success) {
       console.log("\n🔥 Running Stress Test...");
       console.log("=========================");
-      
+
       const stressResults = await testFlowManager.runStressTest(2); // Create 2 groups
-      
-      console.log(`Stress Test: ${stressResults.success ? '🎉 SUCCESS' : '❌ FAILED'}`);
+
+      console.log(
+        `Stress Test: ${stressResults.success ? "🎉 SUCCESS" : "❌ FAILED"}`,
+      );
       console.log(`Groups Created: ${stressResults.stats.groupsCreated}`);
       console.log(`Tiers Configured: ${stressResults.stats.tiersConfigured}`);
       console.log(`Membership Audits: ${stressResults.stats.membershipAudits}`);
@@ -122,10 +146,12 @@ async function runDemo() {
     // Health check
     console.log("\n🏥 System Health Check...");
     console.log("==========================");
-    
+
     const healthCheck = await recoveryManager.performHealthCheck(groupConfigs);
-    
-    console.log(`System Health: ${healthCheck.healthy ? '✅ HEALTHY' : '⚠️ ISSUES'}`);
+
+    console.log(
+      `System Health: ${healthCheck.healthy ? "✅ HEALTHY" : "⚠️ ISSUES"}`,
+    );
     console.log(`Total Groups: ${healthCheck.stats.totalGroups}`);
     console.log(`Active Groups: ${healthCheck.stats.activeGroups}`);
     console.log(`Total Members: ${healthCheck.stats.totalMembers}`);
@@ -150,7 +176,6 @@ async function runDemo() {
     console.log("• ✅ Background audit system");
 
     process.exit(0);
-
   } catch (error) {
     console.error("❌ Demo failed:", error);
     process.exit(1);

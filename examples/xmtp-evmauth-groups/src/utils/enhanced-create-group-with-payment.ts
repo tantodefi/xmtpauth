@@ -294,7 +294,7 @@ export async function handleListGroups(
       response += "\n";
     }
 
-    response += "💡 **Creator Commands:**\n";
+    response += "💡 Creator Commands:\n";
     response +=
       "• `/grant-trial <group_name> <user_address> <days>` - Grant free access\n";
     response += "• `/group-info <group_name>` - View group details\n";

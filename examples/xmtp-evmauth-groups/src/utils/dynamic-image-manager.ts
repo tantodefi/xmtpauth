@@ -1,6 +1,6 @@
 /**
  * Dynamic Image Manager - Intelligent image handling for EVMAuth NFTs
- * 
+ *
  * Features:
  * - Fallback to XMTP group image when no tier-specific image is set
  * - Dynamic image fetching for NFT metadata
@@ -13,13 +13,14 @@ import type { DualGroupConfig } from "../types/types";
 
 export interface ImageResolution {
   url: string;
-  source: 'tier-specific' | 'group-image' | 'default-placeholder';
+  source: "tier-specific" | "group-image" | "default-placeholder";
   cached?: boolean;
 }
 
 export class DynamicImageManager {
   private client: Client;
-  private imageCache: Map<string, { url: string; timestamp: number }> = new Map();
+  private imageCache: Map<string, { url: string; timestamp: number }> =
+    new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
   constructor(client: Client) {
@@ -33,13 +34,13 @@ export class DynamicImageManager {
   async resolveNFTImage(
     groupConfig: DualGroupConfig,
     tierId?: string,
-    tierSpecificImage?: string
+    tierSpecificImage?: string,
   ): Promise<ImageResolution> {
     // 1. Use tier-specific image if provided
     if (tierSpecificImage) {
       return {
         url: tierSpecificImage,
-        source: 'tier-specific'
+        source: "tier-specific",
       };
     }
 
@@ -49,18 +50,24 @@ export class DynamicImageManager {
       if (groupImage) {
         return {
           url: groupImage,
-          source: 'group-image',
-          cached: this.imageCache.has(groupConfig.premiumGroupId)
+          source: "group-image",
+          cached: this.imageCache.has(groupConfig.premiumGroupId),
         };
       }
     } catch (error) {
-      console.warn(`Could not fetch group image for ${groupConfig.premiumGroupId}:`, error);
+      console.warn(
+        `Could not fetch group image for ${groupConfig.premiumGroupId}:`,
+        error,
+      );
     }
 
     // 3. Fallback to branded default
     return {
-      url: this.generateBrandedPlaceholder(groupConfig.groupName || 'Premium', tierId),
-      source: 'default-placeholder'
+      url: this.generateBrandedPlaceholder(
+        groupConfig.groupName || "Premium",
+        tierId,
+      ),
+      source: "default-placeholder",
     };
   }
 
@@ -71,12 +78,14 @@ export class DynamicImageManager {
     try {
       // Check cache first
       const cached = this.imageCache.get(groupId);
-      if (cached && (Date.now() - cached.timestamp) < this.cacheTimeout) {
+      if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
         return cached.url;
       }
 
       // Fetch fresh data
-      const group = await this.client.conversations.getConversationById(groupId) as Group;
+      const group = (await this.client.conversations.getConversationById(
+        groupId,
+      )) as Group;
       if (!group) return null;
 
       const imageUrl = group.imageUrl;
@@ -84,7 +93,7 @@ export class DynamicImageManager {
         // Cache the result
         this.imageCache.set(groupId, {
           url: imageUrl,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
         return imageUrl;
       }
@@ -101,15 +110,17 @@ export class DynamicImageManager {
    */
   async updateGroupImage(groupId: string, imageUrl: string): Promise<boolean> {
     try {
-      const group = await this.client.conversations.getConversationById(groupId) as Group;
+      const group = (await this.client.conversations.getConversationById(
+        groupId,
+      )) as Group;
       if (!group) return false;
 
       await group.updateImageUrl(imageUrl);
-      
+
       // Update cache
       this.imageCache.set(groupId, {
         url: imageUrl,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       console.log(`✅ Updated group image for ${groupId}`);
@@ -123,10 +134,13 @@ export class DynamicImageManager {
   /**
    * Generate a branded placeholder image URL
    */
-  private generateBrandedPlaceholder(groupName: string, tierId?: string): string {
+  private generateBrandedPlaceholder(
+    groupName: string,
+    tierId?: string,
+  ): string {
     const encodedName = encodeURIComponent(groupName);
-    const encodedTier = tierId ? encodeURIComponent(tierId) : 'Access';
-    
+    const encodedTier = tierId ? encodeURIComponent(tierId) : "Access";
+
     // Using a placeholder service with custom branding
     return `https://via.placeholder.com/400x400/6366f1/ffffff?text=${encodedName}+${encodedTier}`;
   }
@@ -136,33 +150,33 @@ export class DynamicImageManager {
    */
   async resolveMultipleTierImages(
     groupConfig: DualGroupConfig,
-    tiers: Array<{ id: string; name: string; customImage?: string }>
+    tiers: Array<{ id: string; name: string; customImage?: string }>,
   ): Promise<Map<string, ImageResolution>> {
     const results = new Map<string, ImageResolution>();
-    
+
     // Get group image once for all tiers (efficiency)
     const groupImageUrl = await this.getGroupImage(groupConfig.premiumGroupId);
-    
+
     for (const tier of tiers) {
       if (tier.customImage) {
         results.set(tier.id, {
           url: tier.customImage,
-          source: 'tier-specific'
+          source: "tier-specific",
         });
       } else if (groupImageUrl) {
         results.set(tier.id, {
           url: groupImageUrl,
-          source: 'group-image',
-          cached: true
+          source: "group-image",
+          cached: true,
         });
       } else {
         results.set(tier.id, {
           url: this.generateBrandedPlaceholder(tier.name, tier.id),
-          source: 'default-placeholder'
+          source: "default-placeholder",
         });
       }
     }
-    
+
     return results;
   }
 
@@ -186,7 +200,7 @@ export class DynamicImageManager {
   getCacheStats(): { size: number; entries: string[] } {
     return {
       size: this.imageCache.size,
-      entries: Array.from(this.imageCache.keys())
+      entries: Array.from(this.imageCache.keys()),
     };
   }
 }
@@ -204,7 +218,7 @@ export async function createEnhancedNFTMetadata(
     durationDays: number;
     priceUSD: number;
     customImage?: string;
-  }
+  },
 ): Promise<{
   name: string;
   description: string;
@@ -215,7 +229,7 @@ export async function createEnhancedNFTMetadata(
   const imageResolution = await imageManager.resolveNFTImage(
     groupConfig,
     tier.id,
-    tier.customImage
+    tier.customImage,
   );
 
   return {
@@ -224,14 +238,17 @@ export async function createEnhancedNFTMetadata(
     image: imageResolution.url,
     imageSource: imageResolution.source,
     attributes: [
-      { trait_type: "Community", value: groupConfig.groupName || "Premium Group" },
+      {
+        trait_type: "Community",
+        value: groupConfig.groupName || "Premium Group",
+      },
       { trait_type: "Tier", value: tier.name },
       { trait_type: "Duration (Days)", value: tier.durationDays },
       { trait_type: "Price (USD)", value: tier.priceUSD },
       { trait_type: "Image Source", value: imageResolution.source },
       { trait_type: "Access Type", value: "Time-Limited" },
       { trait_type: "Network", value: "Base" },
-      { trait_type: "Standard", value: "EVMAuth ERC-1155" }
-    ]
+      { trait_type: "Standard", value: "EVMAuth ERC-1155" },
+    ],
   };
 }
