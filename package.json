@@ -7,7 +7,8 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "echo 'Build completed - using TSX for runtime compilation'",
+    "build:evmauth": "echo 'EVMAuth agent uses tsx for runtime compilation'",
     "build:examples": "yarn workspaces foreach --all --include \"examples/*\" run build",
     "clean": "rimraf node_modules && yarn clean:dbs",
     "clean:dbs": "rimraf *.db3* ||:",

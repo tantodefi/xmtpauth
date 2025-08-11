@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "../..",
+    "baseUrl": "../..",
+    "paths": {
+      "@helpers/*": ["helpers/*"]
+    }
+  },
+  "include": ["index.ts", "src/**/*", "../../helpers/**/*"],
+  "exclude": ["node_modules", "dist", "*.db3*", "test-data", "src/test/**/*"]
+}

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: xmtp-evmauth-agent
+    env: node
+    plan: starter
+    buildCommand: yarn install --immutable
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: XMTP_ENV
+        value: production
+      - key: EVMAUTH_FACTORY_ADDRESS
+        value: 0xa8830A603aE5143a1f8BAA46e28C36e4765EC754
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: USDC_ADDRESS
+        value: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      - key: FEE_BASIS_POINTS
+        value: 250
+    # Environment variables that need to be set in Render dashboard:
+    # WALLET_KEY - Agent's private key
+    # ENCRYPTION_KEY - XMTP database encryption key
+    # FEE_RECIPIENT - Address to receive platform fees
