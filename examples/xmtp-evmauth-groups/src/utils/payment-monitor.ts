@@ -256,6 +256,13 @@ export class PaymentMonitor {
         `🔍 Checking blockchain for payment to ${this.agentAddress} (expecting from ${payment.memberAddress} or associated smart account)`,
       );
 
+      // Payment happens AFTER /create-group command, so use the scan window provided
+      // by checkForPayments which correctly scans forward from current block
+      const minutesSincePayment = (Date.now() - payment.timestamp) / 60000;
+      console.log(
+        `⏰ Payment request age: ${minutesSincePayment.toFixed(1)} minutes`,
+      );
+
       const totalBlocks = Number(toBlock - fromBlock + 1n);
       console.log(`🔍 Scanning ${totalBlocks} blocks for payment...`);
 
