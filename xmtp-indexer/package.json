@@ -2,12 +2,13 @@
   "name": "squid-evm-template",
   "private": true,
   "scripts": {
-    "build": "rm -rf lib && tsc",
+    "build": "npx squid-typeorm-codegen && rm -rf lib && tsc",
     "serve": "squid-graphql-server",
     "start": "node -r dotenv/config lib/main.js",
     "serve:production": "squid-graphql-server --port ${PORT:-4350}",
     "processor": "node -r dotenv/config lib/main.js",
-    "dev": "concurrently \"npm run processor\" \"npm run serve\""
+    "dev": "concurrently \"npm run processor\" \"npm run serve\"",
+    "codegen": "npx squid-typeorm-codegen"
   },
   "dependencies": {
     "@subsquid/evm-abi": "^0.3.0",
