@@ -179,8 +179,8 @@ export class PaymentMonitor {
         this.publicClient.getBlockNumber(),
       );
 
-      // Check last 200 blocks for transactions to agent address (Base: ~6.7 minutes)
-      const fromBlock = currentBlock - 200n;
+      // Check last 900 blocks for transactions to agent address (Base: ~30 minutes at 2s blocks)
+      const fromBlock = currentBlock - 900n;
 
       console.log(
         `🔍 Checking payments: blocks ${fromBlock} to ${currentBlock} (${this.pendingPayments.size} pending)`,
@@ -191,8 +191,8 @@ export class PaymentMonitor {
 
       // Check pending payments
       for (const [paymentId, payment] of this.pendingPayments.entries()) {
-        // Check if payment is too old (more than 10 minutes)
-        if (Date.now() - payment.timestamp > 10 * 60 * 1000) {
+        // Check if payment is too old (more than 15 minutes to account for 2s block times)
+        if (Date.now() - payment.timestamp > 15 * 60 * 1000) {
           console.log(`⏰ Payment ${paymentId} expired, removing...`);
           this.pendingPayments.delete(paymentId);
 
@@ -224,14 +224,14 @@ export class PaymentMonitor {
             `⏳ Still waiting for payment ${paymentId} (${elapsedMinutes} minutes elapsed)`,
           );
 
-          // Warn user if payment is taking too long
-          if (elapsedMinutes >= 3 && elapsedMinutes % 2 === 1) {
-            // Every 2 minutes after 3 minutes
+          // Warn user if payment is taking too long (adjusted for 2s blocks)
+          if (elapsedMinutes >= 5 && elapsedMinutes % 3 === 2) {
+            // Every 3 minutes after 5 minutes
             await payment.conversation.send(
               `⏳ Still waiting for payment...\n\n` +
                 `It's been ${elapsedMinutes} minutes since you requested group creation.\n` +
                 `If you haven't approved the transaction yet, please check your wallet.\n` +
-                `If you approved it, the blockchain confirmation may take a few more minutes.`,
+                `With Base's 2-second blocks, transactions usually confirm within 1-2 minutes.`,
             );
           }
         }
@@ -243,6 +243,7 @@ export class PaymentMonitor {
 
   /**
    * Check blockchain for actual payment transactions
+   * Optimized for Base's 2-second blocks and larger scan ranges
    */
   private async checkBlockchainForPayment(
     payment: { memberAddress: string; timestamp: number },
@@ -254,15 +255,68 @@ export class PaymentMonitor {
         `🔍 Checking blockchain payment from ${payment.memberAddress} to ${this.agentAddress}`,
       );
 
-      // Look for transactions from the payer to the agent
-      // This is a simplified check - in production you'd want more robust verification
+      const totalBlocks = Number(toBlock - fromBlock + 1n);
+      console.log(`🔍 Scanning ${totalBlocks} blocks for payment...`);
 
-      // Get transaction history for the last few blocks
+      // Use chunked scanning for better performance and reliability
+      const CHUNK_SIZE = 50; // Scan 50 blocks at a time
+      let totalAgentTxs = 0;
+
+      // Scan from newest to oldest blocks (payments more likely in recent blocks)
+      for (
+        let chunkStart = toBlock;
+        chunkStart >= fromBlock;
+        chunkStart -= BigInt(CHUNK_SIZE)
+      ) {
+        const chunkEnd =
+          chunkStart - BigInt(CHUNK_SIZE - 1) < fromBlock
+            ? fromBlock
+            : chunkStart - BigInt(CHUNK_SIZE - 1);
+
+        console.log(`📦 Scanning chunk: blocks ${chunkEnd} to ${chunkStart}`);
+
+        // Process chunk with timeout protection
+        const chunkResult = await Promise.race([
+          this.scanBlockChunk(chunkEnd, chunkStart, payment),
+          new Promise<{ found: boolean; agentTxs: number }>((_, reject) =>
+            setTimeout(() => reject(new Error("Chunk scan timeout")), 30000),
+          ),
+        ]);
+
+        if (chunkResult.found) {
+          return true;
+        }
+
+        totalAgentTxs += chunkResult.agentTxs;
+
+        // Add delay between chunks to avoid rate limiting
+        if (chunkStart - BigInt(CHUNK_SIZE) >= fromBlock) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+      }
+
       console.log(
-        `🔍 Scanning ${Number(toBlock - fromBlock + 1n)} blocks for payment...`,
+        `🔍 Finished scanning ${totalBlocks} blocks - found ${totalAgentTxs} transactions to agent, no matching payment`,
       );
+      return false;
+    } catch (error) {
+      console.error("Error checking blockchain for payment:", error);
+      return false;
+    }
+  }
 
-      for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
+  /**
+   * Scan a chunk of blocks for payments
+   */
+  private async scanBlockChunk(
+    fromBlock: bigint,
+    toBlock: bigint,
+    payment: { memberAddress: string; timestamp: number },
+  ): Promise<{ found: boolean; agentTxs: number }> {
+    let agentTxs = 0;
+
+    for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
+      try {
         const block = await this.executeWithRetry(() =>
           this.publicClient.getBlock({
             blockNumber: blockNum,
@@ -271,65 +325,61 @@ export class PaymentMonitor {
         );
 
         if (block.transactions) {
-          console.log(
-            `📦 Block ${blockNum}: ${block.transactions.length} transactions`,
-          );
+          // Only log every 10th block to reduce noise
+          if ((blockNum - fromBlock) % 10n === 0n) {
+            console.log(
+              `📦 Block ${blockNum}: ${block.transactions.length} transactions`,
+            );
+          }
 
-          let agentTxCount = 0;
           for (const tx of block.transactions) {
             if (typeof tx === "object" && tx.to && tx.from && tx.value) {
-              // Debug: Log all transactions to agent address
+              // Check for transactions to agent address
               if (tx.to?.toLowerCase() === this.agentAddress.toLowerCase()) {
-                agentTxCount++;
+                agentTxs++;
                 console.log(
                   `💰 Found tx to agent: ${tx.hash} from ${tx.from} value ${tx.value}`,
                 );
-              }
 
-              // Check if transaction is to agent address with expected amount
-              if (
-                tx.to.toLowerCase() === this.agentAddress.toLowerCase() &&
-                tx.from.toLowerCase() === payment.memberAddress.toLowerCase() &&
-                BigInt(tx.value) >= parseEther("0.001") // At least 0.001 ETH
-              ) {
-                // Get transaction receipt to confirm it was successful
-                const receipt = await this.executeWithRetry(() =>
-                  this.publicClient.getTransactionReceipt({
-                    hash: tx.hash,
-                  }),
-                );
+                // Check if this is the payment we're looking for
+                if (
+                  tx.from.toLowerCase() ===
+                    payment.memberAddress.toLowerCase() &&
+                  BigInt(tx.value) >= parseEther("0.001")
+                ) {
+                  // Verify transaction was successful
+                  const receipt = await this.executeWithRetry(() =>
+                    this.publicClient.getTransactionReceipt({
+                      hash: tx.hash,
+                    }),
+                  );
 
-                if (receipt.status === "success") {
-                  console.log(`✅ Found confirmed payment: ${tx.hash}`);
-                  return true;
+                  if (receipt.status === "success") {
+                    console.log(`✅ Found confirmed payment: ${tx.hash}`);
+                    return { found: true, agentTxs };
+                  } else {
+                    console.log(`❌ Transaction failed: ${tx.hash}`);
+                  }
                 }
               }
             }
           }
-
-          if (agentTxCount === 0) {
-            console.log(
-              `📦 Block ${blockNum}: No transactions to agent address`,
-            );
-          }
-        } else {
-          console.log(`📦 Block ${blockNum}: No transactions in block`);
         }
 
-        // Add small delay between block scans to avoid overwhelming RPC
+        // Small delay every 10 blocks within chunk
         if ((blockNum - fromBlock) % 10n === 0n && blockNum !== toBlock) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 25));
         }
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.log(`⚠️ Error scanning block ${blockNum}: ${errorMessage}`);
+        // Continue with next block instead of failing entire chunk
+        continue;
       }
-
-      console.log(
-        `🔍 Finished scanning blocks ${fromBlock} to ${toBlock} - no payment found`,
-      );
-      return false;
-    } catch (error) {
-      console.error("Error checking blockchain for payment:", error);
-      return false;
     }
+
+    return { found: false, agentTxs };
   }
 
   /**
