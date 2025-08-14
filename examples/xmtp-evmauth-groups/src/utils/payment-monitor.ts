@@ -6,6 +6,7 @@ import { createPublicClient, formatEther, http, parseEther } from "viem";
 import { base } from "viem/chains";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig } from "../types/types";
+import { enhancedPaymentCheck } from "./simple-indexer-integration";
 
 export class PaymentMonitor {
   private publicClient;
@@ -253,8 +254,24 @@ export class PaymentMonitor {
   ): Promise<boolean> {
     try {
       console.log(
-        `🔍 Checking blockchain for payment to ${this.agentAddress} (expecting from ${payment.memberAddress} or associated smart account)`,
+        `🔍 Checking for payment to ${this.agentAddress} (expecting from ${payment.memberAddress} or associated smart account)`,
       );
+
+      // FIRST: Try indexer for fast, reliable payment detection
+      const indexerResult = await enhancedPaymentCheck(
+        this.agentAddress,
+        payment.memberAddress,
+        new Date(payment.timestamp)
+      );
+
+      if (indexerResult?.found) {
+        console.log(`🎯 Payment confirmed via indexer: ${indexerResult.txHash}`);
+        console.log(`💰 Amount: ${Number(indexerResult.amount || '0') / 1e18} ETH`);
+        return true;
+      }
+
+      // FALLBACK: Use RPC scanning if indexer unavailable/no result
+      console.log(`🔄 Indexer check complete, proceeding with RPC verification...`);
 
       // Payment happens AFTER /create-group command, so use the scan window provided
       // by checkForPayments which correctly scans forward from current block

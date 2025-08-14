@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: xmtp-indexer
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run serve:production
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_NAME
+        value: xmtp_indexer
+      - key: GQL_PORT
+        value: 4350
+      - key: PORT
+        value: 4350
+      - key: RPC_BASE_HTTP
+        value: https://mainnet.base.org
+      - key: AGENT_ADDRESS
+        value: 0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc
+      - key: DEPLOYMENT_BLOCK
+        value: 34200000
+
+databases:
+  - name: xmtp-indexer-db
+    plan: starter
+    databaseName: xmtp_indexer
+    user: indexer_user

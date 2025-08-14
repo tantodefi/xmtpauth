@@ -92,7 +92,7 @@ async function main() {
   // Configure XMTP database path for mounted disk
   const xmtpDbPath =
     process.env.NODE_ENV === "production"
-      ? `/app/data/xmtp-${XMTP_ENV}-${signer.getIdentifier().identifier}`
+      ? `/app/data/xmtp-${XMTP_ENV}-${(await signer.getIdentifier()).identifier}`
       : undefined;
 
   const client = await Client.create(signer, {

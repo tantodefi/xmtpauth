@@ -1,0 +1,64 @@
+services:
+  # Existing XMTP Agent (Background Worker)
+  - type: worker
+    name: xmtp-evmauth-agent
+    env: node
+    plan: starter
+    buildCommand: yarn install --immutable
+    startCommand: yarn render:agent
+    disk:
+      name: xmtp-agent-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: XMTP_ENV
+        value: production
+      - key: EVMAUTH_FACTORY_ADDRESS
+        value: 0xa8830A603aE5143a1f8BAA46e28C36e4765EC754
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: USDC_ADDRESS
+        value: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      - key: FEE_BASIS_POINTS
+        value: 250
+      # NEW: Indexer connection
+      - key: INDEXER_GRAPHQL_URL
+        value: https://xmtp-indexer-service.onrender.com/graphql
+    # Environment variables that need to be set in Render dashboard:
+    # WALLET_KEY - Agent's private key
+    # ENCRYPTION_KEY - XMTP database encryption key
+    # FEE_RECIPIENT - Address to receive platform fees
+
+  # NEW: SQD Indexer Service (Web Service with GraphQL API)
+  - type: web
+    name: xmtp-indexer-service
+    env: node
+    plan: starter
+    buildCommand: cd xmtp-indexer && npm install && npm run build
+    startCommand: cd xmtp-indexer && npm run serve
+    disk:
+      name: indexer-data
+      mountPath: /app/indexer-data
+      sizeGB: 2
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_NAME
+        value: xmtp_indexer
+      - key: GQL_PORT
+        value: 4350
+      - key: RPC_BASE_HTTP
+        value: https://mainnet.base.org
+      - key: AGENT_ADDRESS
+        value: 0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc
+      - key: DEPLOYMENT_BLOCK
+        value: 34000000
+
+databases:
+  # PostgreSQL for the indexer
+  - name: xmtp-indexer-db
+    plan: starter
+    databaseName: xmtp_indexer
+    user: indexer_user

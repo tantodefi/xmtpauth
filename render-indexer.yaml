@@ -1,0 +1,58 @@
+services:
+  # Your existing XMTP Agent (unchanged)
+  - type: worker
+    name: xmtp-evmauth-agent
+    env: node
+    plan: starter
+    buildCommand: yarn install --immutable
+    startCommand: yarn render:agent
+    disk:
+      name: xmtp-agent-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: XMTP_ENV
+        value: production
+      - key: EVMAUTH_FACTORY_ADDRESS
+        value: 0xa8830A603aE5143a1f8BAA46e28C36e4765EC754
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: USDC_ADDRESS
+        value: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      - key: FEE_BASIS_POINTS
+        value: 250
+      # NEW: Connect to indexer
+      - key: INDEXER_URL
+        value: https://xmtp-indexer-service-YOUR_RENDER_ID.onrender.com/graphql
+
+  # NEW: SQD Indexer Service
+  - type: web
+    name: xmtp-indexer-service
+    env: node
+    plan: starter
+    repo: https://github.com/your-username/xmtpauth # Update with your repo
+    branch: main
+    rootDir: xmtp-indexer
+    buildCommand: npm install && npm run build
+    startCommand: npm run serve
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_NAME
+        value: xmtp_indexer
+      - key: GQL_PORT
+        value: 4350
+      - key: RPC_BASE_HTTP
+        value: https://mainnet.base.org
+      - key: AGENT_ADDRESS
+        value: 0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc
+      - key: DEPLOYMENT_BLOCK
+        value: 34200000
+
+databases:
+  - name: xmtp-indexer-db
+    plan: starter
+    databaseName: xmtp_indexer
+    user: indexer_user

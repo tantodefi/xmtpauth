@@ -1,0 +1,39 @@
+# ETH transfers to the XMTP agent address
+type EthTransfer @entity {
+  id: ID!
+  blockNumber: Int! @index
+  timestamp: DateTime! @index
+  from: String! @index
+  to: String! @index
+  value: BigInt!
+  transactionHash: String! @index
+  isPayment: Boolean! @index # >= 0.001 ETH
+  status: String # success/failed
+}
+
+# EVMAuth contract events
+type ContractEvent @entity {
+  id: ID!
+  contractAddress: String! @index
+  eventName: String! @index
+  blockNumber: Int! @index
+  timestamp: DateTime!
+  transactionHash: String! @index
+  userAddress: String @index
+  userInboxId: String @index
+  tokenId: String
+  expiresAt: DateTime
+  reason: String # for revocation events
+  args: JSON! # raw event arguments
+}
+
+# Contract deployments
+type ContractDeployment @entity {
+  id: ID!
+  contractAddress: String! @index
+  deployer: String! @index
+  blockNumber: Int! @index
+  timestamp: DateTime!
+  transactionHash: String! @index
+  contractType: String # "EVMAuth"
+}
