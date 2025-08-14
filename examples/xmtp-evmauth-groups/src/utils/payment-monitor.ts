@@ -34,21 +34,23 @@ export class PaymentMonitor {
     // Define reliable Base mainnet RPC endpoints as fallbacks
     this.rpcEndpoints = [
       rpcUrl, // Use provided URL first
-      'https://mainnet.base.org',
-      'https://base.blockpi.network/v1/rpc/public',
-      'https://1rpc.io/base',
-      'https://base-pokt.nodies.app',
-      'https://base.meowrpc.com'
+      "https://mainnet.base.org",
+      "https://base.blockpi.network/v1/rpc/public",
+      "https://1rpc.io/base",
+      "https://base-pokt.nodies.app",
+      "https://base.meowrpc.com",
     ];
     this.currentRpcIndex = 0;
-    
+
     this.publicClient = this.createPublicClient();
     this.agentAddress = agentAddress;
     this.enhancedGroupManager = enhancedGroupManager;
     this.groupConfigs = groupConfigs;
     this.pendingPayments = new Map();
-    
-    console.log(`💰 Payment monitor initialized with ${this.rpcEndpoints.length} RPC endpoints`);
+
+    console.log(
+      `💰 Payment monitor initialized with ${this.rpcEndpoints.length} RPC endpoints`,
+    );
     console.log(`🔗 Primary RPC: ${this.rpcEndpoints[0]}`);
   }
 
@@ -65,13 +67,14 @@ export class PaymentMonitor {
   }
 
   private async switchToNextRpc(): Promise<boolean> {
-    this.currentRpcIndex = (this.currentRpcIndex + 1) % this.rpcEndpoints.length;
+    this.currentRpcIndex =
+      (this.currentRpcIndex + 1) % this.rpcEndpoints.length;
     const newUrl = this.rpcEndpoints[this.currentRpcIndex];
-    
+
     console.log(`🔄 Switching to RPC endpoint: ${newUrl}`);
-    
+
     this.publicClient = this.createPublicClient();
-    
+
     // Test the new endpoint
     try {
       await this.publicClient.getBlockNumber();
@@ -86,18 +89,23 @@ export class PaymentMonitor {
   private async executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
     let attempts = 0;
     const maxAttempts = this.rpcEndpoints.length;
-    
+
     while (attempts < maxAttempts) {
       try {
         return await operation();
       } catch (error: any) {
         attempts++;
-        
+
         // Check if it's a rate limiting error
-        if (error.status === 429 || error.message?.includes('rate limit') || 
-            error.message?.includes('Too Many Requests')) {
-          console.log(`⚠️ Rate limited on ${this.rpcEndpoints[this.currentRpcIndex]}`);
-          
+        if (
+          error.status === 429 ||
+          error.message?.includes("rate limit") ||
+          error.message?.includes("Too Many Requests")
+        ) {
+          console.log(
+            `⚠️ Rate limited on ${this.rpcEndpoints[this.currentRpcIndex]}`,
+          );
+
           if (attempts < maxAttempts) {
             const switched = await this.switchToNextRpc();
             if (switched) {
@@ -105,18 +113,18 @@ export class PaymentMonitor {
             }
           }
         }
-        
+
         // If it's the last attempt or not a rate limit error, throw
         if (attempts >= maxAttempts) {
           throw error;
         }
-        
+
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 2000 * attempts));
+        await new Promise((resolve) => setTimeout(resolve, 2000 * attempts));
       }
     }
-    
-    throw new Error('All RPC endpoints failed');
+
+    throw new Error("All RPC endpoints failed");
   }
 
   /**
@@ -167,8 +175,8 @@ export class PaymentMonitor {
   private async checkForPayments() {
     try {
       // Get current block number with retry mechanism
-      const currentBlock = await this.executeWithRetry(() => 
-        this.publicClient.getBlockNumber()
+      const currentBlock = await this.executeWithRetry(() =>
+        this.publicClient.getBlockNumber(),
       );
 
       // Check last 200 blocks for transactions to agent address (Base: ~6.7 minutes)
@@ -259,7 +267,7 @@ export class PaymentMonitor {
           this.publicClient.getBlock({
             blockNumber: blockNum,
             includeTransactions: true,
-          })
+          }),
         );
 
         if (block.transactions) {
@@ -288,7 +296,7 @@ export class PaymentMonitor {
                 const receipt = await this.executeWithRetry(() =>
                   this.publicClient.getTransactionReceipt({
                     hash: tx.hash,
-                  })
+                  }),
                 );
 
                 if (receipt.status === "success") {
@@ -310,7 +318,7 @@ export class PaymentMonitor {
 
         // Add small delay between block scans to avoid overwhelming RPC
         if ((blockNum - fromBlock) % 10n === 0n && blockNum !== toBlock) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
 
