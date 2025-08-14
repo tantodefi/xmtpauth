@@ -179,8 +179,8 @@ export class PaymentMonitor {
         this.publicClient.getBlockNumber(),
       );
 
-      // Check last 900 blocks for transactions to agent address (Base: ~30 minutes at 2s blocks)
-      const fromBlock = currentBlock - 900n;
+      // Check last 300 blocks for transactions to agent address (Base: ~10 minutes at 2s blocks)
+      const fromBlock = currentBlock - 300n;
 
       console.log(
         `🔍 Checking payments: blocks ${fromBlock} to ${currentBlock} (${this.pendingPayments.size} pending)`,
@@ -191,8 +191,8 @@ export class PaymentMonitor {
 
       // Check pending payments
       for (const [paymentId, payment] of this.pendingPayments.entries()) {
-        // Check if payment is too old (more than 15 minutes to account for 2s block times)
-        if (Date.now() - payment.timestamp > 15 * 60 * 1000) {
+        // Check if payment is too old (more than 10 minutes)
+        if (Date.now() - payment.timestamp > 10 * 60 * 1000) {
           console.log(`⏰ Payment ${paymentId} expired, removing...`);
           this.pendingPayments.delete(paymentId);
 
@@ -258,8 +258,8 @@ export class PaymentMonitor {
       const totalBlocks = Number(toBlock - fromBlock + 1n);
       console.log(`🔍 Scanning ${totalBlocks} blocks for payment...`);
 
-      // Use chunked scanning for better performance and reliability
-      const CHUNK_SIZE = 50; // Scan 50 blocks at a time
+      // Use smaller chunks for better reliability and faster detection
+      const CHUNK_SIZE = 25; // Scan 25 blocks at a time for better performance
       let totalAgentTxs = 0;
 
       // Scan from newest to oldest blocks (payments more likely in recent blocks)
@@ -275,23 +275,34 @@ export class PaymentMonitor {
 
         console.log(`📦 Scanning chunk: blocks ${chunkEnd} to ${chunkStart}`);
 
-        // Process chunk with timeout protection
-        const chunkResult = await Promise.race([
-          this.scanBlockChunk(chunkEnd, chunkStart, payment),
-          new Promise<{ found: boolean; agentTxs: number }>((_, reject) =>
-            setTimeout(() => reject(new Error("Chunk scan timeout")), 30000),
-          ),
-        ]);
+        try {
+          // Scan chunk without timeout - let individual block errors be handled gracefully
+          const chunkResult = await this.scanBlockChunk(
+            chunkEnd,
+            chunkStart,
+            payment,
+          );
 
-        if (chunkResult.found) {
-          return true;
-        }
+          if (chunkResult.found) {
+            console.log(`🎉 Payment found in chunk ${chunkEnd}-${chunkStart}!`);
+            return true;
+          }
 
-        totalAgentTxs += chunkResult.agentTxs;
+          totalAgentTxs += chunkResult.agentTxs;
 
-        // Add delay between chunks to avoid rate limiting
-        if (chunkStart - BigInt(CHUNK_SIZE) >= fromBlock) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
+          // Minimal delay between chunks
+          if (chunkStart - BigInt(CHUNK_SIZE) >= fromBlock) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+        } catch (error: unknown) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.log(
+            `⚠️ Error scanning chunk ${chunkEnd}-${chunkStart}: ${errorMessage}`,
+          );
+          console.log(`🔄 Continuing with next chunk...`);
+          // Continue with next chunk instead of failing
+          continue;
         }
       }
 
@@ -306,7 +317,7 @@ export class PaymentMonitor {
   }
 
   /**
-   * Scan a chunk of blocks for payments
+   * Scan a chunk of blocks for payments with improved reliability
    */
   private async scanBlockChunk(
     fromBlock: bigint,
@@ -315,7 +326,8 @@ export class PaymentMonitor {
   ): Promise<{ found: boolean; agentTxs: number }> {
     let agentTxs = 0;
 
-    for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
+    // Scan from newest to oldest blocks first (more likely to find recent payments)
+    for (let blockNum = toBlock; blockNum >= fromBlock; blockNum--) {
       try {
         const block = await this.executeWithRetry(() =>
           this.publicClient.getBlock({
@@ -325,12 +337,10 @@ export class PaymentMonitor {
         );
 
         if (block.transactions) {
-          // Only log every 10th block to reduce noise
-          if ((blockNum - fromBlock) % 10n === 0n) {
-            console.log(
-              `📦 Block ${blockNum}: ${block.transactions.length} transactions`,
-            );
-          }
+          // Log every block in this chunk for better visibility
+          console.log(
+            `📦 Block ${blockNum}: ${block.transactions.length} transactions`,
+          );
 
           for (const tx of block.transactions) {
             if (typeof tx === "object" && tx.to && tx.from && tx.value) {
@@ -347,18 +357,29 @@ export class PaymentMonitor {
                     payment.memberAddress.toLowerCase() &&
                   BigInt(tx.value) >= parseEther("0.001")
                 ) {
-                  // Verify transaction was successful
-                  const receipt = await this.executeWithRetry(() =>
-                    this.publicClient.getTransactionReceipt({
-                      hash: tx.hash,
-                    }),
+                  console.log(
+                    `🎯 Potential matching payment found! Verifying...`,
                   );
 
-                  if (receipt.status === "success") {
-                    console.log(`✅ Found confirmed payment: ${tx.hash}`);
-                    return { found: true, agentTxs };
-                  } else {
-                    console.log(`❌ Transaction failed: ${tx.hash}`);
+                  try {
+                    // Verify transaction was successful
+                    const receipt = await this.executeWithRetry(() =>
+                      this.publicClient.getTransactionReceipt({
+                        hash: tx.hash,
+                      }),
+                    );
+
+                    if (receipt.status === "success") {
+                      console.log(`✅ Found confirmed payment: ${tx.hash}`);
+                      console.log(`💰 Amount: ${tx.value} wei from ${tx.from}`);
+                      return { found: true, agentTxs };
+                    } else {
+                      console.log(`❌ Transaction failed: ${tx.hash}`);
+                    }
+                  } catch (receiptError) {
+                    console.log(
+                      `⚠️ Error getting receipt for ${tx.hash}, but continuing scan`,
+                    );
                   }
                 }
               }
@@ -366,9 +387,9 @@ export class PaymentMonitor {
           }
         }
 
-        // Small delay every 10 blocks within chunk
-        if ((blockNum - fromBlock) % 10n === 0n && blockNum !== toBlock) {
-          await new Promise((resolve) => setTimeout(resolve, 25));
+        // Smaller delay between blocks for faster scanning
+        if (blockNum > fromBlock) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
         }
       } catch (error: unknown) {
         const errorMessage =
