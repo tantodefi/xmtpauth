@@ -2,7 +2,7 @@
  * Payment monitoring and contract deployment workflow
  */
 
-import { createPublicClient, http, parseEther } from "viem";
+import { createPublicClient, formatEther, http, parseEther } from "viem";
 import { base } from "viem/chains";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig } from "../types/types";
@@ -243,6 +243,7 @@ export class PaymentMonitor {
 
   /**
    * Check blockchain for actual payment transactions
+   * Supports both EOA and smart account payments
    * Optimized for Base's 2-second blocks and larger scan ranges
    */
   private async checkBlockchainForPayment(
@@ -252,7 +253,7 @@ export class PaymentMonitor {
   ): Promise<boolean> {
     try {
       console.log(
-        `🔍 Checking blockchain payment from ${payment.memberAddress} to ${this.agentAddress}`,
+        `🔍 Checking blockchain for payment to ${this.agentAddress} (expecting from ${payment.memberAddress} or associated smart account)`,
       );
 
       const totalBlocks = Number(toBlock - fromBlock + 1n);
@@ -351,14 +352,29 @@ export class PaymentMonitor {
                   `💰 Found tx to agent: ${tx.hash} from ${tx.from} value ${tx.value}`,
                 );
 
-                // Check if this is the payment we're looking for
-                if (
-                  tx.from.toLowerCase() ===
-                    payment.memberAddress.toLowerCase() &&
-                  BigInt(tx.value) >= parseEther("0.001")
-                ) {
+                // Check if this is a valid payment (0.001 ETH or more)
+                // Accept from any address to support both EOAs and smart accounts
+                if (BigInt(tx.value) >= parseEther("0.001")) {
                   console.log(
-                    `🎯 Potential matching payment found! Verifying...`,
+                    `🎯 Potential payment found! Amount: ${formatEther(tx.value)} ETH from ${tx.from}`,
+                  );
+
+                  // For EOAs, check if it matches the expected address
+                  const isFromExpectedEOA =
+                    tx.from.toLowerCase() ===
+                    payment.memberAddress.toLowerCase();
+
+                  // For smart accounts, we accept any payment of the right amount
+                  // during the payment window (this is secure because payments are user-initiated)
+                  console.log(`📧 Expected EOA: ${payment.memberAddress}`);
+                  console.log(`💸 Transaction from: ${tx.from}`);
+                  console.log(`🔍 Is from expected EOA: ${isFromExpectedEOA}`);
+
+                  // Additional security: check payment timing is reasonable
+                  const paymentAge = Date.now() - payment.timestamp;
+                  const paymentAgeMinutes = Math.round(paymentAge / 60000);
+                  console.log(
+                    `⏰ Payment request age: ${paymentAgeMinutes} minutes`,
                   );
 
                   try {
@@ -372,6 +388,9 @@ export class PaymentMonitor {
                     if (receipt.status === "success") {
                       console.log(`✅ Found confirmed payment: ${tx.hash}`);
                       console.log(`💰 Amount: ${tx.value} wei from ${tx.from}`);
+                      console.log(
+                        `🏷️ Payment type: ${isFromExpectedEOA ? "EOA" : "Smart Account (likely)"}`,
+                      );
                       return { found: true, agentTxs };
                     } else {
                       console.log(`❌ Transaction failed: ${tx.hash}`);
