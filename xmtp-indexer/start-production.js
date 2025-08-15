@@ -40,10 +40,15 @@ async function setupDatabase() {
   try {
     console.log("🗄️ Setting up database...");
 
-    // FIRST: Generate TypeORM models from schema.graphql
+    // Generate TypeORM models from schema.graphql
     console.log("🔧 Generating TypeORM models...");
     await runCommand("npx", ["@subsquid/typeorm-codegen"]);
     console.log("✅ TypeORM models generated");
+
+    // Compile TypeScript to JavaScript
+    console.log("🔧 Compiling TypeScript...");
+    await runCommand("npx", ["tsc"]);
+    console.log("✅ TypeScript compiled");
 
     // For Subsquid, the processor will handle database schema creation automatically
     console.log(
@@ -64,13 +69,38 @@ async function startServices() {
     detached: false,
   });
 
+  processor.on("error", (err) => {
+    console.error("❌ Processor failed to start:", err.message);
+    process.exit(1);
+  });
+
+  processor.on("exit", (code) => {
+    if (code !== 0) {
+      console.error(`❌ Processor exited with code ${code}`);
+      process.exit(1);
+    }
+  });
+
   // Give processor time to start
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
-  // Start GraphQL server
-  const graphql = spawn("npx", ["squid-graphql-server", "--port", PORT], {
+  // Start GraphQL server with PORT environment variable
+  const graphql = spawn("npx", ["squid-graphql-server"], {
     stdio: "inherit",
     detached: false,
+    env: { ...process.env, PORT: PORT.toString() },
+  });
+
+  graphql.on("error", (err) => {
+    console.error("❌ GraphQL server failed to start:", err.message);
+    process.exit(1);
+  });
+
+  graphql.on("exit", (code) => {
+    if (code !== 0) {
+      console.error(`❌ GraphQL server exited with code ${code}`);
+      process.exit(1);
+    }
   });
 
   // Handle graceful shutdown
