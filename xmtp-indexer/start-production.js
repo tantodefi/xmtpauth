@@ -61,23 +61,15 @@ async function setupDatabase() {
 async function startServices() {
   console.log("🔄 Starting indexer services...");
 
-  // Start processor in background with proper database URL
+    // Start processor in background with proper database URL
   let dbUrl = INTERNAL_DB_URL || DB_URL;
   console.log(`🔗 Using database URL: ${dbUrl ? "Available" : "Missing"}`);
-
-  // Fix database URL format for Subsquid if needed
-  if (dbUrl && !dbUrl.includes(".postgres.render.com")) {
-    try {
-      const url = new URL(dbUrl);
-      if (!url.port) {
-        // Add default PostgreSQL port and full hostname for Render
-        const fixedHost = `${url.hostname}.postgres.render.com:5432`;
-        dbUrl = dbUrl.replace(url.hostname, fixedHost);
-        console.log(`🔧 Fixed database URL format for Subsquid`);
-      }
-    } catch (e) {
-      console.log(`⚠️ Could not parse database URL for fixing`);
-    }
+  
+  // Add SSL parameters for Subsquid/TypeORM compatibility
+  if (dbUrl && !dbUrl.includes('sslmode=')) {
+    const separator = dbUrl.includes('?') ? '&' : '?';
+    dbUrl = `${dbUrl}${separator}sslmode=require`;
+    console.log(`🔧 Added SSL configuration for Subsquid`);
   }
 
   if (dbUrl) {
