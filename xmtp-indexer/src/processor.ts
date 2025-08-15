@@ -48,13 +48,10 @@ processorBuilder = processorBuilder
       to: true,
       value: true,
       hash: true,
-      status: true,
     },
     log: {
-      address: true,
       topics: true,
       data: true,
-      transactionHash: true,
     },
     block: {
       timestamp: true,

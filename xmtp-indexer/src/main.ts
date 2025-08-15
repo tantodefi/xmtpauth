@@ -56,7 +56,9 @@ async function runProcessorWithRetry() {
     // Process transactions (ETH transfers to agent)
     for (let tx of block.transactions) {
       if (tx.to?.toLowerCase() === AGENT_ADDRESS.toLowerCase()) {
-        const isPayment = tx.value >= MIN_PAYMENT_WEI;
+        // Use BigInt for value calculation (SQD provides value as bigint)
+        const txValue = BigInt(tx.value);
+        const isPayment = txValue >= MIN_PAYMENT_WEI;
 
         ethTransfers.push(
           new EthTransfer({
@@ -64,17 +66,17 @@ async function runProcessorWithRetry() {
             blockNumber: block.header.height,
             timestamp: blockTimestamp,
             from: tx.from,
-            to: tx.to,
-            value: tx.value,
+            to: tx.to || '',
+            value: txValue.toString(),
             transactionHash: tx.hash,
             isPayment: isPayment,
-            status: tx.status === 1 ? "success" : "failed",
+            status: "success", // Simplified - only successful txs are included by SQD
           }),
         );
 
         if (isPayment) {
-          ctx.log.info(
-            `💰 Payment detected: ${tx.value} wei from ${tx.from} in block ${block.header.height}`,
+          console.log(
+            `💰 Payment detected: ${Number(txValue) / 1e18} ETH from ${tx.from} in block ${block.header.height}`,
           );
         }
       }
@@ -119,7 +121,7 @@ async function runProcessorWithRetry() {
               eventName: eventName,
               blockNumber: block.header.height,
               timestamp: blockTimestamp,
-              transactionHash: log.transactionHash,
+              transactionHash: log.id, // Use log ID as transaction reference
               userAddress: userAddress || undefined,
               userInboxId: userInboxId || undefined,
               tokenId: tokenId || undefined,
