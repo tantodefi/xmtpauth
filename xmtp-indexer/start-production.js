@@ -255,12 +255,6 @@ async function startServices() {
   console.log("✅ Processor started successfully");
   console.log(`🌐 Starting GraphQL API on port ${PORT}...`);
 
-  // Start health check server (for Render health checks)
-  const healthProcess = spawn("node", ["health-check.js"], {
-    stdio: "inherit",
-    env: { ...process.env, HEALTH_PORT: "8080" },
-  });
-
   // Start GraphQL server and keep process alive
   const graphqlProcess = spawn("npx", ["squid-graphql-server"], {
     stdio: "inherit",

@@ -38,4 +38,7 @@ export class EthTransfer {
 
     @StringColumn_({nullable: true})
     status!: string | undefined | null
+
+    @StringColumn_({nullable: true})
+    tokenType!: string | undefined | null
 }
