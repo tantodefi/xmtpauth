@@ -14,9 +14,20 @@ const USER_ACCESS_REVOKED_TOPIC = "0x..."; // Will be calculated from event sign
 const ACCESS_TOKEN_EXPIRED_TOPIC = "0x..."; // Will be calculated from event signature
 
 // Add error handling for processor startup
-console.log('🚀 Starting Subsquid processor in RPC-only mode...');
+console.log('🚀 Starting Subsquid processor with SQD Network...');
+console.log('📡 Gateway: https://v2.archive.subsquid.io/network/base-mainnet');
 console.log('🌐 RPC:', process.env.RPC_BASE_HTTP || "https://mainnet.base.org");
 console.log('🗄️ Database URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
+
+// Add error handling for the processor
+process.on('uncaughtException', (error) => {
+  console.error('🚨 Uncaught Exception:', error.message);
+  console.error('Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
   const ethTransfers: EthTransfer[] = [];

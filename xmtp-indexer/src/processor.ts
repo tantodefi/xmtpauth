@@ -20,15 +20,17 @@ const EVMAUTH_EVENTS = [
 ];
 
 export const processor = new EvmBatchProcessor()
-  // Use RPC-only mode for better reliability on Render
+  // Use SQD Network as primary data source (recommended approach)
+  .setGateway("https://v2.archive.subsquid.io/network/base-mainnet")
+  // RPC endpoint as fallback for real-time data
   .setRpcEndpoint({
     url: assertNotNull(
       process.env.RPC_BASE_HTTP || "https://mainnet.base.org",
       "No RPC endpoint supplied",
     ),
-    rateLimit: 3, // Conservative rate limit
+    rateLimit: 10,
   })
-  .setFinalityConfirmation(10) // Base has ~2s blocks, so 10 blocks = ~20s finality
+  .setFinalityConfirmation(10)
   .setFields({
     transaction: {
       from: true,

@@ -116,6 +116,57 @@ async function startServices() {
     }
   }
 
+  // Test RPC endpoint connectivity
+  const rpcUrl = process.env.RPC_BASE_HTTP || "https://base.llamarpc.com";
+  console.log(`🌐 Testing RPC endpoint: ${rpcUrl}`);
+
+  try {
+    const rpcTest = await runCommand("node", [
+      "-e",
+      `
+      const https = require('https');
+      const http = require('http');
+      
+      const testRpc = (url) => {
+        return new Promise((resolve, reject) => {
+          const client = url.startsWith('https:') ? https : http;
+          const req = client.request(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 10000
+          }, (res) => {
+            console.log('✅ RPC endpoint accessible, status:', res.statusCode);
+            resolve();
+          });
+          
+          req.on('error', (err) => {
+            console.error('❌ RPC endpoint failed:', err.message);
+            reject(err);
+          });
+          
+          req.on('timeout', () => {
+            console.error('❌ RPC endpoint timeout');
+            req.destroy();
+            reject(new Error('Timeout'));
+          });
+          
+          req.write(JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_blockNumber',
+            params: [],
+            id: 1
+          }));
+          req.end();
+        });
+      };
+      
+      testRpc('${rpcUrl}').catch(() => process.exit(1));
+      `,
+    ]);
+  } catch (error) {
+    console.error("❌ RPC connectivity test failed:", error.message);
+  }
+
   console.log(
     `🔧 Starting processor with DATABASE_URL: ${dbUrl.substring(0, 50)}...`,
   );
