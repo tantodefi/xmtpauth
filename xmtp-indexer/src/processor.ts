@@ -20,14 +20,13 @@ const EVMAUTH_EVENTS = [
 ];
 
 export const processor = new EvmBatchProcessor()
-  // Use Base mainnet instead of Ethereum
-  .setGateway("https://v2.archive.subsquid.io/network/base-mainnet")
+  // Use RPC-only mode for better reliability on Render
   .setRpcEndpoint({
     url: assertNotNull(
-      process.env.RPC_BASE_HTTP || "https://base-mainnet.g.alchemy.com/v2/demo",
+      process.env.RPC_BASE_HTTP || "https://mainnet.base.org",
       "No RPC endpoint supplied",
     ),
-    rateLimit: 5, // Reduced rate limit
+    rateLimit: 3, // Conservative rate limit
   })
   .setFinalityConfirmation(10) // Base has ~2s blocks, so 10 blocks = ~20s finality
   .setFields({

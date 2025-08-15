@@ -14,9 +14,8 @@ const USER_ACCESS_REVOKED_TOPIC = "0x..."; // Will be calculated from event sign
 const ACCESS_TOKEN_EXPIRED_TOPIC = "0x..."; // Will be calculated from event signature
 
 // Add error handling for processor startup
-console.log('🚀 Starting Subsquid processor...');
-console.log('📡 Gateway:', 'https://v2.archive.subsquid.io/network/base-mainnet');
-console.log('🌐 RPC:', process.env.RPC_BASE_HTTP || "https://base-mainnet.g.alchemy.com/v2/demo");
+console.log('🚀 Starting Subsquid processor in RPC-only mode...');
+console.log('🌐 RPC:', process.env.RPC_BASE_HTTP || "https://mainnet.base.org");
 console.log('🗄️ Database URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
 
 processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
