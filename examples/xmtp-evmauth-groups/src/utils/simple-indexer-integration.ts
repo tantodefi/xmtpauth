@@ -20,8 +20,9 @@ export class SimpleIndexerClient {
 
   constructor(agentAddress: string) {
     this.agentAddress = agentAddress.toLowerCase();
-    this.indexerUrl = process.env.INDEXER_URL || 'http://localhost:4350/graphql';
-    
+    this.indexerUrl =
+      process.env.INDEXER_URL || "http://localhost:4350/graphql";
+
     console.log(`🔗 Simple indexer client initialized for ${agentAddress}`);
     console.log(`🌐 Indexer URL: ${this.indexerUrl}`);
   }
@@ -32,20 +33,20 @@ export class SimpleIndexerClient {
    */
   async findPaymentFromAddress(
     fromAddress: string,
-    sinceTimestamp: Date
+    sinceTimestamp: Date,
   ): Promise<IndexerPaymentData | null> {
     try {
       const query = `
-        query FindPayment($agentAddress: String!, $fromAddress: String!, $sinceTimestamp: String!) {
+        query FindPayment($agentAddress: String!, $fromAddress: String!, $sinceTimestamp: DateTime!) {
           ethTransfers(
             where: { 
-              to: { _eq: $agentAddress }
-              from: { _eq: $fromAddress }
-              isPayment: { _eq: true }
-              status: { _eq: "success" }
-              timestamp: { _gte: $sinceTimestamp }
+              to_eq: $agentAddress
+              from_eq: $fromAddress
+              isPayment_eq: true
+              status_eq: "success"
+              timestamp_gte: $sinceTimestamp
             }
-            orderBy: [{ timestamp: desc }]
+            orderBy: [timestamp_DESC]
             limit: 1
           ) {
             transactionHash
@@ -61,25 +62,27 @@ export class SimpleIndexerClient {
       `;
 
       const response = await fetch(this.indexerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query,
           variables: {
             agentAddress: this.agentAddress,
             fromAddress: fromAddress.toLowerCase(),
-            sinceTimestamp: sinceTimestamp.toISOString()
-          }
-        })
+            sinceTimestamp: sinceTimestamp.toISOString(),
+          },
+        }),
       });
 
       if (!response.ok) {
-        console.warn(`Indexer request failed: ${response.status} ${response.statusText}`);
+        console.warn(
+          `Indexer request failed: ${response.status} ${response.statusText}`,
+        );
         return null; // Graceful fallback
       }
 
-      const data = await response.json() as any;
-      
+      const data = (await response.json()) as any;
+
       if (data.errors) {
         console.warn(`Indexer GraphQL errors:`, data.errors);
         return null; // Graceful fallback
@@ -87,9 +90,8 @@ export class SimpleIndexerClient {
 
       const payment = data.data?.ethTransfers?.[0];
       return payment || null;
-
     } catch (error) {
-      console.warn('Indexer query failed, will use RPC fallback:', error);
+      console.warn("Indexer query failed, will use RPC fallback:", error);
       return null; // Graceful fallback - let RPC scanning take over
     }
   }
@@ -108,8 +110,8 @@ export class SimpleIndexerClient {
       `;
 
       const response = await fetch(this.indexerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
       });
 
@@ -127,27 +129,29 @@ export class SimpleIndexerClient {
 export async function enhancedPaymentCheck(
   agentAddress: string,
   memberAddress: string,
-  paymentTimestamp: Date
+  paymentTimestamp: Date,
 ): Promise<{ found: boolean; txHash?: string; amount?: string } | null> {
   const indexerClient = new SimpleIndexerClient(agentAddress);
-  
+
   // Try indexer first
   const indexerPayment = await indexerClient.findPaymentFromAddress(
     memberAddress,
-    paymentTimestamp
+    paymentTimestamp,
   );
-  
+
   if (indexerPayment) {
-    console.log(`🎯 Payment found via indexer: ${indexerPayment.transactionHash}`);
+    console.log(
+      `🎯 Payment found via indexer: ${indexerPayment.transactionHash}`,
+    );
     console.log(`💰 Amount: ${Number(indexerPayment.value) / 1e18} ETH`);
-    
+
     return {
       found: true,
       txHash: indexerPayment.transactionHash,
-      amount: indexerPayment.value
+      amount: indexerPayment.value,
     };
   }
-  
+
   // If indexer fails/unavailable, return null to let RPC scanning continue
   console.log(`🔄 Indexer didn't find payment, RPC scanning will continue...`);
   return null;
