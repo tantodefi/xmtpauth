@@ -40,15 +40,10 @@ async function setupDatabase() {
   try {
     console.log("🗄️ Setting up database...");
 
-    // Generate TypeORM models from schema.graphql
-    console.log("🔧 Generating TypeORM models...");
-    await runCommand("npx", ["@subsquid/typeorm-codegen"]);
-    console.log("✅ TypeORM models generated");
-
-    // Compile TypeScript to JavaScript
-    console.log("🔧 Compiling TypeScript...");
-    await runCommand("npx", ["tsc"]);
-    console.log("✅ TypeScript compiled");
+    // Build project (generates models + compiles TypeScript)
+    console.log("🔧 Building project (codegen + TypeScript compilation)...");
+    await runCommand("npm", ["run", "build"]);
+    console.log("✅ Project built successfully");
 
     // For Subsquid, the processor will handle database schema creation automatically
     console.log(
