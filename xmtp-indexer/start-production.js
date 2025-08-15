@@ -64,9 +64,9 @@ async function startServices() {
   // Start processor in background with proper database URL
   let dbUrl = INTERNAL_DB_URL || DB_URL;
   console.log(`🔗 Using database URL: ${dbUrl ? "Available" : "Missing"}`);
-  
+
   // Fix database URL format for Subsquid if needed
-  if (dbUrl && !dbUrl.includes('.postgres.render.com')) {
+  if (dbUrl && !dbUrl.includes(".postgres.render.com")) {
     try {
       const url = new URL(dbUrl);
       if (!url.port) {
