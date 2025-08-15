@@ -61,10 +61,47 @@ async function setupDatabase() {
 async function startServices() {
   console.log("🔄 Starting indexer services...");
 
-  // Start processor in background with proper database URL
+    // Start processor in background with proper database URL
   const dbUrl = INTERNAL_DB_URL || DB_URL;
   console.log(`🔗 Using database URL: ${dbUrl ? "Available" : "Missing"}`);
+  
+  if (dbUrl) {
+    // Parse and log database URL details (without password)
+    try {
+      const url = new URL(dbUrl);
+      console.log(`🔗 Database host: ${url.hostname}:${url.port}`);
+      console.log(`🔗 Database name: ${url.pathname.substring(1)}`);
+      console.log(`🔗 Database user: ${url.username}`);
+    } catch (e) {
+      console.log(`🔗 Database URL format: ${dbUrl.substring(0, 20)}...`);
+    }
 
+    // Test database connectivity
+    console.log("🔍 Testing database connectivity...");
+    try {
+      const testResult = await runCommand("node", ["-e", `
+        const { Client } = require('pg');
+        const client = new Client('${dbUrl}');
+        client.connect()
+          .then(() => {
+            console.log('✅ Database connection successful');
+            return client.query('SELECT version()');
+          })
+          .then((result) => {
+            console.log('📊 Database version:', result.rows[0].version.split(' ')[0]);
+            client.end();
+          })
+          .catch((err) => {
+            console.error('❌ Database connection failed:', err.message);
+            client.end();
+            process.exit(1);
+          });
+      `]);
+    } catch (error) {
+      console.error("❌ Database connectivity test failed:", error.message);
+    }
+  }
+  
   const processor = spawn("node", ["-r", "dotenv/config", "lib/main.js"], {
     stdio: "pipe", // Capture output for better debugging
     detached: false,
