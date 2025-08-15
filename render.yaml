@@ -54,9 +54,8 @@ services:
         value: 0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc
       - key: DEPLOYMENT_BLOCK
         value: 34200000
-      # Disable SQD Network Gateway due to connection issues on Render
-      - key: USE_SQD_GATEWAY
-        value: false
+      # SQD Network enabled by default (officially supported for Base mainnet)
+      # Set USE_SQD_GATEWAY=false in Render dashboard if needed for debugging
     # Connect to the PostgreSQL database
     databases:
       - name: xmtp-indexer-db

@@ -26,26 +26,16 @@ const EVMAUTH_EVENTS = [
 // ERC20 Transfer event signature
 const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-// Force RPC-only mode on Render due to SQD Gateway connection issues
-// Can be re-enabled locally with USE_SQD_GATEWAY=true
-const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY === 'true';
-
-// Create processor with conditional gateway
-let processorBuilder = new EvmBatchProcessor();
-
-// Conditionally add SQD Network gateway
-if (USE_SQD_GATEWAY) {
-  processorBuilder = processorBuilder.setGateway("https://v2.archive.subsquid.io/network/base-mainnet");
-}
-
-// Configure the processor with RPC endpoint and other settings
-processorBuilder = processorBuilder
+// Simple processor configuration following SQD docs pattern
+export const processor = new EvmBatchProcessor()
+  // Use SQD Network for Base mainnet (officially supported)
+  .setGateway("https://v2.archive.subsquid.io/network/base-mainnet")
   .setRpcEndpoint({
     url: assertNotNull(
       process.env.RPC_BASE_HTTP || "https://base.llamarpc.com",
       "No RPC endpoint supplied",
     ),
-    rateLimit: 5,
+    rateLimit: 3, // Conservative rate limit
     requestTimeout: 30000,
   })
   .setFinalityConfirmation(10)
@@ -86,10 +76,7 @@ processorBuilder = processorBuilder
     range: { from: DEPLOYMENT_BLOCK },
   });
 
-// Export the configured processor
-export const processor = processorBuilder;
-
-export type Fields = EvmBatchProcessorFields<typeof processorBuilder>;
+export type Fields = EvmBatchProcessorFields<typeof processor>;
 export type Block = BlockHeader<Fields>;
 export type Log = _Log<Fields>;
 export type Transaction = _Transaction<Fields>;

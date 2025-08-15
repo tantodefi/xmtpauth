@@ -48,10 +48,14 @@ async function setupDatabase() {
     await runCommand("npm", ["run", "build"]);
     console.log("✅ Project built successfully");
 
-    // For Subsquid, the processor will handle database schema creation automatically
-    console.log(
-      "ℹ️ Database schema will be created automatically by the processor",
-    );
+    // Generate and apply database migrations (required per SQD documentation)
+    console.log("🗄️ Generating database migrations...");
+    await runCommand("npx", ["squid-typeorm-migration", "generate"]);
+    console.log("✅ Database migrations generated");
+
+    console.log("🗄️ Applying database migrations...");
+    await runCommand("npx", ["squid-typeorm-migration", "apply"]);
+    console.log("✅ Database migrations applied successfully");
   } catch (error) {
     console.error("❌ Database setup failed:", error.message);
     throw error;
