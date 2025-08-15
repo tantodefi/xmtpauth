@@ -14,9 +14,13 @@ const USER_ACCESS_REVOKED_TOPIC = "0x..."; // Will be calculated from event sign
 const ACCESS_TOKEN_EXPIRED_TOPIC = "0x..."; // Will be calculated from event signature
 
 // Add error handling for processor startup
-console.log('🚀 Starting Subsquid processor with SQD Network...');
-console.log('📡 Gateway: https://v2.archive.subsquid.io/network/base-mainnet');
-console.log('🌐 RPC:', process.env.RPC_BASE_HTTP || "https://mainnet.base.org");
+const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY === 'true';
+console.log('🚀 Starting Subsquid processor...');
+console.log(`📡 Mode: ${USE_SQD_GATEWAY ? 'SQD Network + RPC' : 'RPC-only'}`);
+if (USE_SQD_GATEWAY) {
+  console.log('📡 Gateway: https://v2.archive.subsquid.io/network/base-mainnet');
+}
+console.log('🌐 RPC:', process.env.RPC_BASE_HTTP || "https://base.llamarpc.com");
 console.log('🗄️ Database URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
 
 // Add error handling for the processor

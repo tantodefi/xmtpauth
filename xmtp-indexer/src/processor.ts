@@ -19,16 +19,27 @@ const EVMAUTH_EVENTS = [
   "0x...", // AccessTokenExpired event signature - will be filled in
 ];
 
-export const processor = new EvmBatchProcessor()
-  // Use SQD Network as primary data source (recommended approach)
-  .setGateway("https://v2.archive.subsquid.io/network/base-mainnet")
-  // RPC endpoint as fallback for real-time data
+// For now, disable SQD Gateway due to connection issues on Render
+// Can be re-enabled later with USE_SQD_GATEWAY=true environment variable
+const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY === 'true';
+
+// Create processor with conditional gateway
+let processorBuilder = new EvmBatchProcessor();
+
+// Conditionally add SQD Network gateway
+if (USE_SQD_GATEWAY) {
+  processorBuilder = processorBuilder.setGateway("https://v2.archive.subsquid.io/network/base-mainnet");
+}
+
+// Configure the processor with RPC endpoint and other settings
+processorBuilder = processorBuilder
   .setRpcEndpoint({
     url: assertNotNull(
-      process.env.RPC_BASE_HTTP || "https://mainnet.base.org",
+      process.env.RPC_BASE_HTTP || "https://base.llamarpc.com",
       "No RPC endpoint supplied",
     ),
-    rateLimit: 10,
+    rateLimit: 5,
+    requestTimeout: 30000,
   })
   .setFinalityConfirmation(10)
   .setFields({
@@ -64,7 +75,10 @@ export const processor = new EvmBatchProcessor()
     range: { from: DEPLOYMENT_BLOCK },
   });
 
-export type Fields = EvmBatchProcessorFields<typeof processor>;
+// Export the configured processor
+export const processor = processorBuilder;
+
+export type Fields = EvmBatchProcessorFields<typeof processorBuilder>;
 export type Block = BlockHeader<Fields>;
 export type Log = _Log<Fields>;
 export type Transaction = _Transaction<Fields>;
