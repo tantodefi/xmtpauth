@@ -60,7 +60,7 @@ async function runProcessorWithRetry() {
       if (tx.to?.toLowerCase() === AGENT_ADDRESS.toLowerCase()) {
         // Check if transaction has value (ETH transfer)
         const hasValue = 'value' in tx && tx.value !== undefined;
-        const txValue = hasValue ? BigInt(tx.value as string) : 0n;
+        const txValue = hasValue ? tx.value : 0n;
         const isPayment = txValue >= MIN_PAYMENT_WEI;
 
         ethTransfers.push(
