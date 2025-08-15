@@ -47,14 +47,14 @@ async function setupDatabase() {
 
     // Generate migrations if needed
     try {
-      await runCommand("npx", ["squid-typeorm-migration", "generate"]);
+      await runCommand("npx", ["@subsquid/typeorm-migration", "generate"]);
       console.log("✅ Migrations generated");
     } catch (error) {
       console.log("ℹ️ No new migrations needed");
     }
 
     // Apply migrations
-    await runCommand("npx", ["squid-typeorm-migration", "apply"]);
+    await runCommand("npx", ["@subsquid/typeorm-migration", "apply"]);
     console.log("✅ Database migrations applied");
   } catch (error) {
     console.error("❌ Database setup failed:", error.message);
