@@ -21,8 +21,8 @@ const USER_ACCESS_GRANTED_TOPIC = "0x..."; // Will be calculated from event sign
 const USER_ACCESS_REVOKED_TOPIC = "0x..."; // Will be calculated from event signature
 const ACCESS_TOKEN_EXPIRED_TOPIC = "0x..."; // Will be calculated from event signature
 
-// Add error handling for processor startup
-const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY !== 'false';
+// Add error handling for processor startup  
+const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY === 'true';
 console.log('🚀 Starting Subsquid processor...');
 console.log(`📡 Mode: ${USE_SQD_GATEWAY ? 'SQD Network + RPC (recommended)' : 'RPC-only (fallback)'}`);
 if (USE_SQD_GATEWAY) {

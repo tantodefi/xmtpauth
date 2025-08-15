@@ -26,9 +26,9 @@ const EVMAUTH_EVENTS = [
 // ERC20 Transfer event signature
 const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-// Enable SQD Network by default (recommended approach from SQD docs)
-// Can be disabled with USE_SQD_GATEWAY=false for debugging
-const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY !== 'false';
+// Force RPC-only mode on Render due to SQD Gateway connection issues
+// Can be re-enabled locally with USE_SQD_GATEWAY=true
+const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY === 'true';
 
 // Create processor with conditional gateway
 let processorBuilder = new EvmBatchProcessor();
