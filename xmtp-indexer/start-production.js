@@ -123,6 +123,9 @@ async function startServices() {
       ...process.env,
       DATABASE_URL: dbUrl,
       NODE_TLS_REJECT_UNAUTHORIZED: "0",
+      // TypeORM SSL configuration
+      TYPEORM_SSL: "true",
+      TYPEORM_SSL_REJECT_UNAUTHORIZED: "false",
     },
   });
 
