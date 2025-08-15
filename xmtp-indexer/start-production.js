@@ -45,17 +45,8 @@ async function setupDatabase() {
     await runCommand("npx", ["@subsquid/typeorm-codegen"]);
     console.log("✅ TypeORM models generated");
 
-    // Generate migrations if needed
-    try {
-      await runCommand("npx", ["@subsquid/typeorm-migration", "generate"]);
-      console.log("✅ Migrations generated");
-    } catch (error) {
-      console.log("ℹ️ No new migrations needed");
-    }
-
-    // Apply migrations
-    await runCommand("npx", ["@subsquid/typeorm-migration", "apply"]);
-    console.log("✅ Database migrations applied");
+    // For Subsquid, the processor will handle database schema creation automatically
+    console.log("ℹ️ Database schema will be created automatically by the processor");
   } catch (error) {
     console.error("❌ Database setup failed:", error.message);
     throw error;
