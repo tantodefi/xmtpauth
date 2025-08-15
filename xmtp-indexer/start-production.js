@@ -46,7 +46,9 @@ async function setupDatabase() {
     console.log("✅ TypeORM models generated");
 
     // For Subsquid, the processor will handle database schema creation automatically
-    console.log("ℹ️ Database schema will be created automatically by the processor");
+    console.log(
+      "ℹ️ Database schema will be created automatically by the processor",
+    );
   } catch (error) {
     console.error("❌ Database setup failed:", error.message);
     throw error;
