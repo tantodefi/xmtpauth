@@ -64,7 +64,7 @@ async function startServices() {
   // Start processor in background with proper database URL
   const dbUrl = INTERNAL_DB_URL || DB_URL;
   console.log(`🔗 Using database URL: ${dbUrl ? "Available" : "Missing"}`);
-  
+
   const processor = spawn("node", ["-r", "dotenv/config", "lib/main.js"], {
     stdio: "pipe", // Capture output for better debugging
     detached: false,
@@ -97,10 +97,10 @@ async function startServices() {
 
   // Start GraphQL server as main process (this will bind to the port)
   console.log(`🌐 Starting GraphQL server on port ${PORT}...`);
-  
+
   // Use exec instead of spawn for the GraphQL server to replace the main process
   const { exec } = require("child_process");
-  
+
   // Handle graceful shutdown
   process.on("SIGTERM", () => {
     console.log("🛑 Shutting down...");
@@ -116,7 +116,7 @@ async function startServices() {
 
   console.log("✅ Processor started successfully");
   console.log(`🌐 Starting GraphQL API on port ${PORT}...`);
-  
+
   // Start GraphQL server and keep process alive
   const graphqlProcess = spawn("npx", ["squid-graphql-server"], {
     stdio: "inherit",
