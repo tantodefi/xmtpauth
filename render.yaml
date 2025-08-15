@@ -54,6 +54,10 @@ services:
         value: 0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc
       - key: DEPLOYMENT_BLOCK
         value: 34200000
+    # Connect to the PostgreSQL database
+    databases:
+      - name: xmtp-indexer-db
+        as: DATABASE_URL
 
 databases:
   # PostgreSQL for the indexer
