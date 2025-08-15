@@ -61,14 +61,14 @@ async function setupDatabase() {
 async function startServices() {
   console.log("🔄 Starting indexer services...");
 
-    // Start processor in background with proper database URL
+  // Start processor in background with proper database URL
   let dbUrl = INTERNAL_DB_URL || DB_URL;
   console.log(`🔗 Using database URL: ${dbUrl ? "Available" : "Missing"}`);
-  
-  // Add SSL parameters for Subsquid/TypeORM compatibility
-  if (dbUrl && !dbUrl.includes('sslmode=')) {
-    const separator = dbUrl.includes('?') ? '&' : '?';
-    dbUrl = `${dbUrl}${separator}sslmode=require`;
+
+  // Add SSL parameters for Subsquid/TypeORM compatibility  
+  if (dbUrl && !dbUrl.includes("ssl")) {
+    const separator = dbUrl.includes("?") ? "&" : "?";
+    dbUrl = `${dbUrl}${separator}ssl=true&sslmode=prefer`;
     console.log(`🔧 Added SSL configuration for Subsquid`);
   }
 
@@ -89,8 +89,12 @@ async function startServices() {
       const testResult = await runCommand("node", [
         "-e",
         `
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
         const { Client } = require('pg');
-        const client = new Client('${dbUrl}');
+        const client = new Client({
+          connectionString: '${dbUrl}',
+          ssl: { rejectUnauthorized: false }
+        });
         client.connect()
           .then(() => {
             console.log('✅ Database connection successful');
@@ -115,7 +119,11 @@ async function startServices() {
   const processor = spawn("node", ["-r", "dotenv/config", "lib/main.js"], {
     stdio: "pipe", // Capture output for better debugging
     detached: false,
-    env: { ...process.env, DATABASE_URL: dbUrl },
+    env: { 
+      ...process.env, 
+      DATABASE_URL: dbUrl,
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
+    },
   });
 
   processor.stdout.on("data", (data) => {
