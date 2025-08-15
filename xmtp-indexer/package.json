@@ -2,8 +2,8 @@
   "name": "squid-evm-template",
   "private": true,
   "scripts": {
-    "build": "npx squid-typeorm-codegen && rm -rf lib && tsc",
-    "codegen": "npx squid-typeorm-codegen",
+    "build": "npx @subsquid/typeorm-codegen && rm -rf lib && tsc",
+    "codegen": "npx @subsquid/typeorm-codegen",
     "dev": "concurrently \"npm run processor\" \"npm run serve\"",
     "processor": "node -r dotenv/config lib/main.js",
     "serve": "squid-graphql-server",

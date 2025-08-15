@@ -42,7 +42,7 @@ async function setupDatabase() {
 
     // FIRST: Generate TypeORM models from schema.graphql
     console.log("🔧 Generating TypeORM models...");
-    await runCommand("npx", ["squid-typeorm-codegen"]);
+    await runCommand("npx", ["@subsquid/typeorm-codegen"]);
     console.log("✅ TypeORM models generated");
 
     // Generate migrations if needed
