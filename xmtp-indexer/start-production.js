@@ -116,8 +116,10 @@ async function startServices() {
     }
   }
 
-  console.log(`🔧 Starting processor with DATABASE_URL: ${dbUrl.substring(0, 50)}...`);
-  
+  console.log(
+    `🔧 Starting processor with DATABASE_URL: ${dbUrl.substring(0, 50)}...`,
+  );
+
   const processor = spawn("node", ["-r", "dotenv/config", "lib/main.js"], {
     stdio: "pipe", // Capture output for better debugging
     detached: false,
