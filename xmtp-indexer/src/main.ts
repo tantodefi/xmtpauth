@@ -7,6 +7,14 @@ import { processor } from "./processor";
 // Agent configuration
 const AGENT_ADDRESS = "0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc";
 const MIN_PAYMENT_WEI = 1000000000000000n; // 0.001 ETH
+const MIN_USDC_PAYMENT = 1000000n; // 1 USDC (6 decimals)
+
+// Base mainnet token addresses
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const WETH_ADDRESS = "0x4200000000000000000000000000000000000006";
+
+// ERC20 Transfer event signature
+const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 // Event signatures for EVMAuth contracts (from your agent code)
 const USER_ACCESS_GRANTED_TOPIC = "0x..."; // Will be calculated from event signature
@@ -56,10 +64,10 @@ async function runProcessorWithRetry() {
     // Process transactions (ETH transfers to agent)
     for (let tx of block.transactions) {
       if (tx.to?.toLowerCase() === AGENT_ADDRESS.toLowerCase()) {
-        // Create a basic transaction record
-        // Value will be 0 for now - we can enhance this later with RPC calls
-        const txValue = 0n; // Use 0 bigint for now
-        const isPayment = false; // Will be determined later via RPC
+        // Check if transaction has value (ETH transfer)
+        const hasValue = 'value' in tx && tx.value !== undefined;
+        const txValue = hasValue ? BigInt(tx.value as string) : 0n;
+        const isPayment = txValue >= MIN_PAYMENT_WEI;
 
         ethTransfers.push(
           new EthTransfer({
@@ -72,19 +80,66 @@ async function runProcessorWithRetry() {
             transactionHash: tx.hash,
             isPayment: isPayment,
             status: "success",
+            tokenType: "ETH",
           }),
         );
 
-        console.log(
-          `📝 Transaction recorded: ${tx.hash} from ${tx.from} to ${tx.to} in block ${block.header.height}`,
-        );
+        if (isPayment) {
+          console.log(
+            `💰 ETH Payment: ${Number(txValue) / 1e18} ETH from ${tx.from} in block ${block.header.height}`,
+          );
+        }
       }
     }
 
-    // Process logs (contract events)
+    // Process logs (ERC20 transfers and contract events)
     for (let log of block.logs) {
-      // Check if this is an EVMAuth contract event we care about
-      if (log.topics.length > 0) {
+      // Check for ERC20 transfers to agent address
+      if (log.topics[0] === ERC20_TRANSFER_TOPIC && log.topics.length >= 3) {
+        const toAddress = `0x${log.topics[2].slice(26)}`; // Extract 'to' address from topic2
+        
+        if (toAddress.toLowerCase() === AGENT_ADDRESS.toLowerCase()) {
+          // Decode transfer amount from log data
+          const transferAmount = log.data ? BigInt(log.data) : 0n;
+          let tokenSymbol = "UNKNOWN";
+          let isTokenPayment = false;
+          
+          if (log.address.toLowerCase() === USDC_ADDRESS.toLowerCase()) {
+            tokenSymbol = "USDC";
+            isTokenPayment = transferAmount >= MIN_USDC_PAYMENT;
+          } else if (log.address.toLowerCase() === WETH_ADDRESS.toLowerCase()) {
+            tokenSymbol = "WETH";
+            isTokenPayment = transferAmount >= MIN_PAYMENT_WEI;
+          }
+
+          ethTransfers.push(
+            new EthTransfer({
+              id: `${log.id}-token`,
+              blockNumber: block.header.height,
+              timestamp: blockTimestamp,
+              from: `0x${log.topics[1].slice(26)}`, // Extract 'from' address from topic1
+              to: toAddress,
+              value: transferAmount,
+              transactionHash: log.id,
+              isPayment: isTokenPayment,
+              status: `${tokenSymbol}_TRANSFER`,
+              tokenType: tokenSymbol,
+            }),
+          );
+
+          if (isTokenPayment) {
+            const displayAmount = tokenSymbol === "USDC" 
+              ? Number(transferAmount) / 1e6 
+              : Number(transferAmount) / 1e18;
+            console.log(
+              `💰 ${tokenSymbol} Payment: ${displayAmount} ${tokenSymbol} from ${`0x${log.topics[1].slice(26)}`} in block ${block.header.height}`,
+            );
+          }
+        }
+      }
+
+      // Check for EVMAuth contract events
+      else if (log.topics.length > 0) {
         const eventTopic = log.topics[0];
         let eventName = "";
         let userAddress = "";

@@ -12,12 +12,19 @@ import { assertNotNull } from "@subsquid/util-internal";
 const AGENT_ADDRESS = "0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc";
 const DEPLOYMENT_BLOCK = 34200000; // Start from more recent block to sync faster
 
+// Base mainnet token addresses
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
+const WETH_ADDRESS = "0x4200000000000000000000000000000000000006"; // WETH on Base
+
 // EVMAuth contract events we want to track
 const EVMAUTH_EVENTS = [
   "0x...", // UserAccessGranted event signature - will be filled in
   "0x...", // UserAccessRevoked event signature - will be filled in
   "0x...", // AccessTokenExpired event signature - will be filled in
 ];
+
+// ERC20 Transfer event signature
+const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 // Enable SQD Network by default (recommended approach from SQD docs)
 // Can be disabled with USE_SQD_GATEWAY=false for debugging
@@ -52,6 +59,7 @@ processorBuilder = processorBuilder
     log: {
       topics: true,
       data: true,
+      address: true,
     },
     block: {
       timestamp: true,
@@ -62,13 +70,19 @@ processorBuilder = processorBuilder
   })
   // Track ETH transfers TO the agent address (payments)
   .addTransaction({
-    to: [AGENT_ADDRESS],
+    to: [AGENT_ADDRESS.toLowerCase()],
     range: { from: DEPLOYMENT_BLOCK },
   })
-  // Track EVMAuth contract events (will be added dynamically)
+  // Track USDC transfers TO the agent address
   .addLog({
-    // This will be populated with known contract addresses
-    // For now, we'll track all logs and filter in the processor
+    address: [USDC_ADDRESS.toLowerCase()],
+    topic0: [ERC20_TRANSFER_TOPIC],
+    range: { from: DEPLOYMENT_BLOCK },
+  })
+  // Track WETH transfers TO the agent address  
+  .addLog({
+    address: [WETH_ADDRESS.toLowerCase()],
+    topic0: [ERC20_TRANSFER_TOPIC],
     range: { from: DEPLOYMENT_BLOCK },
   });
 

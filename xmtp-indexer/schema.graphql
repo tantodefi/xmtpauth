@@ -1,4 +1,4 @@
-# ETH transfers to the XMTP agent address
+# ETH and Token transfers to the XMTP agent address
 type EthTransfer @entity {
   id: ID!
   blockNumber: Int! @index
@@ -7,8 +7,9 @@ type EthTransfer @entity {
   to: String! @index
   value: BigInt!
   transactionHash: String! @index
-  isPayment: Boolean! @index # >= 0.001 ETH
-  status: String # success/failed
+  isPayment: Boolean! @index # >= minimum threshold
+  status: String # success/failed/USDC_TRANSFER/WETH_TRANSFER
+  tokenType: String # ETH/USDC/WETH
 }
 
 # EVMAuth contract events
