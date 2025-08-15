@@ -261,17 +261,23 @@ export class PaymentMonitor {
       const indexerResult = await enhancedPaymentCheck(
         this.agentAddress,
         payment.memberAddress,
-        new Date(payment.timestamp)
+        new Date(payment.timestamp),
       );
 
       if (indexerResult?.found) {
-        console.log(`🎯 Payment confirmed via indexer: ${indexerResult.txHash}`);
-        console.log(`💰 Amount: ${Number(indexerResult.amount || '0') / 1e18} ETH`);
+        console.log(
+          `🎯 Payment confirmed via indexer: ${indexerResult.txHash}`,
+        );
+        console.log(
+          `💰 Amount: ${Number(indexerResult.amount || "0") / 1e18} ETH`,
+        );
         return true;
       }
 
       // FALLBACK: Use RPC scanning if indexer unavailable/no result
-      console.log(`🔄 Indexer check complete, proceeding with RPC verification...`);
+      console.log(
+        `🔄 Indexer check complete, proceeding with RPC verification...`,
+      );
 
       // Payment happens AFTER /create-group command, so use the scan window provided
       // by checkForPayments which correctly scans forward from current block
