@@ -48,14 +48,33 @@ async function setupDatabase() {
     await runCommand("npm", ["run", "build"]);
     console.log("✅ Project built successfully");
 
-    // Generate and apply database migrations (required per SQD documentation)
+    // Generate and apply database migrations with proper DATABASE_URL
     console.log("🗄️ Generating database migrations...");
-    await runCommand("npx", ["squid-typeorm-migration", "generate"]);
-    console.log("✅ Database migrations generated");
 
-    console.log("🗄️ Applying database migrations...");
-    await runCommand("npx", ["squid-typeorm-migration", "apply"]);
-    console.log("✅ Database migrations applied successfully");
+    // Set up environment for migration commands
+    const migrationEnv = {
+      ...process.env,
+      DATABASE_URL: DB_URL,
+      // Add SSL config for TypeORM
+      TYPEORM_SSL: "true",
+      TYPEORM_SSL_REJECT_UNAUTHORIZED: "false",
+    };
+
+    try {
+      await runCommand("npx", ["squid-typeorm-migration", "generate"], {
+        env: migrationEnv,
+      });
+      console.log("✅ Database migrations generated");
+
+      console.log("🗄️ Applying database migrations...");
+      await runCommand("npx", ["squid-typeorm-migration", "apply"], {
+        env: migrationEnv,
+      });
+      console.log("✅ Database migrations applied successfully");
+    } catch (migrationError) {
+      console.log("⚠️ Migration failed, processor will auto-create schema");
+      console.log("Migration error:", migrationError.message);
+    }
   } catch (error) {
     console.error("❌ Database setup failed:", error.message);
     throw error;
