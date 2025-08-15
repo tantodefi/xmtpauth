@@ -24,10 +24,10 @@ export const processor = new EvmBatchProcessor()
   .setGateway("https://v2.archive.subsquid.io/network/base-mainnet")
   .setRpcEndpoint({
     url: assertNotNull(
-      process.env.RPC_BASE_HTTP || "https://mainnet.base.org",
+      process.env.RPC_BASE_HTTP || "https://base-mainnet.g.alchemy.com/v2/demo",
       "No RPC endpoint supplied",
     ),
-    rateLimit: 10,
+    rateLimit: 5, // Reduced rate limit
   })
   .setFinalityConfirmation(10) // Base has ~2s blocks, so 10 blocks = ~20s finality
   .setFields({
