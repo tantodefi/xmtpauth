@@ -26,10 +26,18 @@ const EVMAUTH_EVENTS = [
 // ERC20 Transfer event signature
 const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-// Simple processor configuration following SQD docs pattern
-export const processor = new EvmBatchProcessor()
-  // Use SQD Network for Base mainnet (officially supported)
-  .setGateway("https://v2.archive.subsquid.io/network/base-mainnet")
+// Processor configuration with SQD Network fallback
+// Try SQD Network first, but allow RPC-only fallback if needed
+const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY !== 'false';
+
+let processorBuilder = new EvmBatchProcessor();
+
+// Only use SQD Network if not explicitly disabled
+if (USE_SQD_GATEWAY) {
+  processorBuilder = processorBuilder.setGateway("https://v2.archive.subsquid.io/network/base-mainnet");
+}
+
+export const processor = processorBuilder
   .setRpcEndpoint({
     url: assertNotNull(
       process.env.RPC_BASE_HTTP || "https://base.llamarpc.com",
