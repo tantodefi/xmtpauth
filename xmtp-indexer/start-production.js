@@ -61,10 +61,25 @@ async function setupDatabase() {
 async function startServices() {
   console.log("🔄 Starting indexer services...");
 
-    // Start processor in background with proper database URL
-  const dbUrl = INTERNAL_DB_URL || DB_URL;
+  // Start processor in background with proper database URL
+  let dbUrl = INTERNAL_DB_URL || DB_URL;
   console.log(`🔗 Using database URL: ${dbUrl ? "Available" : "Missing"}`);
   
+  // Fix database URL format for Subsquid if needed
+  if (dbUrl && !dbUrl.includes('.postgres.render.com')) {
+    try {
+      const url = new URL(dbUrl);
+      if (!url.port) {
+        // Add default PostgreSQL port and full hostname for Render
+        const fixedHost = `${url.hostname}.postgres.render.com:5432`;
+        dbUrl = dbUrl.replace(url.hostname, fixedHost);
+        console.log(`🔧 Fixed database URL format for Subsquid`);
+      }
+    } catch (e) {
+      console.log(`⚠️ Could not parse database URL for fixing`);
+    }
+  }
+
   if (dbUrl) {
     // Parse and log database URL details (without password)
     try {
@@ -79,7 +94,9 @@ async function startServices() {
     // Test database connectivity
     console.log("🔍 Testing database connectivity...");
     try {
-      const testResult = await runCommand("node", ["-e", `
+      const testResult = await runCommand("node", [
+        "-e",
+        `
         const { Client } = require('pg');
         const client = new Client('${dbUrl}');
         client.connect()
@@ -96,12 +113,13 @@ async function startServices() {
             client.end();
             process.exit(1);
           });
-      `]);
+      `,
+      ]);
     } catch (error) {
       console.error("❌ Database connectivity test failed:", error.message);
     }
   }
-  
+
   const processor = spawn("node", ["-r", "dotenv/config", "lib/main.js"], {
     stdio: "pipe", // Capture output for better debugging
     detached: false,
