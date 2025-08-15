@@ -14,11 +14,13 @@ const USER_ACCESS_REVOKED_TOPIC = "0x..."; // Will be calculated from event sign
 const ACCESS_TOKEN_EXPIRED_TOPIC = "0x..."; // Will be calculated from event signature
 
 // Add error handling for processor startup
-const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY === 'true';
+const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY !== 'false';
 console.log('🚀 Starting Subsquid processor...');
-console.log(`📡 Mode: ${USE_SQD_GATEWAY ? 'SQD Network + RPC' : 'RPC-only'}`);
+console.log(`📡 Mode: ${USE_SQD_GATEWAY ? 'SQD Network + RPC (recommended)' : 'RPC-only (fallback)'}`);
 if (USE_SQD_GATEWAY) {
   console.log('📡 Gateway: https://v2.archive.subsquid.io/network/base-mainnet');
+} else {
+  console.log('⚠️  SQD Network disabled - using slower RPC-only mode');
 }
 console.log('🌐 RPC:', process.env.RPC_BASE_HTTP || "https://base.llamarpc.com");
 console.log('🗄️ Database URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
@@ -33,12 +35,22 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
-  const ethTransfers: EthTransfer[] = [];
-  const contractEvents: ContractEvent[] = [];
-  const contractDeployments: ContractDeployment[] = [];
+// Enhanced database with better error handling
+const database = new TypeormDatabase({ supportHotBlocks: true });
 
-  for (let block of ctx.blocks) {
+// Add connection retry logic for better reliability
+let retryCount = 0;
+const MAX_RETRIES = 3;
+
+async function runProcessorWithRetry() {
+  try {
+    console.log('🔄 Starting processor with database connection...');
+    await processor.run(database, async (ctx) => {
+      const ethTransfers: EthTransfer[] = [];
+      const contractEvents: ContractEvent[] = [];
+      const contractDeployments: ContractDeployment[] = [];
+
+      for (let block of ctx.blocks) {
     const blockTimestamp = new Date(block.header.timestamp);
 
     // Process transactions (ETH transfers to agent)
@@ -150,4 +162,25 @@ processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
   if (contractDeployments.length > 0) {
     await ctx.store.insert(contractDeployments);
   }
+});
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`❌ Processor error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, errorMessage);
+    
+    if (errorMessage.includes('ECONNREFUSED') && retryCount < MAX_RETRIES - 1) {
+      retryCount++;
+      console.log(`🔄 Retrying in 10 seconds... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      return runProcessorWithRetry();
+    } else {
+      console.error('💥 Max retries exceeded or non-recoverable error. Exiting...');
+      process.exit(1);
+    }
+  }
+}
+
+// Start the processor with retry logic
+runProcessorWithRetry().catch((error) => {
+  console.error('💥 Fatal processor error:', error);
+  process.exit(1);
 });

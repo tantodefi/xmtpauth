@@ -19,9 +19,9 @@ const EVMAUTH_EVENTS = [
   "0x...", // AccessTokenExpired event signature - will be filled in
 ];
 
-// For now, disable SQD Gateway due to connection issues on Render
-// Can be re-enabled later with USE_SQD_GATEWAY=true environment variable
-const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY === 'true';
+// Enable SQD Network by default (recommended approach from SQD docs)
+// Can be disabled with USE_SQD_GATEWAY=false for debugging
+const USE_SQD_GATEWAY = process.env.USE_SQD_GATEWAY !== 'false';
 
 // Create processor with conditional gateway
 let processorBuilder = new EvmBatchProcessor();
