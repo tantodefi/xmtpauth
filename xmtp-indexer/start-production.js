@@ -68,7 +68,7 @@ async function startServices() {
   // Add SSL parameters for Subsquid/TypeORM compatibility
   if (dbUrl && !dbUrl.includes("ssl")) {
     const separator = dbUrl.includes("?") ? "&" : "?";
-    dbUrl = `${dbUrl}${separator}ssl=true&sslmode=prefer`;
+    dbUrl = `${dbUrl}${separator}ssl=1&sslmode=require&sslcert=&sslkey=&sslrootcert=&sslcrl=`;
     console.log(`🔧 Added SSL configuration for Subsquid`);
   }
 
@@ -116,6 +116,8 @@ async function startServices() {
     }
   }
 
+  console.log(`🔧 Starting processor with DATABASE_URL: ${dbUrl.substring(0, 50)}...`);
+  
   const processor = spawn("node", ["-r", "dotenv/config", "lib/main.js"], {
     stdio: "pipe", // Capture output for better debugging
     detached: false,
@@ -126,6 +128,8 @@ async function startServices() {
       // TypeORM SSL configuration
       TYPEORM_SSL: "true",
       TYPEORM_SSL_REJECT_UNAUTHORIZED: "false",
+      // Additional debugging
+      DEBUG: "sqd:*",
     },
   });
 
