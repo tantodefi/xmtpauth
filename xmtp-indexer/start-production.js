@@ -65,7 +65,7 @@ async function startServices() {
   let dbUrl = INTERNAL_DB_URL || DB_URL;
   console.log(`🔗 Using database URL: ${dbUrl ? "Available" : "Missing"}`);
 
-  // Add SSL parameters for Subsquid/TypeORM compatibility  
+  // Add SSL parameters for Subsquid/TypeORM compatibility
   if (dbUrl && !dbUrl.includes("ssl")) {
     const separator = dbUrl.includes("?") ? "&" : "?";
     dbUrl = `${dbUrl}${separator}ssl=true&sslmode=prefer`;
@@ -119,10 +119,10 @@ async function startServices() {
   const processor = spawn("node", ["-r", "dotenv/config", "lib/main.js"], {
     stdio: "pipe", // Capture output for better debugging
     detached: false,
-    env: { 
-      ...process.env, 
+    env: {
+      ...process.env,
       DATABASE_URL: dbUrl,
-      NODE_TLS_REJECT_UNAUTHORIZED: '0'
+      NODE_TLS_REJECT_UNAUTHORIZED: "0",
     },
   });
 

@@ -13,7 +13,10 @@ const USER_ACCESS_GRANTED_TOPIC = "0x..."; // Will be calculated from event sign
 const USER_ACCESS_REVOKED_TOPIC = "0x..."; // Will be calculated from event signature
 const ACCESS_TOKEN_EXPIRED_TOPIC = "0x..."; // Will be calculated from event signature
 
-processor.run(new TypeormDatabase({ supportHotBlocks: true }), async (ctx) => {
+processor.run(new TypeormDatabase({ 
+  supportHotBlocks: true,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+}), async (ctx) => {
   const ethTransfers: EthTransfer[] = [];
   const contractEvents: ContractEvent[] = [];
   const contractDeployments: ContractDeployment[] = [];
