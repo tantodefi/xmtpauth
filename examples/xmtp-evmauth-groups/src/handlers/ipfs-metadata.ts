@@ -7,10 +7,11 @@ interface IPFSConfig {
   apiKey?: string;
 }
 
-// Default IPFS configuration (using public services)
+// Default IPFS configuration (using Pinata)
 const DEFAULT_IPFS_CONFIG: IPFSConfig = {
-  gateway: "https://ipfs.io/ipfs/",
-  pinningService: "https://api.pinata.cloud", // You'll need API key for production
+  gateway: process.env.IPFS_GATEWAY || "https://gateway.pinata.cloud/ipfs/",
+  pinningService: "https://api.pinata.cloud",
+  apiKey: process.env.PINATA_JWT, // Pinata JWT token
 };
 
 export interface NFTMetadata {
@@ -42,33 +43,68 @@ export class IPFSMetadataHandler {
   }
 
   /**
-   * Upload image to IPFS and return hash
+   * Upload image to IPFS using Pinata and return hash
    */
   async uploadImage(imageBuffer: Buffer, filename: string): Promise<string> {
     try {
-      // For demo purposes, we'll create a mock IPFS hash
-      // In production, use a service like Pinata, NFT.Storage, or Web3.Storage
+      // If no API key is configured, use default image hash
+      if (!this.config.apiKey) {
+        console.warn(
+          "⚠️ No Pinata API key configured, using default image hash",
+        );
+        return (
+          process.env.DEFAULT_NFT_IMAGE_HASH ||
+          "bafkreies7jntbufslrlq7524ahrrtjmwssarm3ni3zmbg7nmo6c4toqxne"
+        );
+      }
 
-      const hash = createHash("sha256").update(imageBuffer).digest("hex");
-      const mockIPFSHash = `Qm${hash.substring(0, 44)}`;
+      // Create form data for Pinata API
+      const formData = new FormData();
+      formData.append("file", new Blob([imageBuffer]), filename);
 
-      console.log(`📁 Uploaded ${filename} to IPFS: ${mockIPFSHash}`);
+      // Add pinata metadata
+      const metadata = JSON.stringify({
+        name: filename,
+        keyvalues: {
+          type: "nft-image",
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+      formData.append("pinataMetadata", metadata);
 
-      // In production, you'd do:
-      // const formData = new FormData();
-      // formData.append('file', new Blob([imageBuffer]), filename);
-      // const response = await fetch(`${this.config.pinningService}/pinning/pinFileToIPFS`, {
-      //   method: 'POST',
-      //   headers: { 'Authorization': `Bearer ${this.config.apiKey}` },
-      //   body: formData
-      // });
-      // const result = await response.json();
-      // return result.IpfsHash;
+      // Upload to Pinata
+      const response = await fetch(
+        `${this.config.pinningService}/pinning/pinFileToIPFS`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.config.apiKey}`,
+          },
+          body: formData,
+        },
+      );
 
-      return mockIPFSHash;
+      if (!response.ok) {
+        throw new Error(
+          `Pinata API error: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const result = (await response.json()) as { IpfsHash: string };
+      console.log(
+        `📁 Uploaded ${filename} to IPFS via Pinata: ${result.IpfsHash}`,
+      );
+
+      return result.IpfsHash;
     } catch (error) {
       console.error("Error uploading image to IPFS:", error);
-      throw new Error("Failed to upload image to IPFS");
+
+      // Fallback to default image hash on error
+      console.warn("⚠️ Using default image hash due to upload error");
+      return (
+        process.env.DEFAULT_NFT_IMAGE_HASH ||
+        "bafkreies7jntbufslrlq7524ahrrtjmwssarm3ni3zmbg7nmo6c4toqxne"
+      );
     }
   }
 
@@ -133,31 +169,64 @@ export class IPFSMetadataHandler {
    */
   async uploadMetadata(metadata: GroupNFTMetadata): Promise<string> {
     try {
-      const metadataJSON = JSON.stringify(metadata, null, 2);
-      const metadataBuffer = Buffer.from(metadataJSON, "utf-8");
+      // If no API key is configured, create a mock hash
+      if (!this.config.apiKey) {
+        console.warn(
+          "⚠️ No Pinata API key configured, creating mock metadata hash",
+        );
+        const metadataJSON = JSON.stringify(metadata, null, 2);
+        const hash = createHash("sha256").update(metadataJSON).digest("hex");
+        const mockIPFSHash = `Qm${hash.substring(0, 44)}`;
+        console.log(`📄 Mock metadata hash: ${mockIPFSHash}`);
+        return mockIPFSHash;
+      }
 
-      // Create mock IPFS hash for metadata
-      const hash = createHash("sha256").update(metadataBuffer).digest("hex");
-      const mockIPFSHash = `Qm${hash.substring(0, 44)}`;
+      // Upload JSON metadata to Pinata
+      const response = await fetch(
+        `${this.config.pinningService}/pinning/pinJSONToIPFS`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.config.apiKey}`,
+          },
+          body: JSON.stringify({
+            pinataContent: metadata,
+            pinataMetadata: {
+              name: `${metadata.name} - NFT Metadata`,
+              keyvalues: {
+                type: "nft-metadata",
+                groupId: metadata.group_id,
+                tier: metadata.access_tier,
+                uploadedAt: new Date().toISOString(),
+              },
+            },
+          }),
+        },
+      );
 
-      console.log(`📄 Uploaded metadata to IPFS: ${mockIPFSHash}`);
-      console.log(`📄 Metadata URL: ${this.config.gateway}${mockIPFSHash}`);
+      if (!response.ok) {
+        throw new Error(
+          `Pinata metadata API error: ${response.status} ${response.statusText}`,
+        );
+      }
 
-      // In production:
-      // const formData = new FormData();
-      // formData.append('file', new Blob([metadataBuffer]), 'metadata.json');
-      // const response = await fetch(`${this.config.pinningService}/pinning/pinFileToIPFS`, {
-      //   method: 'POST',
-      //   headers: { 'Authorization': `Bearer ${this.config.apiKey}` },
-      //   body: formData
-      // });
-      // const result = await response.json();
-      // return result.IpfsHash;
+      const result = (await response.json()) as { IpfsHash: string };
+      console.log(
+        `📄 Uploaded metadata to IPFS via Pinata: ${result.IpfsHash}`,
+      );
+      console.log(`📄 Metadata URL: ${this.config.gateway}${result.IpfsHash}`);
 
-      return mockIPFSHash;
+      return result.IpfsHash;
     } catch (error) {
       console.error("Error uploading metadata to IPFS:", error);
-      throw new Error("Failed to upload metadata to IPFS");
+
+      // Fallback to mock hash on error
+      console.warn("⚠️ Using mock metadata hash due to upload error");
+      const metadataJSON = JSON.stringify(metadata, null, 2);
+      const hash = createHash("sha256").update(metadataJSON).digest("hex");
+      const mockIPFSHash = `Qm${hash.substring(0, 44)}`;
+      return mockIPFSHash;
     }
   }
 
@@ -165,11 +234,15 @@ export class IPFSMetadataHandler {
    * Generate default image URL for tier (if no custom image provided)
    */
   private generateDefaultImage(tierName: string): string {
-    // In production, you'd have default tier images stored on IPFS
+    // Updated with real IPFS hash - same image for all tiers by default
+    const defaultImageHash =
+      "bafkreies7jntbufslrlq7524ahrrtjmwssarm3ni3zmbg7nmo6c4toqxne";
+
+    // Could be expanded to have tier-specific images in the future
     const tierImages = {
-      basic: "QmBasicTierImageHash",
-      premium: "QmPremiumTierImageHash",
-      vip: "QmVIPTierImageHash",
+      basic: defaultImageHash,
+      premium: defaultImageHash,
+      vip: defaultImageHash,
     };
 
     const normalizedTier =
@@ -177,7 +250,7 @@ export class IPFSMetadataHandler {
         ? tierName.toLowerCase()
         : "default";
     const imageHash =
-      tierImages[normalizedTier as keyof typeof tierImages] || tierImages.basic;
+      tierImages[normalizedTier as keyof typeof tierImages] || defaultImageHash;
 
     return `${this.config.gateway}${imageHash}`;
   }

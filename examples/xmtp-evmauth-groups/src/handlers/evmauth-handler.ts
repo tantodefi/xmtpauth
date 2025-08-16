@@ -382,9 +382,9 @@ export class EVMAuthHandler {
           });
           console.log(`📊 Current nonce for setupAccessTier: ${currentNonce}`);
 
-          // Use group image as fallback for NFT image (EVMAuth default logo)
+          // Use group image as fallback for NFT image (updated default)
           const defaultImageHash =
-            "QmNLei78zWmzUdbeRB3CiUfAizWUrbeeZh5K1rhAQKCh51"; // EVMAuth logo
+            "bafkreies7jntbufslrlq7524ahrrtjmwssarm3ni3zmbg7nmo6c4toqxne"; // Updated default NFT image
           const imageHash = tier.metadata?.imageHash || defaultImageHash;
 
           // Generate proper metadata URI with image field if not provided
