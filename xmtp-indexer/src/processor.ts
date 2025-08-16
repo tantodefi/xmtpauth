@@ -59,7 +59,7 @@ if (USE_SQD_GATEWAY) {
 export const processor = processorBuilder
   .setRpcEndpoint({
     url: assertNotNull(
-      process.env.RPC_BASE_HTTP || "https://mainnet.base.org", // Official Base RPC - faster
+      process.env.RPC_BASE_HTTP || "https://base-rpc.publicnode.com", // More reliable public RPC
       "No RPC endpoint supplied",
     ),
     rateLimit: 15, // Increased for faster sync - Base can handle this

@@ -113,12 +113,21 @@ processor.run(database, async (ctx) => {
             userInboxId = Buffer.from(log.topics[2].slice(2), "hex").toString(
               "utf8",
             );
-            tokenId = BigInt("0x" + log.topics[3]).toString();
+            tokenId =
+              log.topics[3] &&
+              log.topics[3] !== "0x" &&
+              log.topics[3].length > 2
+                ? BigInt("0x" + log.topics[3].slice(2)).toString()
+                : "0";
             if (log.data && log.data.length >= 66) {
               const expiresAtHex = log.data.slice(2, 66);
-              const expiresAtTimestamp = expiresAtHex
-                ? BigInt("0x" + expiresAtHex)
-                : BigInt(0);
+              const expiresAtTimestamp =
+                expiresAtHex &&
+                expiresAtHex !==
+                  "0000000000000000000000000000000000000000000000000000000000000000" &&
+                !expiresAtHex.match(/^0+$/)
+                  ? BigInt("0x" + expiresAtHex)
+                  : BigInt(0);
               expiresAt =
                 expiresAtTimestamp > 0n
                   ? new Date(Number(expiresAtTimestamp) * 1000)
@@ -130,7 +139,12 @@ processor.run(database, async (ctx) => {
             userInboxId = Buffer.from(log.topics[2].slice(2), "hex").toString(
               "utf8",
             );
-            tokenId = BigInt("0x" + log.topics[3]).toString();
+            tokenId =
+              log.topics[3] &&
+              log.topics[3] !== "0x" &&
+              log.topics[3].length > 2
+                ? BigInt("0x" + log.topics[3].slice(2)).toString()
+                : "0";
             // Decode reason from data
             if (log.data && log.data.length > 2) {
               const data = log.data.slice(2);
@@ -153,7 +167,12 @@ processor.run(database, async (ctx) => {
           } else if (topic0 === EVENT_SIGNATURES.ACCESS_TOKEN_EXPIRED) {
             eventName = "AccessTokenExpired";
             userAddress = `0x${log.topics[1].slice(26)}`;
-            tokenId = BigInt("0x" + log.topics[2]).toString();
+            tokenId =
+              log.topics[2] &&
+              log.topics[2] !== "0x" &&
+              log.topics[2].length > 2
+                ? BigInt("0x" + log.topics[2].slice(2)).toString()
+                : "0";
           }
 
           if (eventName) {
@@ -198,7 +217,11 @@ processor.run(database, async (ctx) => {
             continue;
           }
 
-          const value = BigInt("0x" + log.data.slice(2));
+          const valueHex = log.data.slice(2);
+          if (!valueHex || valueHex.length === 0 || valueHex.match(/^0+$/)) {
+            continue;
+          }
+          const value = BigInt("0x" + valueHex);
 
           if (toAddress.toLowerCase() === AGENT_ADDRESS.toLowerCase()) {
             let tokenType = "UNKNOWN";
