@@ -1,6 +1,6 @@
 manifestVersion: subsquid.io/v0.1
 name: xmtp-indexer
-version: 3
+version: 4
 description: "XMTP Agent Payment Indexer for Base mainnet"
 build:
 scale:

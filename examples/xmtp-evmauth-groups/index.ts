@@ -41,6 +41,7 @@ import type {
   DualGroupConfig,
   GroupMetadata,
 } from "./src/types/types";
+import { addressResolver } from "./src/utils/address-resolver";
 import {
   handleEnhancedBuyAccess,
   handleEnhancedCreateGroup,
@@ -184,7 +185,7 @@ async function handleTransactionReference(
 
           if (balanceChange >= MIN_PAYMENT_WEI) {
             isValidPayment = true;
-            paymentAmount = balanceChange;
+            paymentAmount = BigInt(balanceChange);
             console.log(
               `✅ Smart wallet payment detected: ${Number(balanceChange) / 1e18} ETH`,
             );
@@ -546,7 +547,7 @@ async function main() {
     "  /create-group <name> - Create a new premium community (0.001 ETH)",
   );
   console.log(
-    "  /grant-trial <group> <address> <days> - Grant free trial access (creators only)",
+    "  /grant-trial <group> <user> <days> - Grant free trial access (creators only)",
   );
   console.log("  /list-groups - View your premium communities");
   console.log("  /buy-access <group_id> <tier_id> - Purchase access with USDC");
@@ -556,6 +557,12 @@ async function main() {
     "  /test-expiration - Test token expiration with ultra-short tokens",
   );
   console.log("  /help - Show this help message");
+  console.log("");
+  console.log("🔍 Address Resolution Support:");
+  console.log("  • Direct: 0x1234...");
+  console.log("  • Basename: @username.base.eth");
+  console.log("  • ENS: @username.eth");
+  console.log("  • Farcaster: @handle");
   console.log("");
   console.log("💡 Features:");
   console.log("  • User-approved transactions with 0.001 ETH deployment fee");
@@ -767,6 +774,8 @@ async function main() {
           message.senderInboxId,
           messageContent,
           groupConfigs,
+          evmAuthHandler,
+          enhancedGroupManager,
         );
       } else if (command === "/list-groups") {
         await handleListGroups(
@@ -1613,6 +1622,7 @@ async function handleHelp(conversation: any) {
       `📊 \`/create-group <name>\` - Create a new paid group\n` +
       `⚙️ \`/setup-tiers <group_id>\` - Interactive tier setup with custom pricing\n` +
       `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
+      `🎁 \`/grant-trial <group> <user> <days>\` - Grant free trial access (creators only)\n` +
       `🎫 \`/my-tokens\` - View your access tokens\n` +
       `📄 \`/group-info <group_id>\` - Get group information\n` +
       `🔍 \`/check-purchase <contract>\` - Check for recent NFT purchase\n` +
@@ -1620,6 +1630,12 @@ async function handleHelp(conversation: any) {
       `🔧 \`/fix-access <contract>\` - Manually add yourself to premium group if you have NFT\n` +
       `🧪 \`/test-expiration\` - Test token expiration with ultra-short tokens\n` +
       `❓ \`/help\` - Show this help message\n\n` +
+      `🔍 Address Resolution:\n` +
+      `Commands support multiple address formats:\n` +
+      `• Direct: \`0x1234...\`\n` +
+      `• Basename: \`@username.base.eth\`\n` +
+      `• ENS: \`@username.eth\`\n` +
+      `• Farcaster: \`@farcaster_handle\`\n\n` +
       `Enhanced Features:\n` +
       `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
       `🎨 Custom NFT Images: Upload your own artwork for access tokens\n` +

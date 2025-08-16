@@ -973,4 +973,91 @@ export class EVMAuthHandler {
       return { total: 0n, ok: false };
     }
   }
+
+  /**
+   * Send a transaction using the agent wallet
+   */
+  async sendTransaction(params: {
+    to: `0x${string}`;
+    data: `0x${string}`;
+    value: bigint;
+  }): Promise<`0x${string}`> {
+    try {
+      const hash = await this.walletClient.sendTransaction({
+        to: params.to,
+        data: params.data,
+        value: params.value,
+      });
+      return hash;
+    } catch (error) {
+      console.error("Error sending transaction:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Wait for transaction confirmation
+   */
+  async waitForTransaction(hash: `0x${string}`): Promise<void> {
+    try {
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash,
+      });
+      if (receipt.status !== "success") {
+        throw new Error("Transaction failed");
+      }
+    } catch (error) {
+      console.error("Error waiting for transaction:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Directly mint trial NFT using agent wallet (owner privilege)
+   */
+  async mintTrialNFT(
+    contractAddress: string,
+    recipientAddress: string,
+    tokenId: number,
+    durationDays: number,
+  ): Promise<`0x${string}`> {
+    try {
+      // Use ERC1155 mint function
+      const data = encodeFunctionData({
+        abi: [
+          {
+            inputs: [
+              { name: "to", type: "address" },
+              { name: "id", type: "uint256" },
+              { name: "amount", type: "uint256" },
+              { name: "data", type: "bytes" },
+            ],
+            name: "mint",
+            outputs: [],
+            stateMutability: "nonpayable",
+            type: "function",
+          },
+        ],
+        functionName: "mint",
+        args: [
+          recipientAddress as `0x${string}`,
+          BigInt(tokenId),
+          BigInt(1), // amount
+          "0x", // empty data
+        ],
+      });
+
+      const hash = await this.sendTransaction({
+        to: contractAddress as `0x${string}`,
+        data,
+        value: 0n, // Free trial
+      });
+
+      await this.waitForTransaction(hash);
+      return hash;
+    } catch (error) {
+      console.error("Error minting trial NFT:", error);
+      throw error;
+    }
+  }
 }

@@ -7,6 +7,7 @@ import type { JSONDatabase } from "../database/json-database";
 import { EVMAuthHandler } from "../handlers/evmauth-handler";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig, GroupMetadata } from "../types/types";
+import { addressResolver } from "./address-resolver";
 import {
   createGroupCreationPayment,
   createUSDCApprovalAndPurchase,

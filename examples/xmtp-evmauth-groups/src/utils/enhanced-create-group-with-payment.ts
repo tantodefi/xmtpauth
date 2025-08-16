@@ -6,12 +6,10 @@ import { ContentTypeWalletSendCalls } from "@xmtp/content-type-wallet-send-calls
 import type { JSONDatabase } from "../database/json-database";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig, GroupMetadata } from "../types/types";
+import { addressResolver } from "./address-resolver";
 import { GroupDeduplicationManager } from "./group-deduplication";
 import type { PaymentMonitor } from "./payment-monitor";
-import {
-  createGroupCreationPayment,
-  createTrialAccessGrant,
-} from "./payment-transactions";
+import { createGroupCreationPayment } from "./payment-transactions";
 import type { PersistentStateManager } from "./persistent-state";
 
 /**
@@ -137,6 +135,7 @@ export async function handleCreateGroupWithPayment(
 
 /**
  * Handle grant-trial command for creators to give free access
+ * Agent directly mints NFT and adds user to group - NO USER APPROVAL NEEDED
  */
 export async function handleGrantTrial(
   conversation: any,
@@ -144,26 +143,51 @@ export async function handleGrantTrial(
   senderInboxId: string,
   messageContent: string,
   groupConfigs: Map<string, DualGroupConfig>,
+  evmAuthHandler?: any,
+  enhancedGroupManager?: any,
 ): Promise<void> {
   try {
-    // Parse command: /grant-trial <group_name> <user_address> <days>
+    // Parse command: /grant-trial <group_name> <user_address_or_name> <days>
     const parts = messageContent.split(" ");
     if (parts.length < 4) {
       await conversation.send(
-        "Usage: /grant-trial <group_name> <user_address> <days>\n" +
-          "Example: /grant-trial MyGroup 0x123... 7",
+        "Usage: /grant-trial <group_name> <user_address_or_name> <days>\n" +
+          "Examples:\n" +
+          "• /grant-trial MyGroup 0x123... 7\n" +
+          "• /grant-trial MyGroup @username.base.eth 7\n" +
+          "• /grant-trial MyGroup @username.eth 7\n" +
+          "• /grant-trial MyGroup @farcaster_handle 7",
       );
       return;
     }
 
     const groupName = parts[1];
-    const userAddress = parts[2];
+    const userInput = parts[2];
     const days = parseInt(parts[3]);
 
     if (isNaN(days) || days <= 0) {
       await conversation.send("Please provide a valid number of days.");
       return;
     }
+
+    // Resolve user address
+    await conversation.send(`🔍 Resolving address for: ${userInput}...`);
+    const resolution = await addressResolver.resolveAddress(userInput);
+
+    if (!resolution.address) {
+      await conversation.send(
+        `❌ Could not resolve address\n\n${resolution.error}\n\n` +
+          `Supported formats:\n` +
+          `• Ethereum address: 0x123...\n` +
+          `• Basename: @username.base.eth\n` +
+          `• ENS: @username.eth\n` +
+          `• Farcaster: @handle`,
+      );
+      return;
+    }
+
+    const userAddress = resolution.address;
+    const resolutionDisplay = addressResolver.formatResolution(resolution);
 
     // Find the group configuration
     const groupConfig = Array.from(groupConfigs.values()).find(
@@ -184,23 +208,60 @@ export async function handleGrantTrial(
       return;
     }
 
-    // Create trial access grant transaction
-    const trialTransaction = createTrialAccessGrant(
-      groupConfig.contractAddress,
-      userAddress,
-      1, // Default token ID for trial access
-      groupName,
-    );
-
+    // Agent directly mints trial NFT - NO USER APPROVAL NEEDED
     await conversation.send(
       `🎁 Granting Trial Access\n\n` +
         `📋 Group: ${groupName}\n` +
-        `👤 Recipient: ${userAddress}\n` +
+        `👤 Recipient: ${resolutionDisplay}\n` +
         `⏰ Duration: ${days} days\n\n` +
-        `Please approve the transaction to grant access:`,
+        `🔄 Minting trial NFT and adding to group...`,
     );
 
-    await conversation.send(trialTransaction, ContentTypeWalletSendCalls);
+    if (!evmAuthHandler) {
+      await conversation.send(
+        "❌ EVM handler not available. Please try again later.",
+      );
+      return;
+    }
+
+    // Step 1: Agent directly mints trial NFT
+    console.log(`🎁 Agent minting trial NFT for ${userAddress} (${days} days)`);
+
+    const tokenId = 1; // Default trial token ID
+    const txHash = await evmAuthHandler.mintTrialNFT(
+      groupConfig.contractAddress,
+      userAddress,
+      tokenId,
+      days,
+    );
+
+    console.log(`✅ Trial NFT minted: ${txHash}`);
+
+    // Step 2: Add user to premium group if manager available
+    if (enhancedGroupManager) {
+      try {
+        await enhancedGroupManager.addMemberToPremiumGroup(
+          groupConfig.contractAddress,
+          "unknown-inbox", // Will be resolved by the manager
+          `Trial Access (${days} days)`,
+          tokenId,
+        );
+        console.log(`✅ User added to premium group`);
+      } catch (groupError) {
+        console.warn(`⚠️ NFT minted but failed to add to group: ${groupError}`);
+        // Don't fail - user has NFT and can use /fix-access
+      }
+    }
+
+    await conversation.send(
+      `✅ Trial Access Granted Successfully!\n\n` +
+        `🎫 NFT minted to: ${resolutionDisplay}\n` +
+        `📋 Group: ${groupName}\n` +
+        `⏰ Duration: ${days} days\n` +
+        `🔗 Transaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}\n\n` +
+        `The recipient now has access to the premium group!\n` +
+        `If they don't see the group, they can use: /fix-access ${groupConfig.contractAddress}`,
+    );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Error in grant-trial:", errorMessage);
