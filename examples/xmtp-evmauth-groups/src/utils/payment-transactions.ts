@@ -301,7 +301,7 @@ export function createTierSetupBundle(
   // Add setupAccessTier calls for each tier
   for (let i = 0; i < tiers.length; i++) {
     const tier = tiers[i];
-    const tokenId = i + 1;
+    const tokenId = i + 3; // Token IDs start from 3 (1 and 2 may be used)
 
     // For tiers with USD pricing, set priceWei to 0
     const ethPrice =

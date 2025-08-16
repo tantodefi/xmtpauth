@@ -338,19 +338,32 @@ export class EVMAuthHandler {
         });
         console.log(`📊 Current nonce for setUSDCToken: ${currentNonce}`);
 
+        // Get fresh nonce and gas price
+        const latestNonce = await this.publicClient.getTransactionCount({
+          address: this.walletClient.account.address,
+          blockTag: "pending",
+        });
+
+        const gasPrice = await this.publicClient.getGasPrice();
+        const bufferedGasPrice = (gasPrice * 110n) / 100n;
+
         const usdcHash = await contract.write.setUSDCToken(
           [usdcAddress as `0x${string}`],
-          { nonce: currentNonce },
+          {
+            nonce: latestNonce,
+            gasPrice: bufferedGasPrice,
+            gas: 100000n,
+          },
         );
         await this.publicClient.waitForTransactionReceipt({ hash: usdcHash });
-        await new Promise((r) => setTimeout(r, 2000)); // Even longer delay
+        await new Promise((r) => setTimeout(r, 3000)); // Wait before next transaction
         console.log(`✅ USDC token set successfully`);
       }
 
       // Process tiers sequentially with explicit nonce management
       for (let i = 0; i < tiers.length; i++) {
         const tier = tiers[i];
-        const tokenId = i + 1; // Token IDs start from 1
+        const tokenId = i + 3; // Token IDs start from 3 (1 and 2 may be used)
 
         console.log(
           `🎯 Setting up tier ${i + 1}/${tiers.length}: ${tier.name}`,
@@ -395,6 +408,20 @@ export class EVMAuthHandler {
             metadataUri = ""; // Leave empty to use contract's default metadata generation
           }
 
+          // Get fresh nonce and gas price for each transaction
+          const latestNonce = await this.publicClient.getTransactionCount({
+            address: this.walletClient.account.address,
+            blockTag: "pending",
+          });
+
+          // Get current gas price and add 10% buffer
+          const gasPrice = await this.publicClient.getGasPrice();
+          const bufferedGasPrice = (gasPrice * 110n) / 100n;
+
+          console.log(
+            `🔧 Using nonce: ${latestNonce}, gas price: ${Number(bufferedGasPrice) / 1e9} gwei`,
+          );
+
           const hash = await contract.write.setupAccessTier(
             [
               BigInt(tokenId),
@@ -405,13 +432,20 @@ export class EVMAuthHandler {
               imageHash,
               metadataUri,
             ],
-            { nonce: currentNonce },
+            {
+              nonce: latestNonce,
+              gasPrice: bufferedGasPrice,
+              gas: 200000n, // Set reasonable gas limit
+            },
           );
 
           // Wait for transaction to be mined
           console.log(`⏳ Waiting for tier setup transaction: ${hash}`);
           await this.publicClient.waitForTransactionReceipt({ hash });
-          await new Promise((r) => setTimeout(r, 2000)); // Even longer delay between transactions
+
+          // Add delay between transactions to prevent nonce conflicts
+          console.log(`⏳ Waiting 3 seconds before next transaction...`);
+          await new Promise((r) => setTimeout(r, 3000));
 
           console.log(`✅ Setup tier ${tier.name} (Token ID: ${tokenId})`);
 
@@ -422,25 +456,33 @@ export class EVMAuthHandler {
               `💰 Setting USDC price for ${tier.name}: $${tier.priceUSD} (${amountUSDC} wei)`,
             );
 
-            // Get fresh nonce for USDC price transaction
-            currentNonce = await this.publicClient.getTransactionCount({
-              address: agentAddress,
+            // Get fresh nonce and gas price for USDC price transaction
+            const usdcNonce = await this.publicClient.getTransactionCount({
+              address: this.walletClient.account.address,
               blockTag: "pending",
             });
+
+            const usdcGasPrice = await this.publicClient.getGasPrice();
+            const usdcBufferedGasPrice = (usdcGasPrice * 110n) / 100n;
+
             console.log(
-              `📊 Current nonce for setTierUSDCPrice: ${currentNonce}`,
+              `🔧 USDC price tx - nonce: ${usdcNonce}, gas price: ${Number(usdcBufferedGasPrice) / 1e9} gwei`,
             );
 
             const setUsdHash = await contract.write.setTierUSDCPrice(
               [BigInt(tokenId), amountUSDC],
-              { nonce: currentNonce },
+              {
+                nonce: usdcNonce,
+                gasPrice: usdcBufferedGasPrice,
+                gas: 100000n,
+              },
             );
 
             console.log(`⏳ Waiting for USDC price transaction: ${setUsdHash}`);
             await this.publicClient.waitForTransactionReceipt({
               hash: setUsdHash,
             });
-            await new Promise((r) => setTimeout(r, 2000)); // Longer delay
+            await new Promise((r) => setTimeout(r, 3000)); // Wait before next transaction
             console.log(
               `💵 Set USDC price for ${tier.name}: ${amountUSDC} (6 decimals)`,
             );

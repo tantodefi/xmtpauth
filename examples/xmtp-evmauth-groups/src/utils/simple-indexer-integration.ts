@@ -12,6 +12,7 @@ export interface IndexerPaymentData {
   timestamp: string;
   isPayment: boolean;
   status?: string;
+  tokenType?: string;
 }
 
 export class SimpleIndexerClient {
@@ -41,13 +42,21 @@ export class SimpleIndexerClient {
           ethTransfers(
             where: { 
               to_eq: $agentAddress
-              from_eq: $fromAddress
-              isPayment_eq: true
-              status_eq: "success"
               timestamp_gte: $sinceTimestamp
+              OR: [
+                {
+                  from_eq: $fromAddress
+                  isPayment_eq: true
+                  status_eq: "success"
+                },
+                {
+                  tokenType_eq: "ETH-SMART-WALLET"
+                  status_eq: "investigating"
+                }
+              ]
             }
             orderBy: [timestamp_DESC]
-            limit: 1
+            limit: 10
           ) {
             transactionHash
             from
@@ -57,6 +66,7 @@ export class SimpleIndexerClient {
             timestamp
             isPayment
             status
+            tokenType
           }
         }
       `;
@@ -140,16 +150,78 @@ export async function enhancedPaymentCheck(
   );
 
   if (indexerPayment) {
-    console.log(
-      `🎯 Payment found via indexer: ${indexerPayment.transactionHash}`,
-    );
-    console.log(`💰 Amount: ${Number(indexerPayment.value) / 1e18} ETH`);
+    // Check if this is a smart wallet investigation entry
+    if (
+      indexerPayment.tokenType === "ETH-SMART-WALLET" &&
+      indexerPayment.status === "investigating"
+    ) {
+      console.log(
+        `🔍 Found smart wallet investigation entry: ${indexerPayment.transactionHash}`,
+      );
 
-    return {
-      found: true,
-      txHash: indexerPayment.transactionHash,
-      amount: indexerPayment.value,
-    };
+      // For smart wallet investigation entries, we need to check the actual balance change
+      // This is a placeholder - the agent should verify balance change via RPC
+      try {
+        const { createPublicClient, http } = await import("viem");
+        const { base } = await import("viem/chains");
+
+        const publicClient = createPublicClient({
+          chain: base,
+          transport: http("https://mainnet.base.org"),
+        });
+
+        // Get the transaction to find the block
+        const tx = await publicClient.getTransaction({
+          hash: indexerPayment.transactionHash as `0x${string}`,
+        });
+
+        if (tx.blockNumber) {
+          // Check balance change in this block
+          const balanceBefore = await publicClient.getBalance({
+            address: agentAddress as `0x${string}`,
+            blockNumber: tx.blockNumber - 1n,
+          });
+
+          const balanceAfter = await publicClient.getBalance({
+            address: agentAddress as `0x${string}`,
+            blockNumber: tx.blockNumber,
+          });
+
+          const balanceChange = balanceAfter - balanceBefore;
+          const MIN_PAYMENT_WEI = 1000000000000000n; // 0.001 ETH
+
+          if (balanceChange >= MIN_PAYMENT_WEI) {
+            console.log(
+              `🎯 Smart wallet payment confirmed: ${Number(balanceChange) / 1e18} ETH`,
+            );
+
+            return {
+              found: true,
+              txHash: indexerPayment.transactionHash,
+              amount: balanceChange.toString(),
+            };
+          } else {
+            console.log(
+              `⚠️ Smart wallet investigation found, but balance change too small: ${Number(balanceChange) / 1e18} ETH`,
+            );
+          }
+        }
+      } catch (error) {
+        console.log(`⚠️ Error verifying smart wallet payment:`, error);
+      }
+    } else {
+      // Regular payment entry
+      console.log(
+        `🎯 Payment found via indexer: ${indexerPayment.transactionHash}`,
+      );
+      console.log(`💰 Amount: ${Number(indexerPayment.value) / 1e18} ETH`);
+
+      return {
+        found: true,
+        txHash: indexerPayment.transactionHash,
+        amount: indexerPayment.value,
+      };
+    }
   }
 
   // If indexer fails/unavailable, return null to let RPC scanning continue

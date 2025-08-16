@@ -120,9 +120,9 @@ export class HybridPaymentMonitor {
 
       const data = (await response.json()) as any;
       this.lastCheckedBlock = parseInt(data.result, 16);
-      console.log(
+          console.log(
         `📊 Starting from current RPC block: ${this.lastCheckedBlock}`,
-      );
+          );
     } catch (error) {
       console.error("❌ Failed to initialize block number:", error);
       this.lastCheckedBlock = 34200000; // Fallback

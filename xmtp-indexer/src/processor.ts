@@ -91,6 +91,12 @@ export const processor = processorBuilder
       value: true,
       hash: true,
       status: true,
+      gasUsed: true,
+    },
+    receipt: {
+      contractAddress: true,
+      status: true,
+      gasUsed: true,
     },
     log: {
       topics: true,
@@ -145,6 +151,13 @@ export const processor = processorBuilder
       SMART_WALLET_ADDRESSES.ENTRYPOINT_V7.toLowerCase(),
     ],
     topic0: [EVENT_SIGNATURES.USER_OPERATION_EVENT],
+    range: { from: DEPLOYMENT_BLOCK },
+  })
+
+  // 6. Track contract creation transactions (to: null) from the agent
+  .addTransaction({
+    from: [AGENT_ADDRESS.toLowerCase()],
+    to: [], // Empty array means contract creation (to: null)
     range: { from: DEPLOYMENT_BLOCK },
   });
 
