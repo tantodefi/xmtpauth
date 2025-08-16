@@ -1,6 +1,6 @@
 import type { Conversation } from "@xmtp/node-sdk";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
-import type { GroupConfig } from "../types/group-config";
+import type { DualGroupConfig } from "../types/types";
 
 /**
  * Hybrid Payment Monitor - Best of both worlds:
@@ -13,7 +13,7 @@ export class HybridPaymentMonitor {
   private rpcUrl: string;
   private agentAddress: string;
   private groupManager: EnhancedGroupManager;
-  private groupConfigs: Record<string, GroupConfig>;
+  private groupConfigs: Record<string, DualGroupConfig>;
   private pendingPayments = new Map<string, PendingPayment>();
   private lastCheckedBlock = 0;
   private isRunning = false;
@@ -27,7 +27,7 @@ export class HybridPaymentMonitor {
     rpcUrl: string,
     agentAddress: string,
     groupManager: EnhancedGroupManager,
-    groupConfigs: Record<string, GroupConfig>,
+    groupConfigs: Record<string, DualGroupConfig>,
   ) {
     this.indexerUrl = indexerUrl;
     this.rpcUrl = rpcUrl;
@@ -62,7 +62,7 @@ export class HybridPaymentMonitor {
   registerPayment(
     senderInboxId: string,
     groupName: string,
-    memberAddress: string,
+    creatorAddress: string,
     conversation: Conversation,
   ): string {
     const paymentId = `${senderInboxId}-${groupName}-${Date.now()}`;
@@ -71,7 +71,7 @@ export class HybridPaymentMonitor {
       id: paymentId,
       senderInboxId,
       groupName,
-      memberAddress,
+      creatorAddress,
       conversation,
       registeredAt: Date.now(),
       attempts: 0,
@@ -95,7 +95,7 @@ export class HybridPaymentMonitor {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       if (data.data?.squidStatus?.height) {
         this.lastCheckedBlock = data.data.squidStatus.height;
         console.log(`📊 Starting from indexer block: ${this.lastCheckedBlock}`);
@@ -118,7 +118,7 @@ export class HybridPaymentMonitor {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       this.lastCheckedBlock = parseInt(data.result, 16);
       console.log(
         `📊 Starting from current RPC block: ${this.lastCheckedBlock}`,
@@ -167,7 +167,7 @@ export class HybridPaymentMonitor {
           }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as any;
         if (data.errors) {
           console.error("⚠️ Indexer query error:", data.errors);
           return;
@@ -212,7 +212,7 @@ export class HybridPaymentMonitor {
           }),
         });
 
-        const blockData = await blockResponse.json();
+        const blockData = (await blockResponse.json()) as any;
         const currentBlock = parseInt(blockData.result, 16);
 
         // Only check recent blocks (last 5 blocks for real-time detection)
@@ -257,7 +257,7 @@ export class HybridPaymentMonitor {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       const block = data.result;
 
       if (!block?.transactions) return;
@@ -312,15 +312,21 @@ export class HybridPaymentMonitor {
       );
       console.log(`🎯 Creating group: ${pendingPayment.groupName}`);
 
-      // Process the payment
-      await this.groupManager.createGroupWithPayment(
-        pendingPayment.senderInboxId,
+      // Process the payment - create dual group system
+      const groupResult = await this.groupManager.createDualGroupSystem(
         pendingPayment.groupName,
-        pendingPayment.memberAddress,
-        pendingPayment.conversation,
-        payment.transactionHash,
-        payment.value,
-        payment.tokenType || "ETH",
+        pendingPayment.senderInboxId,
+        pendingPayment.creatorAddress,
+      );
+
+      // Send confirmation to the original conversation
+      await pendingPayment.conversation.send(
+        `✅ Payment confirmed! Group "${pendingPayment.groupName}" created successfully!\n\n` +
+          `💰 Payment: ${payment.value} ${payment.tokenType}\n` +
+          `📋 Contract: ${groupResult.contractAddress}\n` +
+          `🏪 Sales Group: ${groupResult.salesGroup.id}\n` +
+          `💎 Premium Group: ${groupResult.premiumGroup.id}\n\n` +
+          `🎉 Your group is ready! Check your conversations.`,
       );
 
       // Remove from pending
@@ -372,7 +378,7 @@ interface PendingPayment {
   id: string;
   senderInboxId: string;
   groupName: string;
-  memberAddress: string;
+  creatorAddress: string;
   conversation: Conversation;
   registeredAt: number;
   attempts: number;

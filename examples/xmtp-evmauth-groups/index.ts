@@ -273,7 +273,7 @@ async function main() {
 
   // Start payment monitoring system
   console.log("💰 Starting payment monitoring...");
-  void paymentMonitor.startPaymentMonitoring();
+  void paymentMonitor.startMonitoring();
 
   console.log("🚀 EVMAuth Groups Agent is running!");
   console.log("💰 Enhanced with USDC pricing and custom NFT images!");

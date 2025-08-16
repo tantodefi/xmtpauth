@@ -109,7 +109,7 @@ export async function handleCreateGroupWithPayment(
     const paymentId = paymentMonitor.registerPayment(
       senderInboxId,
       groupName,
-      memberAddress,
+      memberAddress, // This is actually the creator's address
       conversation,
     );
 
