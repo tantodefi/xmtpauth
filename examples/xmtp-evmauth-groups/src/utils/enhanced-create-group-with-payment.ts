@@ -7,7 +7,7 @@ import type { JSONDatabase } from "../database/json-database";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig, GroupMetadata } from "../types/types";
 import { GroupDeduplicationManager } from "./group-deduplication";
-import type { PaymentMonitor } from "./payment-monitor";
+import type { IndexerPaymentMonitor } from "./indexer-payment-monitor";
 import {
   createGroupCreationPayment,
   createTrialAccessGrant,
@@ -25,7 +25,7 @@ export async function handleCreateGroupWithPayment(
   enhancedGroupManager: EnhancedGroupManager,
   groupConfigs: Map<string, DualGroupConfig>,
   agentAddress: string,
-  paymentMonitor: PaymentMonitor,
+  paymentMonitor: IndexerPaymentMonitor,
   persistentState: PersistentStateManager,
   database?: JSONDatabase,
 ): Promise<void> {
@@ -106,9 +106,7 @@ export async function handleCreateGroupWithPayment(
     await conversation.send(paymentTransaction, ContentTypeWalletSendCalls);
 
     // Register pending payment for monitoring
-    const paymentId = `${senderInboxId}-${groupName}-${Date.now()}`;
-    paymentMonitor.registerPendingPayment(
-      paymentId,
+    const paymentId = paymentMonitor.registerPayment(
       senderInboxId,
       groupName,
       memberAddress,

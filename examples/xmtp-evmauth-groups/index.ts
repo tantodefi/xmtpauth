@@ -49,7 +49,7 @@ import {
   handleGrantTrial,
   handleListGroups,
 } from "./src/utils/enhanced-create-group-with-payment";
-import { PaymentMonitor } from "./src/utils/payment-monitor";
+import { IndexerPaymentMonitor } from "./src/utils/indexer-payment-monitor";
 import { PersistentStateManager } from "./src/utils/persistent-state";
 import { TokenSalesHandler } from "./src/utils/token-sales";
 
@@ -162,9 +162,12 @@ async function main() {
   const persistentState = new PersistentStateManager();
   persistentState.cleanupOldRecords();
 
-  // Payment monitoring system
-  const paymentMonitor = new PaymentMonitor(
-    BASE_RPC_URL,
+  // Payment monitoring system - using indexer for efficient payment tracking
+  const INDEXER_GRAPHQL_URL =
+    process.env.INDEXER_URL ||
+    "https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmtp-indexer@v1/api/graphql";
+  const paymentMonitor = new IndexerPaymentMonitor(
+    INDEXER_GRAPHQL_URL,
     agentAddress,
     enhancedGroupManager,
     groupConfigs,
