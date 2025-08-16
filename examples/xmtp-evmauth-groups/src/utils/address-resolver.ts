@@ -1,4 +1,4 @@
-import { createPublicClient, http, namehash, normalize } from "viem";
+import { createPublicClient, http } from "viem";
 import { base, mainnet } from "viem/chains";
 
 export interface AddressResolution {
@@ -95,7 +95,7 @@ export class AddressResolver {
       const baseResolver = "0xC6d566A56A1aFf6508b41f6c90ff131615583BCD"; // Base resolver
 
       const address = await this.baseClient.getEnsAddress({
-        name: normalize(fullName),
+        name: fullName,
       });
 
       if (address) {
@@ -122,7 +122,7 @@ export class AddressResolver {
   private async resolveENS(name: string): Promise<AddressResolution> {
     try {
       const address = await this.mainnetClient.getEnsAddress({
-        name: normalize(name),
+        name: name,
       });
 
       if (address) {
@@ -159,7 +159,9 @@ export class AddressResolver {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const data = (await response.json()) as {
+          proofs?: Array<{ owner?: string }>;
+        };
         if (data.proofs && data.proofs.length > 0) {
           const proof = data.proofs[0];
           if (proof.owner) {
