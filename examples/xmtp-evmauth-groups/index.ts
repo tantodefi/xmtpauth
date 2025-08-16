@@ -109,6 +109,9 @@ async function handleTransactionReference(
   console.log(`👤 From: ${memberAddress}`);
 
   try {
+    // Wait a moment for transaction to be mined if it's very recent
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
     // Get transaction details from the blockchain
     const tx = await publicClient.getTransaction({
       hash: txHash as `0x${string}`,
@@ -310,10 +313,22 @@ async function handleTransactionReference(
       await conversation.send(errorMsg);
     }
   } catch (error) {
-    console.error("Error processing transaction:", error);
-    await conversation.send(
-      `❌ Error verifying transaction ${txHash}. Please try again.`,
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error processing transaction:", errorMessage);
+
+    // If transaction not found, provide helpful message
+    if (
+      errorMessage.includes("TransactionReceiptNotFoundError") ||
+      errorMessage.includes("could not be found")
+    ) {
+      await conversation.send(
+        `⏳ Transaction ${txHash} is still being processed on the blockchain. Please wait 1-2 minutes and the payment monitor will automatically verify your payment.\n\n💡 Smart wallet transactions may take longer to confirm.`,
+      );
+    } else {
+      await conversation.send(
+        `❌ Error verifying transaction ${txHash}. Please try again.`,
+      );
+    }
   }
 }
 

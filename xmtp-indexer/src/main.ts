@@ -361,14 +361,26 @@ processor.run(database, async (ctx) => {
   const currentBlock = ctx.blocks[ctx.blocks.length - 1];
   if (currentBlock) {
     const ethPayments = ethTransfers.filter((t) => t.isPayment);
-    const ethCount = ethTransfers.filter((t) => t.tokenType === "ETH").length;
-    const usdcCount = ethTransfers.filter((t) => t.tokenType === "USDC").length;
+    const ethTransfers_filtered = ethTransfers.filter(
+      (t) => t.tokenType === "ETH" || t.tokenType === "ETH-SMART-WALLET",
+    );
+    const usdcTransfers_filtered = ethTransfers.filter(
+      (t) => t.tokenType === "USDC",
+    );
+
+    // Calculate total ETH amount
+    const totalEthAmount = ethTransfers_filtered.reduce(
+      (sum, transfer) => sum + transfer.value,
+      0n,
+    );
+    const ethAmountStr =
+      totalEthAmount > 0n ? `${Number(totalEthAmount) / 1e18} ETH` : "0 ETH";
 
     console.log(
       `📊 Processed blocks ${ctx.blocks[0].header.height} to ${currentBlock.header.height}:`,
     );
     console.log(
-      `  💰 ${ethTransfers.length} transfers: ${ethCount} ETH, ${usdcCount} USDC (${ethPayments.length} payments >= minimum)`,
+      `  💰 ${ethTransfers.length} transfers: ${ethAmountStr}, ${usdcTransfers_filtered.length} USDC (${ethPayments.length} payments >= minimum)`,
     );
     console.log(`  🏭 ${contractDeployments.length} contract deployments`);
     console.log(`  📋 ${contractEvents.length} contract events`);
@@ -442,19 +454,19 @@ async function handleSmartWalletTransactions(
         `   This block may contain internal ETH transfers to the agent`,
       );
 
-      // Create a placeholder entry for smart wallet investigation
-      // This helps us track which blocks had smart wallet activity
+      // Create entry for smart wallet investigation
+      // Note: The agent will handle balance change detection using its own viem client
       const smartWalletTransfer = new EthTransfer({
-        id: `${block.header.height}-smart-wallet-check`,
+        id: `${block.header.height}-smart-wallet-${userOpTransactions[0]?.slice(-8) || "unknown"}`,
         blockNumber: block.header.height,
         timestamp: new Date(block.header.timestamp),
         transactionHash:
           userOpTransactions[0] || `smart-wallet-block-${block.header.height}`,
         from: "smart-wallet-investigation",
         to: AGENT_ADDRESS.toLowerCase(),
-        value: 0n, // Placeholder - would need balance checking to determine actual amount
+        value: 0n, // Placeholder - agent will verify actual amount via balance checking
         tokenType: "ETH-SMART-WALLET",
-        isPayment: false, // Will be updated when we can verify the amount
+        isPayment: false, // Will be updated by agent after balance verification
         status: "investigating",
       });
 
