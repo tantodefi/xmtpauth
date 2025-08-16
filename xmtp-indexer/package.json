@@ -2,7 +2,7 @@
   "name": "squid-evm-template",
   "private": true,
   "scripts": {
-    "build": "npx @subsquid/typeorm-codegen && rm -rf lib || true && tsc",
+    "build": "npx @subsquid/typeorm-codegen && (rm -rf lib 2>/dev/null || true) && tsc",
     "codegen": "npx @subsquid/typeorm-codegen",
     "dev": "concurrently \"npm run processor\" \"npm run serve\"",
     "processor": "node -r dotenv/config lib/main.js",

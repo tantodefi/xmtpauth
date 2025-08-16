@@ -1022,30 +1022,53 @@ export class EVMAuthHandler {
     durationDays: number,
   ): Promise<`0x${string}`> {
     try {
-      // Use ERC1155 mint function
-      const data = encodeFunctionData({
-        abi: [
-          {
-            inputs: [
-              { name: "to", type: "address" },
-              { name: "id", type: "uint256" },
-              { name: "amount", type: "uint256" },
-              { name: "data", type: "bytes" },
-            ],
-            name: "mint",
-            outputs: [],
-            stateMutability: "nonpayable",
-            type: "function",
-          },
-        ],
-        functionName: "mint",
-        args: [
-          recipientAddress as `0x${string}`,
-          BigInt(tokenId),
-          BigInt(1), // amount
-          "0x", // empty data
-        ],
-      });
+      // Check which contract version we're dealing with
+      const isV2Contract = await this.isV2Contract(contractAddress);
+
+      let data: `0x${string}`;
+
+      if (isV2Contract) {
+        // Use extMint function for V2 contracts
+        data = encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                { name: "to", type: "address" },
+                { name: "id", type: "uint256" },
+                { name: "amount", type: "uint256" },
+                { name: "data", type: "bytes" },
+              ],
+              name: "extMint",
+              outputs: [],
+              stateMutability: "nonpayable",
+              type: "function",
+            },
+          ],
+          functionName: "extMint",
+          args: [
+            recipientAddress as `0x${string}`,
+            BigInt(tokenId),
+            BigInt(1), // amount
+            "0x", // empty data
+          ],
+        });
+      } else {
+        // For V1 contracts, we need to use purchaseAccess with 0 price
+        // First, we need to ensure the tier is set up with 0 price
+        data = encodeFunctionData({
+          abi: [
+            {
+              inputs: [{ name: "tokenId", type: "uint256" }],
+              name: "purchaseAccess",
+              outputs: [],
+              stateMutability: "payable",
+              type: "function",
+            },
+          ],
+          functionName: "purchaseAccess",
+          args: [BigInt(tokenId)],
+        });
+      }
 
       const hash = await this.sendTransaction({
         to: contractAddress as `0x${string}`,
@@ -1058,6 +1081,32 @@ export class EVMAuthHandler {
     } catch (error) {
       console.error("Error minting trial NFT:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Check if contract is V2 by looking for extMint function
+   */
+  private async isV2Contract(contractAddress: string): Promise<boolean> {
+    try {
+      // Try calling a V2-specific view function to determine version
+      const result = await this.publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: [
+          {
+            inputs: [{ name: "extension", type: "address" }],
+            name: "isAuthorizedExtension",
+            outputs: [{ name: "", type: "bool" }],
+            stateMutability: "view",
+            type: "function",
+          },
+        ],
+        functionName: "isAuthorizedExtension",
+        args: [contractAddress as `0x${string}`],
+      });
+      return true; // If this succeeds, it's a V2 contract
+    } catch (error) {
+      return false; // If this fails, it's likely a V1 contract
     }
   }
 }
