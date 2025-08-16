@@ -50,6 +50,13 @@ export class EnhancedGroupManager {
   }
 
   /**
+   * Get the XMTP client instance
+   */
+  getClient(): Client {
+    return this.client;
+  }
+
+  /**
    * Add a group configuration to the manager
    */
   addGroupConfig(contractAddress: string, config: DualGroupConfig): void {

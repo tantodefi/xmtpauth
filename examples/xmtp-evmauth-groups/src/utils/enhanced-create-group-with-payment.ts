@@ -238,29 +238,67 @@ export async function handleGrantTrial(
     console.log(`✅ Trial NFT minted: ${txHash}`);
 
     // Step 2: Add user to premium group if manager available
+    let inboxId: string | null = null;
+    let groupAddedSuccessfully = false;
+
     if (enhancedGroupManager) {
       try {
-        await enhancedGroupManager.addMemberToPremiumGroup(
-          groupConfig.contractAddress,
-          "unknown-inbox", // Will be resolved by the manager
-          `Trial Access (${days} days)`,
-          tokenId,
-        );
-        console.log(`✅ User added to premium group`);
+        // Try to resolve inbox ID from address
+        try {
+          // Use XMTP client to get inbox ID from address
+          const client = enhancedGroupManager.getClient();
+          if (client) {
+            const inboxState =
+              await client.preferences.inboxStateFromIdentifiers([
+                { identifier: userAddress, identifierKind: 0 }, // Ethereum address
+              ]);
+
+            if (inboxState && inboxState.length > 0) {
+              inboxId = inboxState[0].inboxId;
+              console.log(`📍 Resolved inbox ID: ${inboxId}`);
+            }
+          }
+        } catch (resolveError) {
+          console.log(`⚠️ Could not resolve inbox ID: ${resolveError}`);
+        }
+
+        // If we couldn't resolve inbox ID, skip group addition for now
+        if (!inboxId) {
+          console.log(
+            `⚠️ Could not resolve inbox ID for ${userAddress}, skipping group addition`,
+          );
+          console.log(
+            `💡 User can use /fix-access command later to join the group`,
+          );
+        } else {
+          await enhancedGroupManager.addMemberToPremiumGroup(
+            groupConfig.contractAddress,
+            inboxId,
+            `Trial Access (${days} days)`,
+            tokenId,
+          );
+          console.log(`✅ User added to premium group`);
+          groupAddedSuccessfully = true;
+        }
       } catch (groupError) {
         console.warn(`⚠️ NFT minted but failed to add to group: ${groupError}`);
         // Don't fail - user has NFT and can use /fix-access
       }
     }
 
+    // Determine if user was added to group successfully
+    const groupAdditionStatus = groupAddedSuccessfully
+      ? "✅ Added to premium group"
+      : "⚠️ NFT minted - use /fix-access to join group";
+
     await conversation.send(
       `✅ Trial Access Granted Successfully!\n\n` +
         `🎫 NFT minted to: ${resolutionDisplay}\n` +
         `📋 Group: ${groupName}\n` +
         `⏰ Duration: ${days} days\n` +
-        `🔗 Transaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}\n\n` +
-        `The recipient now has access to the premium group!\n` +
-        `If they don't see the group, they can use: /fix-access ${groupConfig.contractAddress}`,
+        `🔗 Transaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}\n` +
+        `📍 Status: ${groupAdditionStatus}\n\n` +
+        `💡 ${groupAddedSuccessfully ? "User can now access premium content!" : "User should use '/fix-access' command to join the premium group."}`,
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);

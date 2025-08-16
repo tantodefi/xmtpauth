@@ -187,10 +187,12 @@ export class EVMAuthHandler {
   private walletClient;
   private account;
   private factoryAddress: string;
+  private agentAddress: string;
 
   constructor(rpcUrl: string, factoryAddress: string, privateKey: string) {
     this.factoryAddress = factoryAddress;
     this.account = privateKeyToAccount(privateKey as `0x${string}`);
+    this.agentAddress = this.account.address;
 
     this.publicClient = createPublicClient({
       chain: base,
@@ -1052,10 +1054,19 @@ export class EVMAuthHandler {
             "0x", // empty data
           ],
         });
+
+        const hash = await this.sendTransaction({
+          to: contractAddress as `0x${string}`,
+          data,
+          value: 0n, // Free trial
+        });
+
+        await this.waitForTransaction(hash);
+        return hash;
       } else {
         // For V1 contracts, we need to use purchaseAccess with 0 price
-        // First, we need to ensure the tier is set up with 0 price
-        data = encodeFunctionData({
+        // This will mint to the agent, then we transfer to the recipient
+        const purchaseData = encodeFunctionData({
           abi: [
             {
               inputs: [{ name: "tokenId", type: "uint256" }],
@@ -1068,16 +1079,52 @@ export class EVMAuthHandler {
           functionName: "purchaseAccess",
           args: [BigInt(tokenId)],
         });
+
+        // Step 1: Purchase access (mints to agent)
+        const purchaseHash = await this.sendTransaction({
+          to: contractAddress as `0x${string}`,
+          data: purchaseData,
+          value: 0n, // Free trial
+        });
+
+        await this.waitForTransaction(purchaseHash);
+
+        // Step 2: Transfer the NFT to the recipient
+        const transferData = encodeFunctionData({
+          abi: [
+            {
+              inputs: [
+                { name: "from", type: "address" },
+                { name: "to", type: "address" },
+                { name: "id", type: "uint256" },
+                { name: "amount", type: "uint256" },
+                { name: "data", type: "bytes" },
+              ],
+              name: "safeTransferFrom",
+              outputs: [],
+              stateMutability: "nonpayable",
+              type: "function",
+            },
+          ],
+          functionName: "safeTransferFrom",
+          args: [
+            this.agentAddress as `0x${string}`, // from (agent)
+            recipientAddress as `0x${string}`, // to (recipient)
+            BigInt(tokenId),
+            BigInt(1), // amount
+            "0x", // empty data
+          ],
+        });
+
+        const transferHash = await this.sendTransaction({
+          to: contractAddress as `0x${string}`,
+          data: transferData,
+          value: 0n,
+        });
+
+        await this.waitForTransaction(transferHash);
+        return transferHash; // Return the transfer hash as the final transaction
       }
-
-      const hash = await this.sendTransaction({
-        to: contractAddress as `0x${string}`,
-        data,
-        value: 0n, // Free trial
-      });
-
-      await this.waitForTransaction(hash);
-      return hash;
     } catch (error) {
       console.error("Error minting trial NFT:", error);
       throw error;

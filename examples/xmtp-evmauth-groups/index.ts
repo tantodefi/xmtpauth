@@ -1526,7 +1526,7 @@ async function handleWithdraw(
         `✅ ETH Withdrawal Complete!\n\n` +
           `Amount: ${(Number(ethBalance) / 1e18).toFixed(6)} ETH\n` +
           `Transaction: ${withdrawHash}\n` +
-          `View: https://sepolia.basescan.org/tx/${withdrawHash}`,
+          `View: https://basescan.org/tx/${withdrawHash}`,
       );
     }
 

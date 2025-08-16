@@ -91,20 +91,15 @@ export class AddressResolver {
       // Ensure name ends with .base.eth
       const fullName = name.endsWith(".base.eth") ? name : `${name}.base.eth`;
 
-      // Use Base's ENS resolver contract
-      const baseResolver = "0xC6d566A56A1aFf6508b41f6c90ff131615583BCD"; // Base resolver
-
-      const address = await this.baseClient.getEnsAddress({
-        name: fullName,
-      });
-
-      if (address) {
-        return {
-          address: address.toLowerCase(),
-          source: "basename",
-          name: fullName,
-        };
-      }
+      // For now, skip Basename resolution due to Base chain ENS resolver issues
+      console.log(
+        `⚠️ Basename resolution temporarily disabled for ${fullName}`,
+      );
+      return {
+        address: "",
+        source: "basename",
+        error: `Basename resolution temporarily disabled`,
+      };
     } catch (error) {
       console.log(`Basename resolution failed for ${name}:`, error);
     }
@@ -148,34 +143,15 @@ export class AddressResolver {
    */
   private async resolveFarcaster(handle: string): Promise<AddressResolution> {
     try {
-      // Try Farcaster Hub API
-      const response = await fetch(
-        `https://hub.farcaster.xyz/v1/userNameProofsByName?name=${handle}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+      // For now, skip Farcaster resolution due to network connectivity issues
+      console.log(
+        `⚠️ Farcaster resolution temporarily disabled for @${handle}`,
       );
-
-      if (response.ok) {
-        const data = (await response.json()) as {
-          proofs?: Array<{ owner?: string }>;
-        };
-        if (data.proofs && data.proofs.length > 0) {
-          const proof = data.proofs[0];
-          if (proof.owner) {
-            return {
-              address: proof.owner.toLowerCase(),
-              source: "farcaster",
-              name: `@${handle}`,
-            };
-          }
-        }
-      }
-
-      // Fallback: Try Airstack API (if available)
-      // This would require an API key
+      return {
+        address: "",
+        source: "farcaster",
+        error: `Farcaster resolution temporarily disabled`,
+      };
     } catch (error) {
       console.log(`Farcaster resolution failed for ${handle}:`, error);
     }

@@ -145,7 +145,7 @@ export class EventDrivenAccessManager {
         );
         console.log(`📋 Contract: ${log.address}`);
         console.log(
-          `🔗 BaseScan: https://sepolia.basescan.org/token/${log.address}?a=${tokenId}`,
+          `🔗 BaseScan: https://basescan.org/token/${log.address}?a=${tokenId}`,
         );
         console.log(
           `📅 Expires: ${new Date(Number(expiresAt) * 1000).toLocaleDateString()}`,
@@ -187,8 +187,8 @@ export class EventDrivenAccessManager {
         }
 
         const expiryDate = new Date(Number(expiresAt) * 1000);
-        const baseScanUrl = `https://sepolia.basescan.org/token/${log.address}?a=${tokenId}`;
-        const contractUrl = `https://sepolia.basescan.org/address/${log.address}`;
+        const baseScanUrl = `https://basescan.org/token/${log.address}?a=${tokenId}`;
+        const contractUrl = `https://basescan.org/address/${log.address}`;
 
         const confirmationMessage =
           `🎉 NFT Purchase Successful!\n\n` +
