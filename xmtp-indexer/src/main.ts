@@ -46,6 +46,16 @@ processor.run(database, async (ctx) => {
   const contractDeployments: ContractDeployment[] = [];
   const contractEvents: ContractEvent[] = [];
 
+  // Log processing info
+  if (ctx.blocks.length > 0) {
+    const blockNumbers = ctx.blocks.map((b) => b.header.height);
+    const minBlock = Math.min(...blockNumbers);
+    const maxBlock = Math.max(...blockNumbers);
+    console.log(
+      `🔄 Processing blocks ${minBlock} to ${maxBlock} (${ctx.blocks.length} blocks)`,
+    );
+  }
+
   for (const block of ctx.blocks) {
     for (const log of block.logs) {
       try {
@@ -273,34 +283,67 @@ processor.run(database, async (ctx) => {
 
     // Handle native ETH transfers from transaction data
     for (const transaction of block.transactions) {
-      if (
-        transaction.to?.toLowerCase() === AGENT_ADDRESS.toLowerCase() &&
-        transaction.value &&
-        BigInt(transaction.value) > 0n
-      ) {
-        const value = BigInt(transaction.value);
-        const isPayment = value >= MIN_PAYMENT_WEI;
+      try {
+        if (
+          transaction.to?.toLowerCase() === AGENT_ADDRESS.toLowerCase() &&
+          transaction.value &&
+          BigInt(transaction.value) > 0n
+        ) {
+          const value = BigInt(transaction.value);
 
-        const transfer = new EthTransfer({
-          id: `${transaction.hash}-eth`,
-          blockNumber: block.header.height,
-          timestamp: new Date(block.header.timestamp),
-          transactionHash: transaction.hash,
-          from: transaction.from.toLowerCase(),
-          to: transaction.to.toLowerCase(),
-          value: value,
-          tokenType: "ETH",
-          isPayment: isPayment,
-          status: "success",
-        });
+          // Log all transactions to agent for debugging
+          console.log(`📡 Transaction to agent detected: ${transaction.hash}`);
+          console.log(`  From: ${transaction.from}`);
+          console.log(`  To: ${transaction.to}`);
+          console.log(`  Value: ${value} wei`);
+          console.log(`  Status: ${transaction.status || "unknown"}`);
+          console.log(`  Block: ${block.header.height}`);
 
-        ethTransfers.push(transfer);
+          // Check if transaction was successful
+          // Status can be number, boolean, string, or undefined
+          const status = transaction.status;
+          let isSuccessful = true; // Default to success
+          if (typeof status === "number" && status === 0) {
+            isSuccessful = false;
+          } else if (typeof status === "boolean" && status === false) {
+            isSuccessful = false;
+          } else if (typeof status === "string" && status === "0x0") {
+            isSuccessful = false;
+          }
+          const isPayment = value >= MIN_PAYMENT_WEI && isSuccessful;
 
-        if (isPayment) {
-          console.log(
-            `💰 ETH payment detected: ${value} wei from ${transaction.from} to ${transaction.to}`,
-          );
+          const transfer = new EthTransfer({
+            id: `${transaction.hash}-eth`,
+            blockNumber: block.header.height,
+            timestamp: new Date(block.header.timestamp),
+            transactionHash: transaction.hash,
+            from: transaction.from.toLowerCase(),
+            to: transaction.to.toLowerCase(),
+            value: value,
+            tokenType: "ETH",
+            isPayment: isPayment,
+            status: isSuccessful ? "success" : "failed",
+          });
+
+          ethTransfers.push(transfer);
+
+          if (isPayment) {
+            console.log(
+              `💰 ETH PAYMENT CONFIRMED: ${value} wei (${Number(value) / 1e18} ETH) from ${transaction.from} to ${transaction.to}`,
+            );
+          } else if (!isSuccessful) {
+            console.log(`❌ Transaction failed: ${transaction.hash}`);
+          } else if (value < MIN_PAYMENT_WEI) {
+            console.log(
+              `⚠️ Transaction below minimum: ${value} wei (need ${MIN_PAYMENT_WEI})`,
+            );
+          }
         }
+      } catch (error) {
+        console.error(
+          `Error processing transaction ${transaction.hash}:`,
+          error,
+        );
       }
     }
   }
@@ -313,14 +356,34 @@ processor.run(database, async (ctx) => {
   // Log summary
   const currentBlock = ctx.blocks[ctx.blocks.length - 1];
   if (currentBlock) {
+    const ethPayments = ethTransfers.filter((t) => t.isPayment);
+    const ethCount = ethTransfers.filter((t) => t.tokenType === "ETH").length;
+    const usdcCount = ethTransfers.filter((t) => t.tokenType === "USDC").length;
+
     console.log(
       `📊 Processed blocks ${ctx.blocks[0].header.height} to ${currentBlock.header.height}:`,
     );
     console.log(
-      `  💰 ${ethTransfers.length} transfers (${ethTransfers.filter((t) => t.isPayment).length} payments)`,
+      `  💰 ${ethTransfers.length} transfers: ${ethCount} ETH, ${usdcCount} USDC (${ethPayments.length} payments >= minimum)`,
     );
     console.log(`  🏭 ${contractDeployments.length} contract deployments`);
     console.log(`  📋 ${contractEvents.length} contract events`);
     console.log(`  🔍 ${knownContracts.size} known contracts`);
+
+    // Log any payments found in detail
+    if (ethPayments.length > 0) {
+      console.log(`🎯 PAYMENTS DETECTED:`);
+      ethPayments.forEach((payment) => {
+        const amount =
+          payment.tokenType === "ETH"
+            ? `${Number(payment.value) / 1e18} ETH`
+            : payment.tokenType === "USDC"
+              ? `${Number(payment.value) / 1e6} USDC`
+              : `${payment.value} ${payment.tokenType}`;
+        console.log(
+          `  💰 ${amount} from ${payment.from} (block ${payment.blockNumber})`,
+        );
+      });
+    }
   }
 });

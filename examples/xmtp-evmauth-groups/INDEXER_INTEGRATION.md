@@ -1,11 +1,11 @@
-# Hybrid Payment Monitoring for XMTP EVMAuth Groups Agent
+# Multi-Layer Payment Detection for XMTP EVMAuth Groups Agent
 
 ## Overview
 
-This agent uses a **Hybrid Payment Monitoring** system that combines:
-1. **Instant Detection**: Direct RPC calls for real-time payment detection (10-second intervals)
-2. **Historical Reliability**: Subsquid indexer for comprehensive historical data and fallback
-3. **Automatic Failover**: Seamlessly switches between methods for maximum reliability
+This agent uses a **Multi-Layer Payment Detection** system with:
+1. **🧾 Transaction References** - Modern wallet integration (RECOMMENDED)
+2. **⚡ Real-time RPC** - Direct blockchain monitoring for legacy support
+3. **🔍 Indexer Backup** - Subsquid indexer for historical data and analytics
 
 ## Configuration
 
@@ -18,14 +18,29 @@ INDEXER_GRAPHQL_URL=https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmt
 
 ## Benefits
 
-- **⚡ INSTANT** payment detection (10 seconds vs 20+ minutes)
-- **🔄 Dual redundancy** - RPC + Indexer for maximum reliability
+- **🧾 INSTANT** detection via transaction references (< 1 second)
+- **🔄 Multi-layer redundancy** - Transaction refs + RPC + Indexer
 - **📊 Historical data** - comprehensive payment history via indexer
-- **🚀 Real-time** - direct RPC monitoring for immediate detection
-- **🛡️ Automatic fallback** - if one method fails, the other continues
-- **📈 Scalable** - handles high transaction volumes efficiently
+- **🚀 Modern UX** - seamless wallet integration (no manual steps)
+- **🛡️ Automatic fallback** - multiple detection methods
+- **📈 Production ready** - handles smart wallets and edge cases
 
 ## How it Works
+
+### 1. Transaction Reference Detection (Primary Method)
+
+When users approve payments in modern wallets (Coinbase, MetaMask, etc.), the wallet automatically sends a **transaction reference message** containing the transaction hash.
+
+**Flow:**
+1. User sends `/create-group dstealth`
+2. Agent responds with payment transaction
+3. User approves in wallet
+4. **Wallet automatically sends transaction reference** 🎯
+5. Agent verifies transaction and creates group instantly
+
+**No manual steps required!** This is the modern, recommended approach.
+
+### 2. Legacy RPC Detection (Backup)
 
 1. **Indexer monitors Base blockchain** for:
    - ETH transfers to agent address (`0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc`)

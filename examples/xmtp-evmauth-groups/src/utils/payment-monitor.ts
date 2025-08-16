@@ -545,4 +545,18 @@ export class PaymentMonitor {
     }
     return payments;
   }
+
+  /**
+   * Get all pending payments (for transaction reference handling)
+   */
+  getPendingPayments(): Map<string, any> {
+    return this.pendingPayments;
+  }
+
+  /**
+   * Remove a pending payment by ID (for transaction reference handling)
+   */
+  removePendingPayment(paymentId: string): boolean {
+    return this.pendingPayments.delete(paymentId);
+  }
 }

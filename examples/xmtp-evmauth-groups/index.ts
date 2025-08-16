@@ -9,21 +9,22 @@ import {
   ReactionCodec,
 } from "@xmtp/content-type-reaction";
 import {
+  ContentTypeTransactionReference,
+  TransactionReferenceCodec,
+  type TransactionReference,
+} from "@xmtp/content-type-transaction-reference";
+import {
   ContentTypeWalletSendCalls,
   WalletSendCallsCodec,
 } from "@xmtp/content-type-wallet-send-calls";
-// Note: These content types would need to be installed separately if available
-// import { TransactionReferenceCodec } from "@xmtp/content-type-transaction-reference";
-// import {
-//   ContentTypeWalletSendCalls,
-//   WalletSendCallsCodec,
-// } from "@xmtp/content-type-wallet-send-calls";
 import {
   Client,
   IdentifierKind,
   type Group,
   type XmtpEnv,
 } from "@xmtp/node-sdk";
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
 import { JSONDatabase } from "./src/database/json-database";
 import { EventDrivenAccessManager } from "./src/handlers/event-driven-access";
 import { EVMAuthHandler } from "./src/handlers/evmauth-handler";
@@ -72,6 +73,141 @@ const {
   "FEE_BASIS_POINTS",
 ]);
 
+/**
+ * Handle transaction reference messages (payment confirmations from wallets)
+ */
+async function handleTransactionReference(
+  conversation: any,
+  transactionRef: TransactionReference,
+  memberAddress: string,
+  senderInboxId: string,
+  paymentMonitor: PaymentMonitor,
+  enhancedGroupManager: any,
+  publicClient: any,
+): Promise<void> {
+  console.log(
+    "🧾 Processing transaction reference:",
+    JSON.stringify(transactionRef, null, 2),
+  );
+
+  // Extract transaction hash and network info
+  const txHash = transactionRef.reference;
+  const networkId = transactionRef.networkId;
+
+  if (!txHash) {
+    console.log("❌ No transaction hash in reference");
+    await conversation.send(
+      "❌ Invalid transaction reference - no transaction hash found.",
+    );
+    return;
+  }
+
+  console.log(`🔍 Processing transaction: ${txHash}`);
+  console.log(`📡 Network: ${networkId}`);
+  console.log(`👤 From: ${memberAddress}`);
+
+  try {
+    // Get transaction details from the blockchain
+    const tx = await publicClient.getTransaction({
+      hash: txHash as `0x${string}`,
+    });
+    const receipt = await publicClient.getTransactionReceipt({
+      hash: txHash as `0x${string}`,
+    });
+
+    console.log(`💰 Transaction details:`);
+    console.log(`  From: ${tx.from}`);
+    console.log(`  To: ${tx.to}`);
+    console.log(`  Value: ${tx.value} wei`);
+    console.log(`  Status: ${receipt.status}`);
+
+    // Check if this is a payment to our agent
+    const agentAddress = "0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc"; // TODO: get from context
+    const MIN_PAYMENT_WEI = 1000000000000000n; // 0.001 ETH
+
+    if (
+      receipt.status === "success" &&
+      tx.to?.toLowerCase() === agentAddress.toLowerCase() &&
+      BigInt(tx.value) >= MIN_PAYMENT_WEI
+    ) {
+      console.log("✅ Valid payment transaction confirmed!");
+
+      // Check if we have a pending payment for this user
+      const pendingPayments = paymentMonitor.getPendingPayments();
+      const matchingPayment = Array.from(pendingPayments.values()).find(
+        (p) =>
+          p.memberAddress.toLowerCase() === memberAddress.toLowerCase() ||
+          p.memberAddress.toLowerCase() === tx.from.toLowerCase(),
+      );
+
+      if (matchingPayment) {
+        console.log(
+          `🎯 Found matching pending payment for group: ${matchingPayment.groupName}`,
+        );
+
+        // Create the group
+        try {
+          const groupResult = await enhancedGroupManager.createDualGroupSystem(
+            matchingPayment.groupName,
+            senderInboxId,
+            memberAddress,
+          );
+
+          // Remove the pending payment
+          paymentMonitor.removePendingPayment(matchingPayment.paymentId);
+
+          // Send success message
+          await conversation.send(
+            `✅ Payment confirmed via transaction reference!\n\n` +
+              `💰 Transaction: ${txHash}\n` +
+              `🎉 Group "${matchingPayment.groupName}" created successfully!\n\n` +
+              `📋 Contract: ${groupResult.contractAddress}\n` +
+              `🏪 Sales Group: ${groupResult.salesGroup.id}\n` +
+              `💎 Premium Group: ${groupResult.premiumGroup.id}\n\n` +
+              `🎉 Your group is ready! Check your conversations.`,
+          );
+
+          console.log(
+            `✅ Group created successfully via transaction reference!`,
+          );
+        } catch (error) {
+          console.error("Error creating group:", error);
+          await conversation.send(
+            "❌ Payment confirmed but error creating group. Please contact support.",
+          );
+        }
+      } else {
+        console.log("⚠️ No matching pending payment found");
+        await conversation.send(
+          `✅ Payment transaction confirmed!\n\n` +
+            `💰 Transaction: ${txHash}\n` +
+            `⚠️ However, no pending group creation found. Please use /create-group first, then make the payment.`,
+        );
+      }
+    } else {
+      console.log("❌ Transaction is not a valid payment to agent");
+      let errorMsg = "❌ Transaction reference received but:\n";
+
+      if (receipt.status !== "success") {
+        errorMsg += "• Transaction failed\n";
+      }
+      if (tx.to?.toLowerCase() !== agentAddress.toLowerCase()) {
+        errorMsg += `• Not sent to agent address (sent to: ${tx.to})\n`;
+      }
+      if (BigInt(tx.value) < MIN_PAYMENT_WEI) {
+        errorMsg += `• Amount too low (minimum: 0.001 ETH)\n`;
+      }
+
+      await conversation.send(errorMsg);
+    }
+  } catch (error) {
+    console.error("Error processing transaction:", error);
+    await conversation.send(
+      `❌ Error verifying transaction ${txHash}. Please try again.`,
+    );
+  }
+}
+
 // In-memory storage for demo (use database in production)
 const groupConfigs = new Map<string, DualGroupConfig>();
 const userTokens = new Map<
@@ -99,7 +235,11 @@ async function main() {
     dbEncryptionKey,
     env: XMTP_ENV as XmtpEnv,
     dbPath: xmtpDbPath,
-    codecs: [new WalletSendCallsCodec(), new ReactionCodec()],
+    codecs: [
+      new WalletSendCallsCodec(),
+      new ReactionCodec(),
+      new TransactionReferenceCodec(),
+    ],
   });
 
   /* Get agent address */
@@ -303,17 +443,13 @@ async function main() {
   const stream = await client.conversations.streamAllMessages();
 
   for await (const message of stream) {
-    /* Ignore messages from the same agent or non-text messages */
-    if (
-      message.senderInboxId.toLowerCase() === client.inboxId.toLowerCase() ||
-      message.contentType?.typeId !== "text"
-    ) {
+    /* Ignore messages from the same agent */
+    if (message.senderInboxId.toLowerCase() === client.inboxId.toLowerCase()) {
       continue;
     }
 
-    console.log(
-      `Received message: ${message.content as string} by ${message.senderInboxId}`,
-    );
+    /* Handle different message types */
+    const messageType = message.contentType?.typeId;
 
     const conversation = await client.conversations.getConversationById(
       message.conversationId,
@@ -332,6 +468,45 @@ async function main() {
       console.log("Unable to find member address, skipping");
       continue;
     }
+
+    /* Handle transaction reference messages (payment confirmations) */
+    if (messageType === "transactionReference") {
+      console.log("🧾 Detected transaction reference message");
+      const transactionRef = message.content as TransactionReference;
+
+      try {
+        // Create public client for transaction verification
+        const publicClient = createPublicClient({
+          chain: base,
+          transport: http(BASE_RPC_URL),
+        });
+
+        await handleTransactionReference(
+          conversation,
+          transactionRef,
+          memberAddress,
+          message.senderInboxId,
+          paymentMonitor,
+          enhancedGroupManager,
+          publicClient,
+        );
+      } catch (error) {
+        console.error("Error handling transaction reference:", error);
+        await conversation.send(
+          "❌ Error processing transaction reference. Please try again.",
+        );
+      }
+      continue;
+    }
+
+    /* Handle text messages only */
+    if (messageType !== "text") {
+      continue;
+    }
+
+    console.log(
+      `Received message: ${message.content as string} by ${message.senderInboxId}`,
+    );
 
     // Add a reaction to the message we just received (Unicode emoji)
     try {
