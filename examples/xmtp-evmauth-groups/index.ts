@@ -49,7 +49,7 @@ import {
   handleGrantTrial,
   handleListGroups,
 } from "./src/utils/enhanced-create-group-with-payment";
-import { IndexerPaymentMonitor } from "./src/utils/indexer-payment-monitor";
+import { HybridPaymentMonitor } from "./src/utils/hybrid-payment-monitor";
 import { PersistentStateManager } from "./src/utils/persistent-state";
 import { TokenSalesHandler } from "./src/utils/token-sales";
 
@@ -162,12 +162,14 @@ async function main() {
   const persistentState = new PersistentStateManager();
   persistentState.cleanupOldRecords();
 
-  // Payment monitoring system - using indexer for efficient payment tracking
+  // Hybrid payment monitoring system - instant detection + historical reliability
   const INDEXER_GRAPHQL_URL =
     process.env.INDEXER_URL ||
     "https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmtp-indexer@v1/api/graphql";
-  const paymentMonitor = new IndexerPaymentMonitor(
+  const RPC_URL = BASE_RPC_URL; // Use same RPC as other operations
+  const paymentMonitor = new HybridPaymentMonitor(
     INDEXER_GRAPHQL_URL,
+    RPC_URL,
     agentAddress,
     enhancedGroupManager,
     groupConfigs,

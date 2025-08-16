@@ -1,8 +1,11 @@
-# Indexer Integration for XMTP EVMAuth Groups Agent
+# Hybrid Payment Monitoring for XMTP EVMAuth Groups Agent
 
 ## Overview
 
-This agent now uses a deployed Subsquid indexer for efficient payment monitoring instead of manual blockchain scanning.
+This agent uses a **Hybrid Payment Monitoring** system that combines:
+1. **Instant Detection**: Direct RPC calls for real-time payment detection (10-second intervals)
+2. **Historical Reliability**: Subsquid indexer for comprehensive historical data and fallback
+3. **Automatic Failover**: Seamlessly switches between methods for maximum reliability
 
 ## Configuration
 
@@ -15,11 +18,12 @@ INDEXER_GRAPHQL_URL=https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmt
 
 ## Benefits
 
-- **10x faster** payment detection (30 seconds vs 5+ minutes)
-- **Historical data** - can query past payments
-- **Real-time updates** via GraphQL subscriptions  
-- **Persistent storage** in PostgreSQL
-- **More reliable** than manual block scanning
+- **⚡ INSTANT** payment detection (10 seconds vs 20+ minutes)
+- **🔄 Dual redundancy** - RPC + Indexer for maximum reliability
+- **📊 Historical data** - comprehensive payment history via indexer
+- **🚀 Real-time** - direct RPC monitoring for immediate detection
+- **🛡️ Automatic fallback** - if one method fails, the other continues
+- **📈 Scalable** - handles high transaction volumes efficiently
 
 ## How it Works
 

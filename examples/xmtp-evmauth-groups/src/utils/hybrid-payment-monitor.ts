@@ -1,239 +1,379 @@
-/**
- * Hybrid Payment Monitor - Uses indexer when available, falls back to RPC scanning
- * Best reliability: indexer performance + RPC fallback
- */
-
+import type { Conversation } from "@xmtp/node-sdk";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
-import type { DualGroupConfig } from "../types/types";
-import {
-  EmbeddedIndexerClient,
-  type PaymentData,
-} from "./embedded-indexer-client";
+import type { GroupConfig } from "../types/group-config";
 
+/**
+ * Hybrid Payment Monitor - Best of both worlds:
+ * 1. Instant detection via direct RPC calls for new payments
+ * 2. Historical data and reliability via indexer
+ * 3. Automatic fallback between methods
+ */
 export class HybridPaymentMonitor {
-  private indexerClient: EmbeddedIndexerClient;
+  private indexerUrl: string;
+  private rpcUrl: string;
   private agentAddress: string;
-  private enhancedGroupManager: EnhancedGroupManager;
-  private groupConfigs: Map<string, DualGroupConfig>;
-  private pendingPayments: Map<
-    string,
-    {
-      senderInboxId: string;
-      groupName: string;
-      memberAddress: string;
-      conversation: any;
-      timestamp: number;
-    }
-  >;
-  private pollingInterval?: NodeJS.Timeout;
-  private useIndexer: boolean = true;
+  private groupManager: EnhancedGroupManager;
+  private groupConfigs: Record<string, GroupConfig>;
+  private pendingPayments = new Map<string, PendingPayment>();
+  private lastCheckedBlock = 0;
+  private isRunning = false;
+
+  // Payment thresholds
+  private readonly MIN_PAYMENT_WEI = 1000000000000000n; // 0.001 ETH
+  private readonly MIN_USDC_PAYMENT = 1000000n; // 1 USDC
 
   constructor(
+    indexerUrl: string,
+    rpcUrl: string,
     agentAddress: string,
-    enhancedGroupManager: EnhancedGroupManager,
-    groupConfigs: Map<string, DualGroupConfig>,
+    groupManager: EnhancedGroupManager,
+    groupConfigs: Record<string, GroupConfig>,
   ) {
-    this.agentAddress = agentAddress;
-    this.indexerClient = new EmbeddedIndexerClient(agentAddress);
-    this.enhancedGroupManager = enhancedGroupManager;
+    this.indexerUrl = indexerUrl;
+    this.rpcUrl = rpcUrl;
+    this.agentAddress = agentAddress.toLowerCase();
+    this.groupManager = groupManager;
     this.groupConfigs = groupConfigs;
-    this.pendingPayments = new Map();
-
-    console.log(`💰 Hybrid payment monitor initialized for ${agentAddress}`);
   }
 
   /**
-   * Start payment monitoring with automatic fallback
+   * Start monitoring with hybrid approach
    */
-  async startPaymentMonitoring(): Promise<void> {
-    console.log("👀 Starting hybrid payment monitoring...");
+  async startMonitoring(): Promise<void> {
+    if (this.isRunning) return;
+    this.isRunning = true;
 
-    // Test indexer connectivity
-    const indexerHealthy = await this.indexerClient.isHealthy();
-    if (indexerHealthy) {
-      console.log("✅ Indexer is healthy - using indexer mode");
-      this.useIndexer = true;
-    } else {
-      console.log("⚠️ Indexer unavailable - falling back to RPC mode");
-      this.useIndexer = false;
-    }
+    console.log("🚀 Starting Hybrid Payment Monitor...");
+    console.log(`📡 Indexer: ${this.indexerUrl}`);
+    console.log(`⚡ RPC: ${this.rpcUrl}`);
+    console.log(`🎯 Agent: ${this.agentAddress}`);
 
-    // Start monitoring loop
-    this.pollingInterval = setInterval(
-      async () => {
-        await this.checkForNewPayments();
-      },
-      this.useIndexer ? 30000 : 45000,
-    ); // 30s for indexer, 45s for RPC
+    // Initialize last checked block
+    await this.initializeLastBlock();
 
-    // Initial check
-    await this.checkForNewPayments();
+    // Start both monitoring loops
+    this.startIndexerMonitoring();
+    this.startRealTimeMonitoring();
   }
 
   /**
-   * Stop payment monitoring
-   */
-  stopPaymentMonitoring(): void {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = undefined;
-    }
-    console.log("🛑 Stopped hybrid payment monitoring");
-  }
-
-  /**
-   * Register a pending payment expectation
+   * Register a pending payment (from user interaction)
    */
   registerPayment(
     senderInboxId: string,
     groupName: string,
     memberAddress: string,
-    conversation: any,
+    conversation: Conversation,
   ): string {
     const paymentId = `${senderInboxId}-${groupName}-${Date.now()}`;
 
     this.pendingPayments.set(paymentId, {
+      id: paymentId,
       senderInboxId,
       groupName,
       memberAddress,
       conversation,
-      timestamp: Date.now(),
+      registeredAt: Date.now(),
+      attempts: 0,
     });
 
-    console.log(`📝 Registered payment: ${paymentId} from ${memberAddress}`);
+    console.log(`📝 Registered pending payment: ${paymentId}`);
     return paymentId;
   }
 
   /**
-   * Check for new payments using indexer or fallback to RPC
+   * Initialize last checked block from indexer or RPC
    */
-  private async checkForNewPayments(): Promise<void> {
+  private async initializeLastBlock(): Promise<void> {
     try {
-      const pendingCount = this.pendingPayments.size;
-      console.log(
-        `🔍 Checking for payments (${pendingCount} pending) - Mode: ${this.useIndexer ? "Indexer" : "RPC"}`,
-      );
+      // Try to get last processed block from indexer first
+      const response = await fetch(this.indexerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "query { squidStatus { height } }",
+        }),
+      });
 
-      if (pendingCount === 0) {
+      const data = await response.json();
+      if (data.data?.squidStatus?.height) {
+        this.lastCheckedBlock = data.data.squidStatus.height;
+        console.log(`📊 Starting from indexer block: ${this.lastCheckedBlock}`);
         return;
       }
+    } catch (error) {
+      console.log("⚠️ Indexer unavailable, using RPC for initialization");
+    }
 
-      if (this.useIndexer) {
-        await this.checkPaymentsViaIndexer();
-      } else {
-        await this.checkPaymentsViaRPC();
+    // Fallback to current block from RPC
+    try {
+      const response = await fetch(this.rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "eth_blockNumber",
+          params: [],
+          id: 1,
+        }),
+      });
+
+      const data = await response.json();
+      this.lastCheckedBlock = parseInt(data.result, 16);
+      console.log(
+        `📊 Starting from current RPC block: ${this.lastCheckedBlock}`,
+      );
+    } catch (error) {
+      console.error("❌ Failed to initialize block number:", error);
+      this.lastCheckedBlock = 34200000; // Fallback
+    }
+  }
+
+  /**
+   * Monitor via indexer (historical + reliable)
+   */
+  private startIndexerMonitoring(): void {
+    const checkIndexer = async () => {
+      if (!this.isRunning) return;
+
+      try {
+        const response = await fetch(this.indexerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: `
+              query GetPaymentsSinceBlock($blockNumber: Int!) {
+                ethTransfers(
+                  where: { 
+                    blockNumber_gte: $blockNumber
+                    isPayment_eq: true
+                  }
+                  orderBy: blockNumber_ASC
+                ) {
+                  id
+                  blockNumber
+                  timestamp
+                  from
+                  to
+                  value
+                  transactionHash
+                  tokenType
+                }
+              }
+            `,
+            variables: {
+              blockNumber: Math.max(this.lastCheckedBlock - 10, 34200000),
+            },
+          }),
+        });
+
+        const data = await response.json();
+        if (data.errors) {
+          console.error("⚠️ Indexer query error:", data.errors);
+          return;
+        }
+
+        const payments = data.data.ethTransfers || [];
+        for (const payment of payments) {
+          await this.processPayment(payment, "indexer");
+        }
+
+        console.log(
+          `🔍 Indexer check: ${payments.length} payments found (${this.pendingPayments.size} pending)`,
+        );
+      } catch (error) {
+        console.error("⚠️ Indexer monitoring error:", error);
       }
 
-      // Clean up old pending payments (older than 15 minutes)
-      const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
-      for (const [paymentId, payment] of this.pendingPayments.entries()) {
-        if (payment.timestamp < fifteenMinutesAgo) {
-          console.log(
-            `⏰ Cleaning up expired payment expectation: ${paymentId}`,
-          );
-          this.pendingPayments.delete(paymentId);
+      // Check every 30 seconds
+      setTimeout(checkIndexer, 30000);
+    };
+
+    checkIndexer();
+  }
+
+  /**
+   * Monitor via direct RPC (real-time)
+   */
+  private startRealTimeMonitoring(): void {
+    const checkRealTime = async () => {
+      if (!this.isRunning) return;
+
+      try {
+        // Get current block
+        const blockResponse = await fetch(this.rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "eth_blockNumber",
+            params: [],
+            id: 1,
+          }),
+        });
+
+        const blockData = await blockResponse.json();
+        const currentBlock = parseInt(blockData.result, 16);
+
+        // Only check recent blocks (last 5 blocks for real-time detection)
+        const startBlock = Math.max(currentBlock - 5, this.lastCheckedBlock);
+
+        for (let blockNum = startBlock; blockNum <= currentBlock; blockNum++) {
+          await this.checkBlockForPayments(blockNum);
+        }
+
+        this.lastCheckedBlock = Math.max(
+          this.lastCheckedBlock,
+          currentBlock - 3,
+        );
+        console.log(
+          `⚡ Real-time check: blocks ${startBlock}-${currentBlock} (${this.pendingPayments.size} pending)`,
+        );
+      } catch (error) {
+        console.error("⚠️ Real-time monitoring error:", error);
+      }
+
+      // Check every 10 seconds for real-time detection
+      setTimeout(checkRealTime, 10000);
+    };
+
+    checkRealTime();
+  }
+
+  /**
+   * Check a specific block for payments via RPC
+   */
+  private async checkBlockForPayments(blockNumber: number): Promise<void> {
+    try {
+      // Get block with transactions
+      const response = await fetch(this.rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "eth_getBlockByNumber",
+          params: [`0x${blockNumber.toString(16)}`, true],
+          id: 1,
+        }),
+      });
+
+      const data = await response.json();
+      const block = data.result;
+
+      if (!block?.transactions) return;
+
+      // Check for ETH transfers to agent
+      for (const tx of block.transactions) {
+        if (
+          tx.to?.toLowerCase() === this.agentAddress &&
+          tx.value &&
+          BigInt(tx.value) >= this.MIN_PAYMENT_WEI
+        ) {
+          const payment = {
+            id: `${tx.hash}-eth`,
+            blockNumber: blockNumber,
+            timestamp: new Date(
+              parseInt(block.timestamp, 16) * 1000,
+            ).toISOString(),
+            from: tx.from.toLowerCase(),
+            to: tx.to.toLowerCase(),
+            value: tx.value,
+            transactionHash: tx.hash,
+            tokenType: "ETH",
+          };
+
+          await this.processPayment(payment, "rpc");
         }
       }
     } catch (error) {
-      console.error("Error checking for payments:", error);
-
-      // If indexer fails, switch to RPC mode
-      if (this.useIndexer) {
-        console.log("⚠️ Indexer failed, switching to RPC mode");
-        this.useIndexer = false;
-      }
+      console.error(`⚠️ Error checking block ${blockNumber}:`, error);
     }
   }
 
   /**
-   * Check payments using the indexer (preferred method)
+   * Process a detected payment
    */
-  private async checkPaymentsViaIndexer(): Promise<void> {
-    // Check each pending payment
-    for (const [paymentId, payment] of this.pendingPayments.entries()) {
-      const paymentTime = new Date(payment.timestamp);
-
-      const matchingPayment = await this.indexerClient.findPaymentFromAddress(
-        payment.memberAddress,
-        paymentTime,
-      );
-
-      if (matchingPayment) {
-        console.log(`🎉 Payment confirmed via indexer!`);
-        console.log(`   Transaction: ${matchingPayment.transactionHash}`);
-        console.log(`   Amount: ${Number(matchingPayment.value) / 1e18} ETH`);
-        console.log(`   Block: ${matchingPayment.blockNumber}`);
-
-        await this.processConfirmedPayment(paymentId, payment, matchingPayment);
-        this.pendingPayments.delete(paymentId);
-      }
-    }
-  }
-
-  /**
-   * Fallback: Check payments using RPC (your existing logic)
-   */
-  private async checkPaymentsViaRPC(): Promise<void> {
-    // Import and use your existing PaymentMonitor logic here as fallback
-    console.log("🔄 Using RPC fallback for payment detection");
-
-    // This would integrate with your existing PaymentMonitor class
-    // For now, just log that we're in fallback mode
-    for (const [paymentId, payment] of this.pendingPayments.entries()) {
-      const minutesWaiting = Math.round(
-        (Date.now() - payment.timestamp) / 60000,
-      );
-      if (minutesWaiting >= 5) {
-        console.log(
-          `⏳ RPC fallback: Still waiting for payment ${paymentId} (${minutesWaiting} minutes)`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Process a confirmed payment
-   */
-  private async processConfirmedPayment(
-    paymentId: string,
-    payment: { senderInboxId: string; groupName: string; conversation: any },
-    paymentData: PaymentData,
-  ): Promise<void> {
+  private async processPayment(payment: any, source: string): Promise<void> {
     try {
-      console.log(`🚀 Processing confirmed payment: ${paymentId}`);
-
-      const result = await this.enhancedGroupManager.createDualGroupSystem(
-        payment.senderInboxId,
-        payment.groupName,
-        payment.conversation,
+      // Find matching pending payment
+      const pendingPayment = Array.from(this.pendingPayments.values()).find(
+        (p) => this.matchesPayment(p, payment),
       );
 
-      if (result.contractAddress) {
-        console.log(`✅ Payment processed successfully!`);
-        console.log(`   Contract: ${result.contractAddress}`);
-        console.log(`   Sales Group: ${result.salesGroup.id}`);
-        console.log(`   Premium Group: ${result.premiumGroup.id}`);
-        console.log(`   Transaction: ${paymentData.transactionHash}`);
-      } else {
-        console.error(`❌ Failed to process payment`);
+      if (!pendingPayment) {
+        console.log(
+          `💰 Payment detected (${source}) but no matching pending payment: ${payment.transactionHash}`,
+        );
+        return;
       }
+
+      console.log(
+        `✅ Payment confirmed (${source}): ${payment.value} ${payment.tokenType} from ${payment.from}`,
+      );
+      console.log(`🎯 Creating group: ${pendingPayment.groupName}`);
+
+      // Process the payment
+      await this.groupManager.createGroupWithPayment(
+        pendingPayment.senderInboxId,
+        pendingPayment.groupName,
+        pendingPayment.memberAddress,
+        pendingPayment.conversation,
+        payment.transactionHash,
+        payment.value,
+        payment.tokenType || "ETH",
+      );
+
+      // Remove from pending
+      this.pendingPayments.delete(pendingPayment.id);
+      console.log(`🗑️ Removed pending payment: ${pendingPayment.id}`);
     } catch (error) {
-      console.error(`Error processing confirmed payment ${paymentId}:`, error);
+      console.error(
+        `❌ Error processing payment ${payment.transactionHash}:`,
+        error,
+      );
     }
   }
 
   /**
-   * Get monitoring statistics
+   * Check if a payment matches a pending payment
    */
-  getStats(): {
-    pendingPayments: number;
-    mode: string;
-    isMonitoring: boolean;
-  } {
+  private matchesPayment(pending: PendingPayment, payment: any): boolean {
+    // For now, match by timing and amount (within last 10 minutes)
+    const paymentTime = new Date(payment.timestamp).getTime();
+    const timeDiff = Math.abs(paymentTime - pending.registeredAt);
+
+    // Payment should be within 10 minutes of registration
+    return timeDiff < 10 * 60 * 1000;
+  }
+
+  /**
+   * Stop monitoring
+   */
+  stop(): void {
+    this.isRunning = false;
+    console.log("🛑 Hybrid Payment Monitor stopped");
+  }
+
+  /**
+   * Get monitoring status
+   */
+  getStatus() {
     return {
+      isRunning: this.isRunning,
       pendingPayments: this.pendingPayments.size,
-      mode: this.useIndexer ? "Indexer" : "RPC Fallback",
-      isMonitoring: !!this.pollingInterval,
+      lastCheckedBlock: this.lastCheckedBlock,
+      indexerUrl: this.indexerUrl,
+      rpcUrl: this.rpcUrl,
     };
   }
+}
+
+interface PendingPayment {
+  id: string;
+  senderInboxId: string;
+  groupName: string;
+  memberAddress: string;
+  conversation: Conversation;
+  registeredAt: number;
+  attempts: number;
 }

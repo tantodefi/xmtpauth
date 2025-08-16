@@ -58,7 +58,7 @@ export function createTrialAccessGrant(
   return {
     version: "1.0",
     from: recipientAddress as `0x${string}`, // Creator's address (they pay gas)
-    chainId: "0x14a34", // Base Sepolia chain ID
+    chainId: "0x2105", // Base mainnet chain ID (8453 in hex)
     calls: [
       {
         to: contractAddress as `0x${string}`,
@@ -100,7 +100,7 @@ export function createAccessPurchase(
   return {
     version: "1.0",
     from: fromAddress as `0x${string}`, // User pays for their own access
-    chainId: "0x14a34", // Base Sepolia chain ID
+    chainId: "0x2105", // Base mainnet chain ID (8453 in hex)
     calls: [
       {
         to: contractAddress as `0x${string}`,
@@ -179,7 +179,7 @@ export function createUSDCApprovalAndPurchase(
   return {
     version: "1.0",
     from: fromAddress as `0x${string}`,
-    chainId: "0x14a34",
+    chainId: "0x2105", // Base mainnet chain ID (8453 in hex)
     calls: [
       {
         to: usdcAddress as `0x${string}`,
@@ -278,7 +278,7 @@ export function createTierSetupBundle(
 
   if (hasUsdPricing) {
     const usdcAddress = (
-      process.env.USDC_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+      process.env.USDC_ADDRESS || "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
     ).toLowerCase();
 
     const setUSDCData = encodeFunctionData({
@@ -360,7 +360,7 @@ export function createTierSetupBundle(
   return {
     version: "1.0",
     from: fromAddress as `0x${string}`,
-    chainId: "0x14a34",
+    chainId: "0x2105", // Base mainnet chain ID (8453 in hex)
     calls,
   };
 }

@@ -46,10 +46,10 @@ class IndexerClient {
       query GetPaymentsSinceBlock($blockNumber: Int!) {
         ethTransfers(
           where: { 
-            blockNumber: { _gte: $blockNumber }
-            isPayment: { _eq: true }
+            blockNumber_gte: $blockNumber
+            isPayment_eq: true
           }
-          orderBy: [{ blockNumber: asc }]
+          orderBy: blockNumber_ASC
         ) {
           id
           blockNumber
@@ -60,6 +60,7 @@ class IndexerClient {
           transactionHash
           isPayment
           status
+          tokenType
         }
       }
     `;
@@ -87,11 +88,11 @@ class IndexerClient {
       query GetPaymentsFromAddress($fromAddress: String!, $sinceTimestamp: String!) {
         ethTransfers(
           where: { 
-            from: { _eq: $fromAddress }
-            isPayment: { _eq: true }
-            timestamp: { _gte: $sinceTimestamp }
+            from_eq: $fromAddress
+            isPayment_eq: true
+            timestamp_gte: $sinceTimestamp
           }
-          orderBy: [{ timestamp: desc }]
+          orderBy: timestamp_DESC
         ) {
           id
           blockNumber
@@ -102,6 +103,7 @@ class IndexerClient {
           transactionHash
           isPayment
           status
+          tokenType
         }
       }
     `;
@@ -379,4 +381,3 @@ export class IndexerPaymentMonitor {
 function weiToEth(wei: string): number {
   return Number(BigInt(wei)) / 1e18;
 }
-

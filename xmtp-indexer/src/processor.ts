@@ -59,13 +59,13 @@ if (USE_SQD_GATEWAY) {
 export const processor = processorBuilder
   .setRpcEndpoint({
     url: assertNotNull(
-      process.env.RPC_BASE_HTTP || "https://base.llamarpc.com",
+      process.env.RPC_BASE_HTTP || "https://mainnet.base.org", // Official Base RPC - faster
       "No RPC endpoint supplied",
     ),
-    rateLimit: 3, // Conservative rate limit
+    rateLimit: 15, // Increased for faster sync - Base can handle this
     requestTimeout: 30000,
   })
-  .setFinalityConfirmation(10)
+  .setFinalityConfirmation(3) // Reduced for faster confirmation
   .setFields({
     transaction: {
       from: true,
@@ -118,14 +118,10 @@ export const processor = processorBuilder
     address: FACTORY_ADDRESSES.map((addr) => addr.toLowerCase()),
     topic0: [EVENT_SIGNATURES.CONTRACT_DEPLOYED],
     range: { from: DEPLOYMENT_BLOCK },
-  })
-
-  // 5. Track all logs from all transactions to discover new EVMAuth contracts dynamically
-  // This is a broad catch-all that we'll filter in the processor
-  .addTransaction({
-    logs: true,
-    range: { from: DEPLOYMENT_BLOCK },
   });
+
+// 5. Track EVMAuth contract events from known contracts only (more efficient)
+// We'll discover new contracts from factory events above
 
 // Export constants for use in main.ts
 export {
