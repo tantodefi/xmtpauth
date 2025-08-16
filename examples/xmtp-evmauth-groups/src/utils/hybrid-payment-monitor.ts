@@ -215,8 +215,12 @@ export class HybridPaymentMonitor {
         const blockData = (await blockResponse.json()) as any;
         const currentBlock = parseInt(blockData.result, 16);
 
-        // Only check recent blocks (last 5 blocks for real-time detection)
-        const startBlock = Math.max(currentBlock - 5, this.lastCheckedBlock);
+        // Check more blocks initially, then recent blocks for real-time detection
+        const blocksToCheck = this.lastCheckedBlock === 0 ? 50 : 5; // First run: check 50 blocks, then 5
+        const startBlock = Math.max(
+          currentBlock - blocksToCheck,
+          this.lastCheckedBlock,
+        );
 
         for (let blockNum = startBlock; blockNum <= currentBlock; blockNum++) {
           await this.checkBlockForPayments(blockNum);
@@ -262,27 +266,41 @@ export class HybridPaymentMonitor {
 
       if (!block?.transactions) return;
 
-      // Check for ETH transfers to agent
+      // Check for ETH transfers to agent (copy exact logic from PaymentMonitor)
       for (const tx of block.transactions) {
-        if (
-          tx.to?.toLowerCase() === this.agentAddress &&
-          tx.value &&
-          BigInt(tx.value) >= this.MIN_PAYMENT_WEI
-        ) {
-          const payment = {
-            id: `${tx.hash}-eth`,
-            blockNumber: blockNumber,
-            timestamp: new Date(
-              parseInt(block.timestamp, 16) * 1000,
-            ).toISOString(),
-            from: tx.from.toLowerCase(),
-            to: tx.to.toLowerCase(),
-            value: tx.value,
-            transactionHash: tx.hash,
-            tokenType: "ETH",
-          };
+        if (typeof tx === "object" && tx.to && tx.from && tx.value) {
+          // Check for transactions to agent address
+          if (tx.to?.toLowerCase() === this.agentAddress.toLowerCase()) {
+            console.log(
+              `💰 Found tx to agent: ${tx.hash} from ${tx.from} value ${tx.value}`,
+            );
 
-          await this.processPayment(payment, "rpc");
+            // Check if this is a valid payment (0.001 ETH or more)
+            if (BigInt(tx.value) >= this.MIN_PAYMENT_WEI) {
+              console.log(
+                `🎯 Potential payment found! Amount: ${BigInt(tx.value)} wei from ${tx.from}`,
+              );
+
+              const payment = {
+                id: `${tx.hash}-eth`,
+                blockNumber: blockNumber,
+                timestamp: new Date(
+                  parseInt(block.timestamp, 16) * 1000,
+                ).toISOString(),
+                from: tx.from.toLowerCase(),
+                to: tx.to.toLowerCase(),
+                value: tx.value,
+                transactionHash: tx.hash,
+                tokenType: "ETH",
+              };
+
+              await this.processPayment(payment, "rpc");
+            } else {
+              console.log(
+                `💸 Transaction to agent below threshold: ${BigInt(tx.value)} wei from ${tx.from}`,
+              );
+            }
+          }
         }
       }
     } catch (error) {

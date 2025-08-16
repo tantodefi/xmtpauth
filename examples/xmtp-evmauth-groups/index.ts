@@ -49,7 +49,7 @@ import {
   handleGrantTrial,
   handleListGroups,
 } from "./src/utils/enhanced-create-group-with-payment";
-import { HybridPaymentMonitor } from "./src/utils/hybrid-payment-monitor";
+import { PaymentMonitor } from "./src/utils/payment-monitor";
 import { PersistentStateManager } from "./src/utils/persistent-state";
 import { TokenSalesHandler } from "./src/utils/token-sales";
 
@@ -167,9 +167,8 @@ async function main() {
     process.env.INDEXER_URL ||
     "https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmtp-indexer@v1/api/graphql";
   const RPC_URL = BASE_RPC_URL; // Use same RPC as other operations
-  const paymentMonitor = new HybridPaymentMonitor(
-    INDEXER_GRAPHQL_URL,
-    RPC_URL,
+  const paymentMonitor = new PaymentMonitor(
+    BASE_RPC_URL,
     agentAddress,
     enhancedGroupManager,
     groupConfigs,
@@ -273,7 +272,7 @@ async function main() {
 
   // Start payment monitoring system
   console.log("💰 Starting payment monitoring...");
-  void paymentMonitor.startMonitoring();
+  void paymentMonitor.startPaymentMonitoring();
 
   console.log("🚀 EVMAuth Groups Agent is running!");
   console.log("💰 Enhanced with USDC pricing and custom NFT images!");
