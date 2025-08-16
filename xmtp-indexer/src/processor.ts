@@ -19,6 +19,13 @@ const TOKEN_ADDRESSES = {
   WETH: "0x4200000000000000000000000000000000000006", // WETH on Base
 };
 
+// Smart wallet infrastructure addresses
+const SMART_WALLET_ADDRESSES = {
+  ENTRYPOINT_V6: "0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789", // ERC-4337 EntryPoint v0.6
+  ENTRYPOINT_V7: "0x0000000071727De22E5E9d8BAf0edAc6f37da032", // ERC-4337 EntryPoint v0.7
+  COINBASE_SMART_WALLET_FACTORY: "0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a", // Coinbase Smart Wallet Factory
+};
+
 // Factory contract addresses
 const FACTORY_ADDRESSES = [
   "0x0D9c7A9ADC117814ed98B57BF64e8437Da5d4ef4", // Current mainnet Base factory
@@ -41,6 +48,17 @@ const EVENT_SIGNATURES = {
     "0x1f50cca6e190c91c85b4889563d4100095e7bdf0deab20ad9e944cf9009149fc", // UserAccessRevoked(address,string,uint256,string)
   ACCESS_TOKEN_EXPIRED:
     "0x2728a642dad2b70017ea4f1d8668f7aad4d693eba69dce1d0e95ae7666bad189", // AccessTokenExpired(address,uint256)
+
+  // Smart wallet / ERC-4337 events
+  USER_OPERATION_EVENT:
+    "0x49628fd1471006c1482da88028e9ce4dbb080b815c9b0344d39e5a8e6ec1419f", // UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)
+  ACCOUNT_DEPLOYED:
+    "0xd51a9c61267aa6196961883ecf5ff2da6619c37dac0fa92122513fb32c032d2d", // AccountDeployed(bytes32,address,address,address)
+
+  // Native ETH transfer events (for tracking internal transfers)
+  DEPOSIT: "0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c", // Deposit(address,uint256)
+  WITHDRAWAL:
+    "0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65", // Withdrawal(address,uint256)
 };
 
 // Processor configuration with SQD Network fallback
@@ -88,7 +106,7 @@ export const processor = processorBuilder
     from: DEPLOYMENT_BLOCK,
   })
 
-  // 1. Track ETH transfers TO the agent address (payments)
+  // 1. Track direct ETH transfers TO the agent address (EOA payments)
   .addTransaction({
     to: [AGENT_ADDRESS.toLowerCase()],
     range: { from: DEPLOYMENT_BLOCK },
@@ -118,17 +136,25 @@ export const processor = processorBuilder
     address: FACTORY_ADDRESSES.map((addr) => addr.toLowerCase()),
     topic0: [EVENT_SIGNATURES.CONTRACT_DEPLOYED],
     range: { from: DEPLOYMENT_BLOCK },
-  });
+  })
 
-// 5. Track EVMAuth contract events from known contracts only (more efficient)
-// We'll discover new contracts from factory events above
+  // 5. Track EntryPoint UserOperations (Smart Wallet Transactions)
+  .addLog({
+    address: [
+      SMART_WALLET_ADDRESSES.ENTRYPOINT_V6.toLowerCase(),
+      SMART_WALLET_ADDRESSES.ENTRYPOINT_V7.toLowerCase(),
+    ],
+    topic0: [EVENT_SIGNATURES.USER_OPERATION_EVENT],
+    range: { from: DEPLOYMENT_BLOCK },
+  });
 
 // Export constants for use in main.ts
 export {
-  EVENT_SIGNATURES,
-  TOKEN_ADDRESSES,
-  FACTORY_ADDRESSES,
   AGENT_ADDRESS,
+  TOKEN_ADDRESSES,
+  SMART_WALLET_ADDRESSES,
+  EVENT_SIGNATURES,
+  FACTORY_ADDRESSES,
   DEPLOYMENT_BLOCK,
 };
 

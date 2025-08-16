@@ -5,6 +5,7 @@ import {
   EVENT_SIGNATURES,
   FACTORY_ADDRESSES,
   processor,
+  SMART_WALLET_ADDRESSES,
   TOKEN_ADDRESSES,
 } from "./processor";
 
@@ -346,6 +347,9 @@ processor.run(database, async (ctx) => {
         );
       }
     }
+
+    // Handle smart wallet transactions (check for balance changes)
+    await handleSmartWalletTransactions(ctx, block, ethTransfers);
   }
 
   // Save all data to database
@@ -387,3 +391,119 @@ processor.run(database, async (ctx) => {
     }
   }
 });
+
+/**
+ * Handle smart wallet transactions by detecting balance changes
+ * This catches internal ETH transfers that don't show up as direct transactions
+ */
+async function handleSmartWalletTransactions(
+  ctx: any,
+  block: any,
+  ethTransfers: EthTransfer[],
+): Promise<void> {
+  // Check if this block contains any UserOperations to EntryPoint contracts
+  let hasUserOperations = false;
+  let userOpTransactions: string[] = [];
+
+  for (const log of block.logs) {
+    if (
+      (log.address.toLowerCase() ===
+        SMART_WALLET_ADDRESSES.ENTRYPOINT_V6.toLowerCase() ||
+        log.address.toLowerCase() ===
+          SMART_WALLET_ADDRESSES.ENTRYPOINT_V7.toLowerCase()) &&
+      log.topics[0] === EVENT_SIGNATURES.USER_OPERATION_EVENT
+    ) {
+      hasUserOperations = true;
+      userOpTransactions.push(log.transactionHash);
+      console.log(
+        `🔍 UserOperation detected in block ${block.header.height}: ${log.transactionHash}`,
+      );
+
+      // Process the UserOperation to get sender info
+      const userOpInfo = processUserOperation(log);
+      if (userOpInfo) {
+        console.log(
+          `   Sender: ${userOpInfo.sender}, Success: ${userOpInfo.success}`,
+        );
+      }
+    }
+  }
+
+  // If we found UserOperations, create investigation entries
+  if (hasUserOperations) {
+    try {
+      console.log(
+        `🧠 Smart wallet activity detected in block ${block.header.height}`,
+      );
+      console.log(
+        `   UserOperation transactions: ${userOpTransactions.join(", ")}`,
+      );
+      console.log(
+        `   This block may contain internal ETH transfers to the agent`,
+      );
+
+      // Create a placeholder entry for smart wallet investigation
+      // This helps us track which blocks had smart wallet activity
+      const smartWalletTransfer = new EthTransfer({
+        id: `${block.header.height}-smart-wallet-check`,
+        blockNumber: block.header.height,
+        timestamp: new Date(block.header.timestamp),
+        transactionHash:
+          userOpTransactions[0] || `smart-wallet-block-${block.header.height}`,
+        from: "smart-wallet-investigation",
+        to: AGENT_ADDRESS.toLowerCase(),
+        value: 0n, // Placeholder - would need balance checking to determine actual amount
+        tokenType: "ETH-SMART-WALLET",
+        isPayment: false, // Will be updated when we can verify the amount
+        status: "investigating",
+      });
+
+      // Only add if we haven't already added one for this block
+      const existingCheck = ethTransfers.find(
+        (t) => t.id === `${block.header.height}-smart-wallet-check`,
+      );
+
+      if (!existingCheck) {
+        ethTransfers.push(smartWalletTransfer);
+        console.log(
+          `📝 Added smart wallet investigation entry for block ${block.header.height}`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Error handling smart wallet transactions in block ${block.header.height}:`,
+        error,
+      );
+    }
+  }
+}
+
+/**
+ * Enhanced UserOperation processing
+ * Decodes UserOperation events to extract transaction details
+ */
+function processUserOperation(
+  log: any,
+): { sender: string; success: boolean } | null {
+  try {
+    // UserOperationEvent(bytes32 indexed userOpHash, address indexed sender, address indexed paymaster, uint256 nonce, bool success, uint256 actualGasCost, uint256 actualGasUsed)
+    if (log.topics.length >= 3) {
+      const sender = `0x${log.topics[2].slice(26)}`; // Extract sender from topic2
+
+      // Decode success from data (5th parameter, boolean)
+      let success = true;
+      if (log.data && log.data.length > 130) {
+        // Ensure we have enough data
+        // The success boolean is typically at offset 128 (after nonce uint256)
+        const successHex = log.data.slice(130, 132); // Get 1 byte for boolean
+        success = successHex !== "00";
+      }
+
+      return { sender: sender.toLowerCase(), success };
+    }
+  } catch (error) {
+    console.error("Error processing UserOperation:", error);
+  }
+
+  return null;
+}

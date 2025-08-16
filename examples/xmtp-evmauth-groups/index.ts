@@ -91,8 +91,10 @@ async function handleTransactionReference(
   );
 
   // Extract transaction hash and network info
-  const txHash = transactionRef.reference;
-  const networkId = transactionRef.networkId;
+  // Handle both direct format and nested format
+  const txData = transactionRef.transactionReference || transactionRef;
+  const txHash = txData.reference;
+  const networkId = txData.networkId;
 
   if (!txHash) {
     console.log("❌ No transaction hash in reference");
@@ -125,11 +127,57 @@ async function handleTransactionReference(
     const agentAddress = "0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc"; // TODO: get from context
     const MIN_PAYMENT_WEI = 1000000000000000n; // 0.001 ETH
 
-    if (
-      receipt.status === "success" &&
-      tx.to?.toLowerCase() === agentAddress.toLowerCase() &&
-      BigInt(tx.value) >= MIN_PAYMENT_WEI
-    ) {
+    // For smart wallets, check balance change instead of direct transaction value
+    let isValidPayment = false;
+    let paymentAmount = 0n;
+
+    if (receipt.status === "success") {
+      // Check if this is a direct ETH transfer
+      if (
+        tx.to?.toLowerCase() === agentAddress.toLowerCase() &&
+        BigInt(tx.value) >= MIN_PAYMENT_WEI
+      ) {
+        isValidPayment = true;
+        paymentAmount = BigInt(tx.value);
+        console.log(
+          `✅ Direct ETH transfer detected: ${Number(tx.value) / 1e18} ETH`,
+        );
+      } else {
+        // For smart wallets, check balance change
+        console.log(
+          `🔍 Checking balance change for smart wallet transaction...`,
+        );
+
+        try {
+          const balanceBefore = await publicClient.getBalance({
+            address: agentAddress as `0x${string}`,
+            blockNumber: tx.blockNumber! - 1n,
+          });
+
+          const balanceAfter = await publicClient.getBalance({
+            address: agentAddress as `0x${string}`,
+            blockNumber: tx.blockNumber!,
+          });
+
+          const balanceChange = balanceAfter - balanceBefore;
+          console.log(`  Balance before: ${Number(balanceBefore) / 1e18} ETH`);
+          console.log(`  Balance after: ${Number(balanceAfter) / 1e18} ETH`);
+          console.log(`  Change: ${Number(balanceChange) / 1e18} ETH`);
+
+          if (balanceChange >= MIN_PAYMENT_WEI) {
+            isValidPayment = true;
+            paymentAmount = balanceChange;
+            console.log(
+              `✅ Smart wallet payment detected: ${Number(balanceChange) / 1e18} ETH`,
+            );
+          }
+        } catch (balanceError) {
+          console.error(`❌ Error checking balance change:`, balanceError);
+        }
+      }
+    }
+
+    if (isValidPayment) {
       console.log("✅ Valid payment transaction confirmed!");
 
       // Check if we have a pending payment for this user
@@ -159,7 +207,8 @@ async function handleTransactionReference(
           // Send success message
           await conversation.send(
             `✅ Payment confirmed via transaction reference!\n\n` +
-              `💰 Transaction: ${txHash}\n` +
+              `💰 Amount: ${Number(paymentAmount) / 1e18} ETH\n` +
+              `🔗 Transaction: ${txHash}\n` +
               `🎉 Group "${matchingPayment.groupName}" created successfully!\n\n` +
               `📋 Contract: ${groupResult.contractAddress}\n` +
               `🏪 Sales Group: ${groupResult.salesGroup.id}\n` +
@@ -180,7 +229,8 @@ async function handleTransactionReference(
         console.log("⚠️ No matching pending payment found");
         await conversation.send(
           `✅ Payment transaction confirmed!\n\n` +
-            `💰 Transaction: ${txHash}\n` +
+            `💰 Amount: ${Number(paymentAmount) / 1e18} ETH\n` +
+            `🔗 Transaction: ${txHash}\n` +
             `⚠️ However, no pending group creation found. Please use /create-group first, then make the payment.`,
         );
       }
