@@ -248,14 +248,22 @@ export async function handleGrantTrial(
           // Use XMTP client to get inbox ID from address
           const client = enhancedGroupManager.getClient();
           if (client) {
-            const inboxState =
-              await client.preferences.inboxStateFromIdentifiers([
-                { identifier: userAddress, identifierKind: 0 }, // Ethereum address
-              ]);
+            // Try creating a DM with the address to get their inbox ID
+            try {
+              const dm = await client.conversations.newDmWithIdentifier({
+                identifier: userAddress,
+                identifierKind: 0, // Ethereum address
+              });
 
-            if (inboxState && inboxState.length > 0) {
-              inboxId = inboxState[0].inboxId;
-              console.log(`📍 Resolved inbox ID: ${inboxId}`);
+              // Get the peer's inbox ID from the DM
+              if (dm && "peerInboxId" in dm) {
+                inboxId = dm.peerInboxId;
+                console.log(`📍 Resolved inbox ID from DM: ${inboxId}`);
+              }
+            } catch (dmError) {
+              console.log(
+                `⚠️ Could not create DM to resolve inbox ID: ${dmError}`,
+              );
             }
           }
         } catch (resolveError) {
@@ -296,7 +304,8 @@ export async function handleGrantTrial(
         `🎫 NFT minted to: ${resolutionDisplay}\n` +
         `📋 Group: ${groupName}\n` +
         `⏰ Duration: ${days} days\n` +
-        `🔗 Transaction: ${txHash.slice(0, 10)}...${txHash.slice(-8)}\n` +
+        `🔗 Transaction: https://basescan.org/tx/${txHash}\n` +
+        `🖼️ OpenSea: https://opensea.io/assets/base/${groupConfig.contractAddress}/1\n` +
         `📍 Status: ${groupAdditionStatus}\n\n` +
         `💡 ${groupAddedSuccessfully ? "User can now access premium content!" : "User should use '/fix-access' command to join the premium group."}`,
     );

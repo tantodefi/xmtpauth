@@ -189,6 +189,7 @@ export class EventDrivenAccessManager {
         const expiryDate = new Date(Number(expiresAt) * 1000);
         const baseScanUrl = `https://basescan.org/token/${log.address}?a=${tokenId}`;
         const contractUrl = `https://basescan.org/address/${log.address}`;
+        const openSeaUrl = `https://opensea.io/assets/base/${log.address}/${tokenId}`;
 
         const confirmationMessage =
           `🎉 NFT Purchase Successful!\n\n` +
@@ -199,8 +200,9 @@ export class EventDrivenAccessManager {
           `⏰ Valid Until: ${expiryDate.toLocaleDateString()}\n\n` +
           `🔓 You now have access to ${config.metadata.name} Premium!\n\n` +
           `🔍 View on BaseScan:\n${baseScanUrl}\n\n` +
+          `🖼️ View on OpenSea:\n${openSeaUrl}\n\n` +
           `📋 Contract Details:\n${contractUrl}\n\n` +
-          `💡 Note: NFT images may take time to appear on BaseScan. Your access token is visible in your wallet immediately!\n\n` +
+          `💡 Note: NFT images may take time to appear on marketplaces. Your access token is visible in your wallet immediately!\n\n` +
           `Welcome to the premium community! 🚀`;
 
         if (userDM) {
@@ -219,7 +221,8 @@ export class EventDrivenAccessManager {
             await salesGroup.send(
               `🎉 NFT Purchase Confirmed!\n\n` +
                 `User ${user} successfully purchased ${tier?.name || `Token ${tokenId}`}!\n\n` +
-                `Please check your wallet for your NFT: ${baseScanUrl}`,
+                `🔍 BaseScan: ${baseScanUrl}\n` +
+                `🖼️ OpenSea: ${openSeaUrl}`,
             );
           }
         }
