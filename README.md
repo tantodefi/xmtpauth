@@ -14,21 +14,39 @@ This repository provides examples of agents that use the [XMTP](https://docs.xmt
 
 ## Example agents
 
-- [xmtp-gm](/examples/xmtp-gm/): A simple agent that replies to all text messages with "gm"
-- [xmtp-gpt](/examples/xmtp-gpt/): An example using GPT API's to answer messages
-- [xmtp-nft-gated-group](/examples/xmtp-nft-gated-group/): Add members to a group based on an NFT
-- [xmtp-secret-word-group](/examples/xmtp-secret-word-group/): Add members to a group based on a secret word
+### 🚀 **Featured: Enterprise-Grade Agents**
+
+- [**xmtp-evmauth-groups**](/examples/xmtp-evmauth-groups/): **🌟 Production-ready monetized group chat agent** with time-bound NFT access tokens, smart wallet support, USDC payments, automated membership management, and comprehensive recovery systems
+
+### 🔗 **Blockchain & Transaction Agents**
+
 - [xmtp-coinbase-agentkit](/examples/xmtp-coinbase-agentkit/): Agent that uses a CDP for gasless USDC on base
 - [xmtp-transactions](/examples/xmtp-transactions/): Allow transactions between users and agents
-- [xmtp-gaia](/examples/xmtp-gaia/): Agent that uses a CDP for gasless USDC on base
-- [xmtp-group-welcome](/examples/xmtp-group-welcome/): Sends a welcome message when its added and to new members
 - [xmtp-smart-wallet](/examples/xmtp-smart-wallet/): Agent that uses a smart wallet to send messages
-- [xmtp-attachments](/examples/xmtp-attachments/): Agent that sends and receives images
+- [xmtp-gaia](/examples/xmtp-gaia/): Agent that uses a CDP for gasless USDC on base
+
+### 👥 **Group & Community Management**
+
+- [xmtp-nft-gated-group](/examples/xmtp-nft-gated-group/): Add members to a group based on an NFT
+- [xmtp-secret-word-group](/examples/xmtp-secret-word-group/): Add members to a group based on a secret word
+- [xmtp-group-welcome](/examples/xmtp-group-welcome/): Sends a welcome message when its added and to new members
+
+### 🤖 **AI & Interactive Agents**
+
+- [xmtp-gpt](/examples/xmtp-gpt/): An example using GPT API's to answer messages
 - [xmtp-thinking-reaction](/examples/xmtp-thinking-reaction/): Agent that reacts to messages with a thinking emoji
+
+### 🛠️ **Developer Tools & Utilities**
+
+- [xmtp-attachments](/examples/xmtp-attachments/): Agent that sends and receives images
 - [xmtp-queue-dual-client](/examples/xmtp-queue-dual-client/): Agent that uses two clients to send and receive messages
 - [xmtp-multiple-workers](/examples/xmtp-multiple-workers/): Agent that uses multiple workers to send and receive messages
 - [xmtp-stream-callbacks](/examples/xmtp-stream-callbacks/): Stream callbacks for XMTP agents
 - [xmtp-skills](/examples/xmtp-skills/): Helper functions for managing XMTP agents
+
+### 🎯 **Simple Examples**
+
+- [xmtp-gm](/examples/xmtp-gm/): A simple agent that replies to all text messages with "gm"
 
 ## Run example agents
 

@@ -1,48 +1,128 @@
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/subsquid/squid-evm-template)
 
-# Minimal EVM squid
+# XMTP Agent Payment Indexer
 
-This is a starter template of a squid indexer for EVM networks (Ethereum, Polygon, BSC, etc.). See [Squid SDK docs](https://docs.subsquid.io/) for a complete reference.
+**Specialized Subsquid indexer for tracking payments to XMTP agents on Base network**
 
-To extract EVM logs and transactions by a topic or a contract address, use [`.addLog()`](https://docs.subsquid.io/evm-indexing/configuration/evm-logs/), [`.addTransaction()`](https://docs.subsquid.io/evm-indexing/configuration/transactions/), [`.addTrace()`](https://docs.subsquid.io/evm-indexing/configuration/traces/) or [`.addStateDiff()`](https://docs.subsquid.io/evm-indexing/configuration/state-diffs/) methods of the `EvmBatchProcessor` instance defined in `src/processor.ts`. Select data fields with [`.setFields()`](https://docs.subsquid.io/evm-indexing/configuration/data-selection/).
+This indexer monitors ETH and USDC payments to XMTP agents, with advanced support for smart wallet transactions and UserOperations. Built specifically for the XMTP EVMAuth Groups agent to enable reliable payment detection and automated group membership management.
 
-The requested data is transformed in batches by a single handler provided to the `processor.run()` method. 
+## 🎯 **Key Features**
+
+- **Smart Wallet Support**: Detects complex smart wallet transactions and UserOperations
+- **Multi-Token Tracking**: Monitors both ETH and USDC payments
+- **Balance Change Detection**: Fallback mechanism for complex internal transfers
+- **Contract Deployment Tracking**: Monitors agent-deployed contracts
+- **Real-time GraphQL API**: Provides instant payment verification for agents
+- **Production-Ready**: Deployed on Subsquid Cloud with high availability 
 
 For a full list of supported networks and config options,
 check the [`EvmBatchProcessor` overview](https://docs.subsquid.io/evm-indexing/evm-processor/) and the [setup section](https://docs.subsquid.io/evm-indexing/configuration/).
 
 For a step-by-step migration guide from TheGraph, see [the dedicated docs page](https://docs.subsquid.io/migrate/migrate-subgraph/).
 
-Dependencies: Node.js v16 or newer, Git, Docker.
+## 🚀 **Production Deployment**
 
-## Quickstart
+**Live GraphQL API**: [https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmtp-indexer@v5/api/graphql](https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmtp-indexer@v5/api/graphql)
+
+### **Current Status**
+- **Version**: v5 (Latest)
+- **Network**: Base Mainnet
+- **Agent Address**: `0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc`
+- **Deployment Block**: 34,000,000+
+- **Status**: ✅ **Live and Processing**
+
+### **Monitored Data**
+- **ETH Transfers**: Direct transfers to agent address
+- **USDC Transfers**: ERC-20 token payments
+- **Smart Wallet Transactions**: UserOperations with internal ETH transfers
+- **Contract Deployments**: Agent-deployed EVMAuth contracts
+
+Dependencies: Node.js v20 or newer, Git, Docker.
+
+## 🔧 **Local Development**
 
 ```bash
-# 0. Install @subsquid/cli a.k.a. the sqd command globally
-npm i -g @subsquid/cli
-
-# 1. Retrieve the template
-sqd init my_squid_name -t evm
-cd my_squid_name
+# 1. Clone and setup
+git clone <repo>
+cd xmtp-indexer
 
 # 2. Install dependencies
-npm i
+npm install
 
-# 3. Start a Postgres database container and detach
-sqd up
+# 3. Start local database
+npx sqd up
 
-# 4. Build the squid
-sqd build
+# 4. Build the indexer
+npx sqd build
 
-# 5. Start both the squid processor and the GraphQL server
-sqd run .
+# 5. Start processor and GraphQL server
+npx sqd run .
 ```
-A GraphiQL playground will be available at [localhost:4350/graphql](http://localhost:4350/graphql).
 
-You can also start squid services one by one:
+**Local GraphQL Playground**: [http://localhost:4350/graphql](http://localhost:4350/graphql)
+
+## 🚀 **Deployment to Subsquid Cloud**
+
+```bash
+# 1. Build the indexer
+npx sqd build
+
+# 2. Deploy to Subsquid Cloud
+npx sqd deploy --allow-update
+
+# 3. Monitor deployment
+npx sqd logs
+```
+
+### **Production Deployment Process**
+
+The current v5 deployment includes:
+- **Enhanced Schema**: Contract deployments, smart wallet support
+- **Clean Database**: Fresh migration with updated entity structure  
+- **Advanced Monitoring**: UserOperation detection and balance tracking
+- **GraphQL API**: Real-time payment queries for XMTP agents
+
+You can also start squid services locally one by one:
 ```bash
 sqd process
 sqd serve
+```
+
+## 🔍 **Smart Wallet Detection**
+
+The indexer includes advanced smart wallet transaction detection:
+
+### **UserOperation Tracking**
+- Monitors EntryPoint contract calls on Base
+- Detects UserOperations that may contain internal ETH transfers
+- Creates investigation entries for agent-side balance verification
+
+### **Internal Transfer Detection**
+- Tracks ETH balance changes for the agent address
+- Handles complex smart wallet transaction flows
+- Provides fallback verification when direct transfers aren't visible
+
+### **Example Query**
+```graphql
+query GetAgentPayments {
+  ethTransfers(
+    where: { 
+      to_eq: "0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc"
+      isPayment_eq: true
+    }
+    orderBy: [timestamp_DESC]
+    limit: 10
+  ) {
+    id
+    from
+    to
+    value
+    tokenType
+    transactionHash
+    timestamp
+    status
+  }
+}
 ```
 
 ## Dev flow

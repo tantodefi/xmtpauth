@@ -1,4 +1,4 @@
-# EVMAuth Smart Contracts
+# XMTPAuth Smart Contracts
 
 Smart contracts for the XMTP EVMAuth Groups Agent. Provides time-bound access control using ERC-1155 tokens with automatic expiration and XMTP group integration.
 
@@ -96,9 +96,16 @@ BASESCAN_API_KEY=...
 | Contract | Address | Description |
 |----------|---------|-------------|
 | **EVMAuthFactory v1** | `0xa8830A603aE5143a1f8BAA46e28C36e4765EC754` | Factory for deploying group contracts ⭐ **LIVE** |
-| **Production Groups** | `TBD` | Live group access contracts |
+| **USDC Token** | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | Official USDC on Base |
+| **Agent Address** | `0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc` | Live XMTP agent wallet |
 
-> **Note**: Factory deployed to Base mainnet. Group contracts will be deployed as needed.
+### **Live Group Contracts**
+
+| Group | Contract Address | Status |
+|-------|------------------|---------|
+| **dstealth** | `0x602cA984D7f9C693b6061C8AaE072D6B553b0Aff` | ✅ **Active** |
+
+> **Note**: More group contracts deployed as creators use `/create-group` command.
 
 ## 📋 Deployment
 
@@ -236,16 +243,32 @@ npx hardhat verify --network baseSepolia <GROUP_ADDRESS> <FACTORY_ADDRESS> <GROU
 
 ## 🔄 Integration with XMTP Agent
 
-### Agent Configuration
+### Current Production Configuration
 
-To use the latest factory deployment, update your agent's environment:
+The live XMTP agent uses the following production configuration:
 
 ```bash
-# Use the latest v1.2 factory with USDC fee fixes
-EVMAUTH_FACTORY_ADDRESS=0x0D9c7A9ADC117814ed98B57BF64e8437Da5d4ef4
-FEE_RECIPIENT=0x...  # Your agent's wallet for platform fees
+# Production Factory (Base Mainnet)
+EVMAUTH_FACTORY_ADDRESS=0xa8830A603aE5143a1f8BAA46e28C36e4765EC754
+USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+
+# Live Agent
+AGENT_ADDRESS=0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc
+FEE_RECIPIENT=0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc
 FEE_BASIS_POINTS=250 # 2.5% platform fee
+
+# Payment Indexer
+INDEXER_URL=https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmtp-indexer@v5/api/graphql
 ```
+
+### Live Agent Features
+
+The production agent includes:
+- ✅ **Smart Wallet Support**: Advanced transaction detection
+- ✅ **Unified Recovery System**: Automatic metadata and membership sync
+- ✅ **Real-time Payment Detection**: Subsquid indexer integration
+- ✅ **NFT Metadata**: Proper IPFS upload with OpenSea compatibility
+- ✅ **Address Resolution**: ENS, Basename support
 
 ### Integration
 
