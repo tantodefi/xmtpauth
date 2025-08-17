@@ -8,6 +8,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import type { AccessTier } from "../types/types";
+import { IPFSMetadataHandler } from "./ipfs-metadata.js";
 
 // Group Access Contract ABI (v1)
 const GROUP_ABI = [
@@ -406,8 +407,28 @@ export class EVMAuthHandler {
               ],
             };
             console.log(`📝 Generated metadata for ${tier.name}:`, metadata);
-            // Note: In production, this should be uploaded to IPFS
-            metadataUri = ""; // Leave empty to use contract's default metadata generation
+
+            // Upload metadata to IPFS for proper OpenSea display
+            try {
+              const ipfsHandler = new IPFSMetadataHandler();
+              const metadataHash = await ipfsHandler.uploadMetadata({
+                name: metadata.name,
+                description: metadata.description,
+                image: metadata.image,
+                attributes: metadata.attributes,
+                group_id: "unknown", // We don't have group ID context here
+                group_name: tier.name,
+                access_duration_days: tier.durationDays,
+                access_tier: tier.name,
+                created_at: new Date().toISOString(),
+                creator_address: this.walletClient.account.address,
+              });
+              metadataUri = `ipfs://${metadataHash}`;
+              console.log(`📄 Uploaded metadata to IPFS: ${metadataUri}`);
+            } catch (uploadError) {
+              console.warn("Failed to upload metadata to IPFS:", uploadError);
+              metadataUri = ""; // Fallback to empty string
+            }
           }
 
           // Get fresh nonce and gas price for each transaction
