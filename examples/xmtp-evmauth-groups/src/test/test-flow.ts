@@ -5,21 +5,21 @@
 import type { Client } from "@xmtp/node-sdk";
 import type { EventDrivenAccessManager } from "../handlers/event-driven-access";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
-import type { RecoveryManager } from "../managers/recovery-mechanisms";
+// RecoveryManager removed - using unified recovery system
 import type { DualGroupConfig } from "../types/types";
 
 export class TestFlowManager {
   private client: Client;
   private enhancedGroupManager: EnhancedGroupManager;
   private eventAccessManager: EventDrivenAccessManager;
-  private recoveryManager: RecoveryManager;
+  private recoveryManager: any; // Removed - using unified recovery system
   private groupConfigs: Map<string, DualGroupConfig>;
 
   constructor(
     client: Client,
     enhancedGroupManager: EnhancedGroupManager,
     eventAccessManager: EventDrivenAccessManager,
-    recoveryManager: RecoveryManager,
+    recoveryManager: any, // Removed - using unified recovery system
     groupConfigs: Map<string, DualGroupConfig>,
   ) {
     this.client = client;

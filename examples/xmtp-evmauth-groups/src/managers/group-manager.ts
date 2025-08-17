@@ -44,6 +44,8 @@ export class GroupManager {
       const contractAddress = await this.evmAuthHandler.deployGroupContract(
         params.name,
         creatorAddress,
+        "placeholder-sales-id",
+        "placeholder-premium-id",
       );
 
       // 2. Create XMTP group with creator as initial member and admin

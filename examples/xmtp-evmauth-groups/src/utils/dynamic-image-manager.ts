@@ -64,7 +64,7 @@ export class DynamicImageManager {
     // 3. Fallback to branded default
     return {
       url: this.generateBrandedPlaceholder(
-        groupConfig.groupName || "Premium",
+        groupConfig.metadata.name || "Premium",
         tierId,
       ),
       source: "default-placeholder",
@@ -233,14 +233,14 @@ export async function createEnhancedNFTMetadata(
   );
 
   return {
-    name: `${groupConfig.groupName} - ${tier.name}`,
-    description: `${tier.description}\n\nDuration: ${tier.durationDays} days\nPrice: $${tier.priceUSD} USD\n\nThis NFT grants time-limited access to the ${groupConfig.groupName} premium community.`,
+    name: `${groupConfig.metadata.name} - ${tier.name}`,
+    description: `${tier.description}\n\nDuration: ${tier.durationDays} days\nPrice: $${tier.priceUSD} USD\n\nThis NFT grants time-limited access to the ${groupConfig.metadata.name} premium community.`,
     image: imageResolution.url,
     imageSource: imageResolution.source,
     attributes: [
       {
         trait_type: "Community",
-        value: groupConfig.groupName || "Premium Group",
+        value: groupConfig.metadata.name || "Premium Group",
       },
       { trait_type: "Tier", value: tier.name },
       { trait_type: "Duration (Days)", value: tier.durationDays },

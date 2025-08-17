@@ -162,3 +162,4 @@ If you need help:
 ---
 
 **Ready to go!** 🚀 Your NFTs will now have proper IPFS storage and custom images!
+

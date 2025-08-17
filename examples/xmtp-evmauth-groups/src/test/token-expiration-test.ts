@@ -16,7 +16,7 @@ import { baseSepolia } from "viem/chains";
 import { EventDrivenAccessManager } from "../handlers/event-driven-access";
 import { EVMAuthHandler } from "../handlers/evmauth-handler";
 import { EnhancedGroupManager } from "../managers/enhanced-group-flow";
-import { RecoveryManager } from "../managers/recovery-mechanisms";
+// RecoveryManager removed - using unified recovery system
 import { DualGroupConfig } from "../types/types";
 
 // Test configuration

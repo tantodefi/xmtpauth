@@ -422,3 +422,4 @@ export async function comprehensivePaymentCheck(
   console.log(`🔄 Indexer didn't find payment, RPC scanning will continue...`);
   return null;
 }
+

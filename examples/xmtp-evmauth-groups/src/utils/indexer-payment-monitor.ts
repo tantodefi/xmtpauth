@@ -77,7 +77,7 @@ class IndexerClient {
     });
 
     const data = await response.json();
-    return data.data?.ethTransfers || [];
+    return (data as any).data?.ethTransfers || [];
   }
 
   async getPaymentsFromAddress(
@@ -120,7 +120,7 @@ class IndexerClient {
     });
 
     const data = await response.json();
-    return data.data?.ethTransfers || [];
+    return (data as any).data?.ethTransfers || [];
   }
 }
 
@@ -345,14 +345,14 @@ export class IndexerPaymentMonitor {
         payment.conversation,
       );
 
-      if (result.success && result.contractAddress) {
+      if (result.contractAddress) {
         console.log(`✅ Payment processed successfully!`);
         console.log(`   Contract: ${result.contractAddress}`);
-        console.log(`   Creator Group: ${result.creatorGroupId}`);
-        console.log(`   Premium Group: ${result.premiumGroupId}`);
+        console.log(`   Sales Group: ${result.salesGroup?.id || "Unknown"}`);
+        console.log(`   Premium Group: ${result.premiumGroup?.id || "Unknown"}`);
         console.log(`   Transaction: ${paymentData.transactionHash}`);
       } else {
-        console.error(`❌ Failed to process payment: ${result.error}`);
+        console.error(`❌ Failed to process payment: Unknown error`);
       }
     } catch (error) {
       console.error(`Error processing confirmed payment ${paymentId}:`, error);

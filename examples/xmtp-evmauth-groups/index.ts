@@ -30,11 +30,10 @@ import { EventDrivenAccessManager } from "./src/handlers/event-driven-access";
 import { EVMAuthHandler } from "./src/handlers/evmauth-handler";
 import { IPFSMetadataHandler } from "./src/handlers/ipfs-metadata";
 import { USDCHandler } from "./src/handlers/usdc-handler";
-import { ComprehensiveRecovery } from "./src/managers/comprehensive-recovery";
 import { EnhancedGroupManager } from "./src/managers/enhanced-group-flow";
 import { EnhancedTierSetup } from "./src/managers/enhanced-tier-setup";
 import { GroupManager } from "./src/managers/group-manager";
-import { RecoveryManager } from "./src/managers/recovery-mechanisms";
+import { UnifiedRecoverySystem } from "./src/managers/unified-recovery-system";
 import { TestFlowManager } from "./src/test/test-flow";
 import type {
   AccessTier,
@@ -53,6 +52,7 @@ import {
 } from "./src/utils/enhanced-create-group-with-payment";
 import { PaymentMonitor } from "./src/utils/payment-monitor";
 import { PersistentStateManager } from "./src/utils/persistent-state";
+// Removed separate recovery systems - now using unified system
 import { TokenSalesHandler } from "./src/utils/token-sales";
 
 /* Environment variables validation */
@@ -400,16 +400,11 @@ async function main() {
     enhancedGroupManager,
     groupConfigs,
   );
-  const recoveryManager = new RecoveryManager(
-    textClient,
-    BASE_RPC_URL,
-    enhancedGroupManager,
-  );
   const testFlowManager = new TestFlowManager(
     textClient,
     enhancedGroupManager,
     eventAccessManager,
-    recoveryManager,
+    null, // recoveryManager removed
     groupConfigs,
   );
   const groupManager = new GroupManager(textClient, evmAuthHandler);
@@ -417,10 +412,13 @@ async function main() {
   // Initialize enhanced tier setup with database
   const tierSetup = new EnhancedTierSetup(usdcHandler, ipfsHandler);
 
-  // Initialize comprehensive recovery system
-  const comprehensiveRecovery = new ComprehensiveRecovery(
+  // Initialize unified recovery system (replaces 3 separate recovery systems)
+  const unifiedRecovery = new UnifiedRecoverySystem(
     textClient as any,
     database,
+    evmAuthHandler,
+    enhancedGroupManager,
+    BASE_RPC_URL,
   );
 
   // Initialize persistent state manager (keep for compatibility)
@@ -449,25 +447,29 @@ async function main() {
   console.log("✓ Syncing conversations...");
   await textClient.conversations.sync();
 
-  // Attempt recovery of existing groups
-  console.log("🔄 Attempting to recover existing group configurations...");
+  // Perform unified recovery (database + on-chain + conversations + maintenance)
+  console.log("🔄 Starting unified recovery system...");
   try {
-    const recoveredConfigs = await recoveryManager.performFullRecovery();
+    const recoveryResult = await unifiedRecovery.performFullRecovery();
 
     // Merge recovered configs with current groupConfigs
-    for (const [contractAddress, config] of recoveredConfigs.entries()) {
+    for (const [contractAddress, config] of recoveryResult.groups.entries()) {
       groupConfigs.set(contractAddress, config);
       // Add to event listening
       await eventAccessManager.addContractToListen(contractAddress, config);
     }
 
-    if (recoveredConfigs.size > 0) {
-      console.log(`✅ Recovered ${recoveredConfigs.size} group configurations`);
+    if (recoveryResult.groups.size > 0) {
+      console.log(`✅ Unified recovery complete:`);
+      console.log(`   📊 ${recoveryResult.groups.size} groups recovered`);
+      console.log(`   🔗 ${recoveryResult.foundContracts.length} contracts found`);
+      console.log(`   🔧 ${recoveryResult.fixedMetadata} metadata entries fixed`);
+      console.log(`   👥 ${recoveryResult.syncedMembers} member changes synced`);
     } else {
       console.log("ℹ️ No existing groups found to recover");
     }
   } catch (error) {
-    console.error("⚠️ Recovery failed, starting fresh:", error);
+    console.error("⚠️ Unified recovery failed, starting fresh:", error);
   }
 
   // FALLBACK: Manually register known groups from database if recovery failed
@@ -524,6 +526,23 @@ async function main() {
     }
   } catch (dbError) {
     console.error("⚠️ Database fallback failed:", dbError);
+  }
+
+  // Start periodic maintenance system (metadata fixing and membership sync)
+  console.log("🔧 Starting periodic maintenance system...");
+  try {
+    const groupConfigsArray = Array.from(groupConfigs.values()).map(
+      (config) => ({
+        contractAddress: config.contractAddress,
+        groupName: config.metadata.name,
+        xmtpGroupId: config.premiumGroupId || config.salesGroupId,
+      }),
+    );
+
+    await unifiedRecovery.startPeriodicRecovery(groupConfigsArray, 30); // Every 30 minutes
+    console.log("✅ Periodic maintenance system initialized");
+  } catch (error) {
+    console.error("❌ Periodic maintenance system failed to initialize:", error);
   }
 
   // Track conversations where welcome message has been sent
@@ -843,7 +862,7 @@ async function main() {
           evmAuthHandler,
           enhancedGroupManager,
           eventAccessManager,
-          recoveryManager,
+          null, // recoveryManager removed
           groupConfigs,
         );
       } else if (command === "/help") {
