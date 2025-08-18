@@ -469,6 +469,8 @@ async function main() {
           message.senderInboxId,
           messageContent,
           groupConfigs,
+          evmAuthHandler,
+          enhancedGroupManager,
         );
       } else if (command === "/list-groups") {
         await handleListGroups(
