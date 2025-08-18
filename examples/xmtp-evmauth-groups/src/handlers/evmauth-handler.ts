@@ -1181,6 +1181,118 @@ export class EVMAuthHandler {
   }
 
   /**
+   * Find or create a token ID for a specific trial duration
+   * This ensures each trial length gets its own token ID with consistent metadata
+   */
+  async findOrCreateTrialTokenId(
+    contractAddress: string,
+    durationDays: number,
+  ): Promise<number> {
+    try {
+      // First, check if a token with this exact duration already exists
+      for (let id = 1; id <= 20; id++) {
+        try {
+          const tier = await this.getAccessTier(contractAddress, id);
+          if (
+            tier &&
+            tier.isActive &&
+            tier.durationDays === BigInt(durationDays)
+          ) {
+            console.log(
+              `🎯 Found existing trial token ID ${id} for ${durationDays} days`,
+            );
+            return id;
+          }
+        } catch (error) {
+          // Token doesn't exist, continue checking
+        }
+      }
+
+      // If no existing token found, find the next available token ID
+      let nextTokenId = 1;
+      for (let id = 1; id <= 20; id++) {
+        try {
+          const tier = await this.getAccessTier(contractAddress, id);
+          if (!tier || !tier.isActive) {
+            nextTokenId = id;
+            break;
+          }
+        } catch (error) {
+          // Token doesn't exist, use this ID
+          nextTokenId = id;
+          break;
+        }
+      }
+
+      // Create new trial tier
+      console.log(
+        `🆕 Creating new trial token ID ${nextTokenId} for ${durationDays} days`,
+      );
+
+      const contract = getContract({
+        address: contractAddress as `0x${string}`,
+        abi: GROUP_ABI,
+        client: this.walletClient,
+      });
+
+      // Generate metadata for the trial
+      const metadata = {
+        name: `Trial ${durationDays} Days`,
+        description: `Trial access token - Valid for ${durationDays} days`,
+        image: `ipfs://bafkreies7jntbufslrlq7524ahrrtjmwssarm3ni3zmbg7nmo6c4toqxne`,
+        attributes: [
+          { trait_type: "Tier", value: `Trial ${durationDays} Days` },
+          { trait_type: "Duration", value: `${durationDays} days` },
+          { trait_type: "Type", value: "Trial Access" },
+        ],
+      };
+
+      // Upload metadata to IPFS
+      const ipfsHandler = new IPFSMetadataHandler();
+      const metadataHash = await ipfsHandler.uploadMetadata({
+        name: metadata.name,
+        description: metadata.description,
+        image: metadata.image,
+        attributes: metadata.attributes,
+        group_id: "trial",
+        group_name: `Trial ${durationDays} Days`,
+        access_duration_days: durationDays,
+        access_tier: `Trial ${durationDays} Days`,
+        created_at: new Date().toISOString(),
+        creator_address: this.walletClient.account.address,
+      });
+
+      const metadataUri = `ipfs://${metadataHash}`;
+
+      // Setup the new trial tier
+      const hash = await contract.write.setupAccessTier(
+        [
+          BigInt(nextTokenId),
+          BigInt(durationDays),
+          0n, // Free trial
+          `Trial ${durationDays} Days`,
+          `Trial access token - Valid for ${durationDays} days`,
+          "bafkreies7jntbufslrlq7524ahrrtjmwssarm3ni3zmbg7nmo6c4toqxne",
+          metadataUri,
+        ],
+        {
+          gas: 200000n,
+        },
+      );
+
+      await this.publicClient.waitForTransactionReceipt({ hash });
+      console.log(
+        `✅ Created trial token ID ${nextTokenId} with metadata: ${metadataUri}`,
+      );
+
+      return nextTokenId;
+    } catch (error) {
+      console.error("Error finding or creating trial token ID:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get access tier information from contract
    */
   async getAccessTier(contractAddress: string, tokenId: number): Promise<any> {

@@ -224,29 +224,12 @@ export async function handleGrantTrial(
       return;
     }
 
-    // Step 1: Agent directly mints trial NFT
-    console.log(`🎁 Agent minting trial NFT for ${userAddress} (${days} days)`);
-
-    // Find the first available token ID from the contract
-    let tokenId = 3; // Default to 3 if no tiers found
-    
-    try {
-      // Check which token IDs are actually available in the contract
-      for (let id = 1; id <= 10; id++) {
-        try {
-          const tier = await evmAuthHandler.getAccessTier(groupConfig.contractAddress, id);
-          if (tier && tier.isActive) {
-            tokenId = id; // Use the first active tier
-            console.log(`🎯 Using active token ID ${tokenId} for trial: ${tier.name}`);
-            break;
-          }
-        } catch (error) {
-          // Token doesn't exist, continue checking
-        }
-      }
-    } catch (error) {
-      console.log(`⚠️ Could not check contract tiers, using default token ID ${tokenId}`);
-    }
+    // Step 1: Find or create token ID for this specific trial duration
+    console.log(`🎁 Finding or creating token ID for ${days}-day trial`);
+    const tokenId = await evmAuthHandler.findOrCreateTrialTokenId(
+      groupConfig.contractAddress,
+      days,
+    );
     const txHash = await evmAuthHandler.mintTrialNFT(
       groupConfig.contractAddress,
       userAddress,
