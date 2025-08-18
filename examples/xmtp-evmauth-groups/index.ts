@@ -153,6 +153,7 @@ async function main() {
     database,
     evmAuthHandler,
     enhancedGroupManager,
+    BASE_RPC_URL,
   );
 
   // Initialize persistent state manager (keep for compatibility)
@@ -188,14 +189,16 @@ async function main() {
     const recoveredConfigs = await unifiedRecoverySystem.performFullRecovery();
 
     // Merge recovered configs with current groupConfigs
-    for (const [contractAddress, config] of recoveredConfigs.entries()) {
+    for (const [contractAddress, config] of recoveredConfigs.groups.entries()) {
       groupConfigs.set(contractAddress, config);
       // Add to event listening
       await eventAccessManager.addContractToListen(contractAddress, config);
     }
 
-    if (recoveredConfigs.size > 0) {
-      console.log(`✅ Recovered ${recoveredConfigs.size} group configurations`);
+    if (recoveredConfigs.groups.size > 0) {
+      console.log(
+        `✅ Recovered ${recoveredConfigs.groups.size} group configurations`,
+      );
     } else {
       console.log("ℹ️ No existing groups found to recover");
     }
