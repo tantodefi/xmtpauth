@@ -5,13 +5,6 @@ import {
   validateEnvironment,
 } from "@helpers/client";
 import {
-  AttachmentCodec,
-  ContentTypeRemoteAttachment,
-  RemoteAttachmentCodec,
-  type Attachment,
-  type RemoteAttachment,
-} from "@xmtp/content-type-remote-attachment";
-import {
   ContentTypeReaction,
   ReactionCodec,
 } from "@xmtp/content-type-reaction";
@@ -36,10 +29,10 @@ import { EventDrivenAccessManager } from "./src/handlers/event-driven-access";
 import { EVMAuthHandler } from "./src/handlers/evmauth-handler";
 import { IPFSMetadataHandler } from "./src/handlers/ipfs-metadata";
 import { USDCHandler } from "./src/handlers/usdc-handler";
-// ComprehensiveRecovery removed - using unified recovery system
 import { EnhancedGroupManager } from "./src/managers/enhanced-group-flow";
 import { EnhancedTierSetup } from "./src/managers/enhanced-tier-setup";
 import { GroupManager } from "./src/managers/group-manager";
+import { UnifiedRecoverySystem } from "./src/managers/unified-recovery-system";
 // RecoveryManager removed - using unified recovery system
 import { TestFlowManager } from "./src/test/test-flow";
 import type {
@@ -57,7 +50,6 @@ import {
   handleListGroups,
 } from "./src/utils/enhanced-create-group-with-payment";
 import { HybridPaymentMonitor } from "./src/utils/hybrid-payment-monitor";
-import { MetadataSyncJob } from "./src/utils/metadata-sync-job";
 import { PersistentStateManager } from "./src/utils/persistent-state";
 import { TokenSalesHandler } from "./src/utils/token-sales";
 
@@ -107,12 +99,7 @@ async function main() {
     dbEncryptionKey,
     env: XMTP_ENV as XmtpEnv,
     dbPath: xmtpDbPath,
-    codecs: [
-      new WalletSendCallsCodec(),
-      new ReactionCodec(),
-      new AttachmentCodec(),
-      new RemoteAttachmentCodec(),
-    ],
+    codecs: [new WalletSendCallsCodec(), new ReactionCodec()],
   });
 
   /* Get agent address */
@@ -148,12 +135,11 @@ async function main() {
     enhancedGroupManager,
     groupConfigs,
   );
-  // RecoveryManager removed - using unified recovery system
   const testFlowManager = new TestFlowManager(
     textClient,
     enhancedGroupManager,
     eventAccessManager,
-    null, // recoveryManager removed
+    null, // recoveryManager removed - using unified recovery system
     groupConfigs,
   );
   const groupManager = new GroupManager(textClient, evmAuthHandler);
@@ -161,7 +147,13 @@ async function main() {
   // Initialize enhanced tier setup with database
   const tierSetup = new EnhancedTierSetup(usdcHandler, ipfsHandler);
 
-  // ComprehensiveRecovery removed - using unified recovery system
+  // Initialize unified recovery system
+  const unifiedRecoverySystem = new UnifiedRecoverySystem(
+    textClient as any,
+    database,
+    evmAuthHandler,
+    enhancedGroupManager,
+  );
 
   // Initialize persistent state manager (keep for compatibility)
   const persistentState = new PersistentStateManager();
@@ -185,12 +177,6 @@ async function main() {
     parseInt(FEE_BASIS_POINTS),
   );
 
-  // Initialize metadata sync job for keeping NFT images synced with XMTP groups
-  const metadataSyncJob = new MetadataSyncJob(
-    textClient as any,
-    evmAuthHandler,
-  );
-
   void logAgentDetails(textClient as any);
 
   console.log("✓ Syncing conversations...");
@@ -199,7 +185,7 @@ async function main() {
   // Attempt recovery of existing groups
   console.log("🔄 Attempting to recover existing group configurations...");
   try {
-    const recoveredConfigs = await recoveryManager.performFullRecovery();
+    const recoveredConfigs = await unifiedRecoverySystem.performFullRecovery();
 
     // Merge recovered configs with current groupConfigs
     for (const [contractAddress, config] of recoveredConfigs.entries()) {
@@ -286,24 +272,6 @@ async function main() {
   console.log("💰 Starting payment monitoring...");
   void paymentMonitor.startMonitoring();
 
-  // Start metadata sync job to keep NFT images synced with XMTP group images
-  console.log("🖼️ Starting metadata sync job...");
-  try {
-    const metadataConfigs = Array.from(groupConfigs.values()).map((config) => ({
-      contractAddress: config.contractAddress,
-      groupName: config.metadata.name,
-      premiumGroupId: config.premiumGroupId,
-      salesGroupId: config.salesGroupId,
-    }));
-
-    metadataSyncJob.startMetadataSync(metadataConfigs, 6); // Every 6 hours
-    console.log(
-      "✅ Metadata sync job started - will sync NFT images with XMTP groups",
-    );
-  } catch (error) {
-    console.error("❌ Metadata sync job failed to initialize:", error);
-  }
-
   console.log("🚀 EVMAuth Groups Agent is running!");
   console.log("💰 Enhanced with USDC pricing and custom NFT images!");
   console.log("");
@@ -333,13 +301,17 @@ async function main() {
   const stream = await client.conversations.streamAllMessages();
 
   for await (const message of stream) {
-    /* Ignore messages from the same agent */
-    if (message.senderInboxId.toLowerCase() === client.inboxId.toLowerCase()) {
+    /* Ignore messages from the same agent or non-text messages */
+    if (
+      message.senderInboxId.toLowerCase() === client.inboxId.toLowerCase() ||
+      message.contentType?.typeId !== "text"
+    ) {
       continue;
     }
 
-    /* Handle different message types */
-    const messageType = message.contentType?.typeId;
+    console.log(
+      `Received message: ${message.content as string} by ${message.senderInboxId}`,
+    );
 
     const conversation = await client.conversations.getConversationById(
       message.conversationId,
@@ -349,55 +321,6 @@ async function main() {
       console.log("Unable to find conversation, skipping");
       continue;
     }
-
-    // Handle remote attachments (images during tier setup)
-    if (messageType === "remoteStaticAttachment") {
-      console.log("📸 Received image attachment!");
-      
-      try {
-        // Load and decode the attachment
-        const attachment = await RemoteAttachmentCodec.load(
-          message.content as RemoteAttachment,
-          client,
-        );
-
-        const filename = (attachment as Attachment).filename || "image.png";
-        const data = (attachment as Attachment).data;
-        
-        console.log(`📸 Processing image: ${filename} (${data.length} bytes)`);
-
-        // Check if user has an active tier setup session
-        const hasSession = await tierSetup.handleTierSetupMessage(
-          message.senderInboxId,
-          "IMAGE_ATTACHMENT", // Special marker for image
-          conversation,
-          { data, filename }, // Pass attachment data
-        );
-
-        if (!hasSession) {
-          await conversation.send(
-            "📸 I received your image! However, you need to start tier setup first.\n\n" +
-            "Use `/setup-tiers <group_name>` to begin interactive tier configuration."
-          );
-        }
-
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error("Error processing attachment:", errorMessage);
-        await conversation.send("❌ Error processing your image. Please try again.");
-      }
-      
-      continue;
-    }
-
-    // Skip non-text messages that aren't attachments
-    if (messageType !== "text") {
-      continue;
-    }
-
-    console.log(
-      `Received message: ${message.content as string} by ${message.senderInboxId}`,
-    );
 
     const inboxState = await client.preferences.inboxStateFromInboxIds([
       message.senderInboxId,
@@ -610,7 +533,7 @@ async function main() {
           evmAuthHandler,
           enhancedGroupManager,
           eventAccessManager,
-          recoveryManager,
+          null, // recoveryManager removed - using unified recovery system
           groupConfigs,
         );
       } else if (command === "/help") {

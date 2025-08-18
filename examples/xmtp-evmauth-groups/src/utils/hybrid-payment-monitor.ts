@@ -120,9 +120,9 @@ export class HybridPaymentMonitor {
 
       const data = (await response.json()) as any;
       this.lastCheckedBlock = parseInt(data.result, 16);
-          console.log(
+      console.log(
         `📊 Starting from current RPC block: ${this.lastCheckedBlock}`,
-          );
+      );
     } catch (error) {
       console.error("❌ Failed to initialize block number:", error);
       this.lastCheckedBlock = 34200000; // Fallback
@@ -167,7 +167,29 @@ export class HybridPaymentMonitor {
           }),
         });
 
-        const data = (await response.json()) as any;
+        const responseText = await response.text();
+
+        // Check if response is HTML (error page) instead of JSON
+        if (
+          responseText.trim().startsWith("<html") ||
+          responseText.trim().startsWith("<!DOCTYPE")
+        ) {
+          console.log(
+            `⚠️ Indexer returned HTML instead of JSON, using RPC for initialization`,
+          );
+          return;
+        }
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.log(
+            `⚠️ Indexer returned invalid JSON, using RPC for initialization`,
+          );
+          return;
+        }
+
         if (data.errors) {
           console.error("⚠️ Indexer query error:", data.errors);
           return;
