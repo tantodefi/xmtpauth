@@ -170,11 +170,23 @@ export async function handleGrantTrial(
       return;
     }
 
-    // Resolve user address
+    // Resolve user address with public client for smart contract detection
     await conversation.send(`🔍 Resolving address for: ${userInput}...`);
-    const resolution = await addressResolver.resolveAddress(userInput);
+
+    // Get public client from evmAuthHandler if available
+    const publicClient = evmAuthHandler?.publicClientInstance;
+    console.log(
+      `🔍 Resolving address: ${userInput} with publicClient: ${!!publicClient}`,
+    );
+
+    const resolution = await addressResolver.resolveAddress(
+      userInput,
+      publicClient,
+    );
+    console.log(`🔍 Resolution result:`, resolution);
 
     if (!resolution.address) {
+      console.log(`❌ Address resolution failed:`, resolution.error);
       await conversation.send(
         `❌ Could not resolve address: ${userInput}\n\n` +
           `Error: ${resolution.error}\n\n` +

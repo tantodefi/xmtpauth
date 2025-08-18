@@ -463,15 +463,26 @@ async function main() {
           database,
         );
       } else if (command.startsWith("/grant-trial")) {
-        await handleGrantTrial(
-          conversation,
-          memberAddress,
-          message.senderInboxId,
-          messageContent,
-          groupConfigs,
-          evmAuthHandler,
-          enhancedGroupManager,
-        );
+        console.log(`🎁 Processing grant-trial command: ${messageContent}`);
+        try {
+          await handleGrantTrial(
+            conversation,
+            memberAddress,
+            message.senderInboxId,
+            messageContent,
+            groupConfigs,
+            evmAuthHandler,
+            enhancedGroupManager,
+          );
+          console.log(`✅ Grant-trial command completed successfully`);
+        } catch (error) {
+          console.error(`❌ Error in grant-trial command:`, error);
+          await conversation.send(
+            `❌ Failed to process grant-trial command\n\n` +
+              `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+              `Please try again or contact support.`,
+          );
+        }
       } else if (command === "/list-groups") {
         await handleListGroups(
           conversation,

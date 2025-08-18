@@ -208,6 +208,13 @@ export class EVMAuthHandler {
   }
 
   /**
+   * Get the public client for external use (e.g., address resolution)
+   */
+  get publicClientInstance() {
+    return this.publicClient;
+  }
+
+  /**
    * Deploy a new EVMAuth contract for a group
    */
   async deployGroupContract(
