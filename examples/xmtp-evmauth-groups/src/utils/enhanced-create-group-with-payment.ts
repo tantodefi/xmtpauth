@@ -187,18 +187,24 @@ export async function handleGrantTrial(
 
     if (!resolution.address) {
       console.log(`❌ Address resolution failed:`, resolution.error);
-      await conversation.send(
-        `❌ Could not resolve address: ${userInput}\n\n` +
-          `Error: ${resolution.error}\n\n` +
-          `💡 **Solution**: Please use a direct Ethereum address instead:\n` +
-          `• /grant-trial ${groupName} 0x1234567890abcdef... ${days}\n\n` +
-          `⚠️ **Note**: Address resolution services are temporarily disabled.\n` +
-          `Supported formats:\n` +
-          `• ✅ Direct address: 0x123... (EOA or Smart Contract)\n` +
-          `• ❌ Basename: @username.base.eth (disabled)\n` +
-          `• ❌ ENS: @username.eth (disabled)\n` +
-          `• ❌ Farcaster: @handle (disabled)`,
-      );
+      console.log(`📤 Sending error message to user...`);
+      try {
+        await conversation.send(
+          `❌ Could not resolve address: ${userInput}\n\n` +
+            `Error: ${resolution.error}\n\n` +
+            `💡 **Solution**: Please use a direct Ethereum address instead:\n` +
+            `• /grant-trial ${groupName} 0x1234567890abcdef... ${days}\n\n` +
+            `⚠️ **Note**: Address resolution services are temporarily disabled.\n` +
+            `Supported formats:\n` +
+            `• ✅ Direct address: 0x123... (EOA or Smart Contract)\n` +
+            `• ❌ Basename: @username.base.eth (disabled)\n` +
+            `• ❌ ENS: @username.eth (disabled)\n` +
+            `• ❌ Farcaster: @handle (disabled)`,
+        );
+        console.log(`✅ Error message sent successfully`);
+      } catch (sendError) {
+        console.error(`❌ Failed to send error message:`, sendError);
+      }
       return;
     }
 
