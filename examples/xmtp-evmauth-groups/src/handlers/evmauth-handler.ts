@@ -363,10 +363,38 @@ export class EVMAuthHandler {
         console.log(`✅ USDC token set successfully`);
       }
 
+      // Find available token IDs first
+      const availableTokenIds: number[] = [];
+      for (let id = 1; id <= 20; id++) {
+        try {
+          const existingTier = await this.getAccessTier(contractAddress, id);
+          if (!existingTier || !existingTier.isActive) {
+            availableTokenIds.push(id);
+          }
+        } catch (error) {
+          // Token doesn't exist, it's available
+          availableTokenIds.push(id);
+        }
+
+        if (availableTokenIds.length >= tiers.length) {
+          break; // Found enough slots
+        }
+      }
+
+      if (availableTokenIds.length < tiers.length) {
+        throw new Error(
+          `Not enough available token IDs. Need ${tiers.length}, found ${availableTokenIds.length}`,
+        );
+      }
+
+      console.log(
+        `🎯 Using token IDs: ${availableTokenIds.slice(0, tiers.length).join(", ")}`,
+      );
+
       // Process tiers sequentially with explicit nonce management
       for (let i = 0; i < tiers.length; i++) {
         const tier = tiers[i];
-        const tokenId = i + 3; // Token IDs start from 3 (1 and 2 may be used)
+        const tokenId = availableTokenIds[i]; // Use dynamically found token ID
 
         console.log(
           `🎯 Setting up tier ${i + 1}/${tiers.length}: ${tier.name}`,
@@ -1149,6 +1177,46 @@ export class EVMAuthHandler {
     } catch (error) {
       console.error("Error minting trial NFT:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Get access tier information from contract
+   */
+  async getAccessTier(contractAddress: string, tokenId: number): Promise<any> {
+    try {
+      const result = await this.publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: [
+          {
+            inputs: [{ name: "tokenId", type: "uint256" }],
+            name: "getAccessTier",
+            outputs: [
+              {
+                components: [
+                  { name: "name", type: "string" },
+                  { name: "description", type: "string" },
+                  { name: "durationDays", type: "uint256" },
+                  { name: "priceETH", type: "uint256" },
+                  { name: "priceUSDC", type: "uint256" },
+                  { name: "imageIPFSHash", type: "string" },
+                  { name: "metadataURI", type: "string" },
+                  { name: "isActive", type: "bool" },
+                ],
+                name: "",
+                type: "tuple",
+              },
+            ],
+            stateMutability: "view",
+            type: "function",
+          },
+        ],
+        functionName: "getAccessTier",
+        args: [BigInt(tokenId)],
+      });
+      return result;
+    } catch (error) {
+      return null;
     }
   }
 

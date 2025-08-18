@@ -12,7 +12,7 @@ export { EventDrivenAccessManager } from "./handlers/event-driven-access";
 export { GroupManager } from "./managers/group-manager";
 export { EnhancedTierSetup } from "./managers/enhanced-tier-setup";
 export { EnhancedGroupManager } from "./managers/enhanced-group-flow";
-export { RecoveryManager } from "./managers/recovery-mechanisms";
+// RecoveryManager removed - using unified recovery system
 
 // Utils
 export { TokenSalesHandler } from "./utils/token-sales";

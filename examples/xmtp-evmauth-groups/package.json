@@ -9,6 +9,7 @@
     "demo": "tsx src/test/demo-test.ts",
     "dev": "tsx --watch index.ts",
     "fix-metadata": "tsx scripts/fix-existing-metadata.js",
+    "fix-token-1": "tsx scripts/fix-token-1-metadata.js",
     "gen:keys": "tsx ../../scripts/generateKeys.ts",
     "lint": "cd ../.. && yarn eslint examples/xmtp-evmauth-groups",
     "start": "tsx index.ts",
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "@xmtp/content-type-reaction": "*",
+    "@xmtp/content-type-remote-attachment": "*",
     "@xmtp/content-type-transaction-reference": "*",
     "@xmtp/content-type-wallet-send-calls": "*",
     "@xmtp/node-sdk": "*",

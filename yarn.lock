@@ -922,6 +922,7 @@ __metadata:
   resolution: "@examples/xmtp-evmauth-groups@workspace:examples/xmtp-evmauth-groups"
   dependencies:
     "@xmtp/content-type-reaction": "npm:*"
+    "@xmtp/content-type-remote-attachment": "npm:*"
     "@xmtp/content-type-transaction-reference": "npm:*"
     "@xmtp/content-type-wallet-send-calls": "npm:*"
     "@xmtp/node-sdk": "npm:*"
@@ -2128,7 +2129,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@xmtp/content-type-remote-attachment@npm:^2.0.2":
+"@xmtp/content-type-remote-attachment@npm:*, @xmtp/content-type-remote-attachment@npm:^2.0.2":
   version: 2.0.2
   resolution: "@xmtp/content-type-remote-attachment@npm:2.0.2"
   dependencies:

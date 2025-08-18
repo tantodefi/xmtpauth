@@ -507,12 +507,23 @@ export class EnhancedTierSetup {
           break;
         case "image_upload":
           console.log(`📸 Processing image upload: ${message}`);
-          await this.handleImageUpload(
-            creatorInboxId,
-            message,
-            conversation,
-            attachment,
-          );
+          
+          // Handle special IMAGE_ATTACHMENT message type
+          if (message === "IMAGE_ATTACHMENT" && attachment) {
+            await this.handleImageUpload(
+              creatorInboxId,
+              "", // Empty input since it's an attachment
+              conversation,
+              attachment,
+            );
+          } else {
+            await this.handleImageUpload(
+              creatorInboxId,
+              message,
+              conversation,
+              attachment,
+            );
+          }
           break;
         case "confirm":
           console.log(`✅ Processing confirmation: ${message}`);

@@ -5,42 +5,48 @@ import {
   validateEnvironment,
 } from "@helpers/client";
 import {
+  AttachmentCodec,
+  ContentTypeRemoteAttachment,
+  RemoteAttachmentCodec,
+  type Attachment,
+  type RemoteAttachment,
+} from "@xmtp/content-type-remote-attachment";
+import {
   ContentTypeReaction,
   ReactionCodec,
 } from "@xmtp/content-type-reaction";
 import {
-  ContentTypeTransactionReference,
-  TransactionReferenceCodec,
-  type TransactionReference,
-} from "@xmtp/content-type-transaction-reference";
-import {
   ContentTypeWalletSendCalls,
   WalletSendCallsCodec,
 } from "@xmtp/content-type-wallet-send-calls";
+// Note: These content types would need to be installed separately if available
+// import { TransactionReferenceCodec } from "@xmtp/content-type-transaction-reference";
+// import {
+//   ContentTypeWalletSendCalls,
+//   WalletSendCallsCodec,
+// } from "@xmtp/content-type-wallet-send-calls";
 import {
   Client,
   IdentifierKind,
   type Group,
   type XmtpEnv,
 } from "@xmtp/node-sdk";
-import { createPublicClient, http } from "viem";
-import { base } from "viem/chains";
 import { JSONDatabase } from "./src/database/json-database";
 import { EventDrivenAccessManager } from "./src/handlers/event-driven-access";
 import { EVMAuthHandler } from "./src/handlers/evmauth-handler";
 import { IPFSMetadataHandler } from "./src/handlers/ipfs-metadata";
 import { USDCHandler } from "./src/handlers/usdc-handler";
+// ComprehensiveRecovery removed - using unified recovery system
 import { EnhancedGroupManager } from "./src/managers/enhanced-group-flow";
 import { EnhancedTierSetup } from "./src/managers/enhanced-tier-setup";
 import { GroupManager } from "./src/managers/group-manager";
-import { UnifiedRecoverySystem } from "./src/managers/unified-recovery-system";
+// RecoveryManager removed - using unified recovery system
 import { TestFlowManager } from "./src/test/test-flow";
 import type {
   AccessTier,
   DualGroupConfig,
   GroupMetadata,
 } from "./src/types/types";
-import { addressResolver } from "./src/utils/address-resolver";
 import {
   handleEnhancedBuyAccess,
   handleEnhancedCreateGroup,
@@ -50,9 +56,9 @@ import {
   handleGrantTrial,
   handleListGroups,
 } from "./src/utils/enhanced-create-group-with-payment";
-import { PaymentMonitor } from "./src/utils/payment-monitor";
+import { HybridPaymentMonitor } from "./src/utils/hybrid-payment-monitor";
+import { MetadataSyncJob } from "./src/utils/metadata-sync-job";
 import { PersistentStateManager } from "./src/utils/persistent-state";
-// Removed separate recovery systems - now using unified system
 import { TokenSalesHandler } from "./src/utils/token-sales";
 
 /* Environment variables validation */
@@ -73,265 +79,6 @@ const {
   "FEE_RECIPIENT",
   "FEE_BASIS_POINTS",
 ]);
-
-/**
- * Handle transaction reference messages (payment confirmations from wallets)
- */
-async function handleTransactionReference(
-  conversation: any,
-  transactionRef: TransactionReference,
-  memberAddress: string,
-  senderInboxId: string,
-  paymentMonitor: PaymentMonitor,
-  enhancedGroupManager: any,
-  publicClient: any,
-): Promise<void> {
-  console.log(
-    "🧾 Processing transaction reference:",
-    JSON.stringify(transactionRef, null, 2),
-  );
-
-  // Extract transaction hash and network info
-  // Handle both direct format and nested format
-  const txData = (transactionRef as any).transactionReference || transactionRef;
-  const txHash = txData.reference;
-  const networkId = txData.networkId;
-
-  if (!txHash) {
-    console.log("❌ No transaction hash in reference");
-    await conversation.send(
-      "❌ Invalid transaction reference - no transaction hash found.",
-    );
-    return;
-  }
-
-  console.log(`🔍 Processing transaction: ${txHash}`);
-  console.log(`📡 Network: ${networkId}`);
-  console.log(`👤 From: ${memberAddress}`);
-
-  try {
-    // Wait a moment for transaction to be mined if it's very recent
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // Get transaction details from the blockchain
-    const tx = await publicClient.getTransaction({
-      hash: txHash as `0x${string}`,
-    });
-    const receipt = await publicClient.getTransactionReceipt({
-      hash: txHash as `0x${string}`,
-    });
-
-    console.log(`💰 Transaction details:`);
-    console.log(`  From: ${tx.from}`);
-    console.log(`  To: ${tx.to}`);
-    console.log(`  Value: ${tx.value} wei`);
-    console.log(`  Status: ${receipt.status}`);
-
-    // Check if this is a payment to our agent
-    const agentAddress = "0xa14ce36e7b135b66c3e3cb2584e777f32b15f5dc"; // TODO: get from context
-    const MIN_PAYMENT_WEI = 1000000000000000n; // 0.001 ETH
-
-    // For smart wallets, check balance change instead of direct transaction value
-    let isValidPayment = false;
-    let paymentAmount = 0n;
-
-    if (receipt.status === "success") {
-      // Check if this is a direct ETH transfer
-      if (
-        tx.to?.toLowerCase() === agentAddress.toLowerCase() &&
-        BigInt(tx.value) >= MIN_PAYMENT_WEI
-      ) {
-        isValidPayment = true;
-        paymentAmount = BigInt(tx.value);
-        console.log(
-          `✅ Direct ETH transfer detected: ${Number(tx.value) / 1e18} ETH`,
-        );
-      } else {
-        // For smart wallets, check balance change
-        console.log(
-          `🔍 Checking balance change for smart wallet transaction...`,
-        );
-
-        try {
-          // Ensure we have a block number
-          if (!tx.blockNumber) {
-            console.log(`⚠️ Transaction not yet mined, waiting...`);
-            // Wait a bit and try again
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            const updatedTx = await publicClient.getTransaction({
-              hash: txHash as `0x${string}`,
-            });
-            if (!updatedTx.blockNumber) {
-              throw new Error("Transaction still not mined");
-            }
-          }
-
-          const blockNumber = tx.blockNumber || receipt.blockNumber;
-
-          const balanceBefore = await publicClient.getBalance({
-            address: agentAddress as `0x${string}`,
-            blockNumber: blockNumber - 1n,
-          });
-
-          const balanceAfter = await publicClient.getBalance({
-            address: agentAddress as `0x${string}`,
-            blockNumber: blockNumber,
-          });
-
-          const balanceChange = balanceAfter - balanceBefore;
-          console.log(`  Balance before: ${Number(balanceBefore) / 1e18} ETH`);
-          console.log(`  Balance after: ${Number(balanceAfter) / 1e18} ETH`);
-          console.log(`  Change: ${Number(balanceChange) / 1e18} ETH`);
-
-          if (balanceChange >= MIN_PAYMENT_WEI) {
-            isValidPayment = true;
-            paymentAmount = BigInt(balanceChange);
-            console.log(
-              `✅ Smart wallet payment detected: ${Number(balanceChange) / 1e18} ETH`,
-            );
-          } else {
-            console.log(
-              `⚠️ Balance change ${Number(balanceChange) / 1e18} ETH is below minimum ${Number(MIN_PAYMENT_WEI) / 1e18} ETH`,
-            );
-          }
-        } catch (balanceError) {
-          console.error(`❌ Error checking balance change:`, balanceError);
-          console.log(
-            `🔍 Falling back to checking if this is a known smart wallet transaction...`,
-          );
-
-          // Check if this is a transaction to EntryPoint (smart wallet)
-          const ENTRYPOINT_ADDRESSES = [
-            "0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789", // EntryPoint v0.6
-            "0x0000000071727De22E5E9d8BAf0edAc6f37da032", // EntryPoint v0.7
-          ];
-
-          if (ENTRYPOINT_ADDRESSES.includes(tx.to?.toLowerCase() || "")) {
-            console.log(
-              `🔍 Transaction to EntryPoint detected, likely smart wallet payment`,
-            );
-            // For now, accept it as valid and let the payment monitor verify
-            isValidPayment = true;
-            paymentAmount = BigInt(MIN_PAYMENT_WEI); // Assume minimum payment
-            console.log(
-              `✅ Assuming valid smart wallet payment of ${Number(MIN_PAYMENT_WEI) / 1e18} ETH`,
-            );
-          }
-        }
-      }
-    }
-
-    if (isValidPayment) {
-      console.log("✅ Valid payment transaction confirmed!");
-
-      // Check if we have a pending payment for this user
-      const pendingPayments = paymentMonitor.getPendingPayments();
-      const matchingPayment = Array.from(pendingPayments.values()).find(
-        (p) =>
-          p.memberAddress.toLowerCase() === memberAddress.toLowerCase() ||
-          p.memberAddress.toLowerCase() === tx.from.toLowerCase(),
-      );
-
-      if (matchingPayment) {
-        console.log(
-          `🎯 Found matching pending payment for group: ${matchingPayment.groupName}`,
-        );
-
-        // Create the group
-        try {
-          const groupResult = await enhancedGroupManager.createDualGroupSystem(
-            matchingPayment.groupName,
-            senderInboxId,
-            memberAddress,
-          );
-
-          // Remove the pending payment
-          paymentMonitor.removePendingPayment(matchingPayment.paymentId);
-
-          // Send success message
-          await conversation.send(
-            `✅ Payment confirmed via transaction reference!\n\n` +
-              `💰 Amount: ${Number(paymentAmount) / 1e18} ETH\n` +
-              `🔗 Transaction: ${txHash}\n` +
-              `🎉 Group "${matchingPayment.groupName}" created successfully!\n\n` +
-              `📋 Contract: ${groupResult.contractAddress}\n` +
-              `🏪 Sales Group: ${groupResult.salesGroup.id}\n` +
-              `💎 Premium Group: ${groupResult.premiumGroup.id}\n\n` +
-              `🎉 Your group is ready! Check your conversations.`,
-          );
-
-          console.log(
-            `✅ Group created successfully via transaction reference!`,
-          );
-        } catch (error) {
-          console.error("Error creating group:", error);
-          await conversation.send(
-            "❌ Payment confirmed but error creating group. Please contact support.",
-          );
-        }
-      } else {
-        console.log("⚠️ No matching pending payment found");
-        await conversation.send(
-          `✅ Payment transaction confirmed!\n\n` +
-            `💰 Amount: ${Number(paymentAmount) / 1e18} ETH\n` +
-            `🔗 Transaction: ${txHash}\n` +
-            `⚠️ However, no pending group creation found. Please use /create-group first, then make the payment.`,
-        );
-      }
-    } else {
-      console.log("❌ Transaction is not a valid payment to agent");
-      let errorMsg = "❌ Transaction verification failed:\n";
-
-      if (receipt.status !== "success") {
-        errorMsg += "• Transaction failed on blockchain\n";
-      } else {
-        errorMsg += "• Transaction succeeded but no payment detected\n";
-      }
-
-      // Check if this might be a smart wallet transaction
-      const ENTRYPOINT_ADDRESSES = [
-        "0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789", // EntryPoint v0.6
-        "0x0000000071727De22E5E9d8BAf0edAc6f37da032", // EntryPoint v0.7
-      ];
-
-      if (ENTRYPOINT_ADDRESSES.includes(tx.to?.toLowerCase() || "")) {
-        errorMsg += `• Smart wallet transaction detected but balance change verification failed\n`;
-        errorMsg += `• This might be a timing issue - the payment monitor will continue checking\n`;
-      } else if (tx.to?.toLowerCase() !== agentAddress.toLowerCase()) {
-        errorMsg += `• Transaction sent to: ${tx.to}\n`;
-        errorMsg += `• Expected agent address: ${agentAddress}\n`;
-      }
-
-      if (
-        BigInt(tx.value) < MIN_PAYMENT_WEI &&
-        !ENTRYPOINT_ADDRESSES.includes(tx.to?.toLowerCase() || "")
-      ) {
-        errorMsg += `• Direct transfer amount: ${Number(tx.value) / 1e18} ETH (minimum: 0.001 ETH)\n`;
-      }
-
-      errorMsg += `\n💡 If you used a smart wallet, the payment monitor will verify your payment automatically.`;
-
-      await conversation.send(errorMsg);
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Error processing transaction:", errorMessage);
-
-    // If transaction not found, provide helpful message
-    if (
-      errorMessage.includes("TransactionReceiptNotFoundError") ||
-      errorMessage.includes("could not be found")
-    ) {
-      await conversation.send(
-        `⏳ Transaction ${txHash} is still being processed on the blockchain. Please wait 1-2 minutes and the payment monitor will automatically verify your payment.\n\n💡 Smart wallet transactions may take longer to confirm.`,
-      );
-    } else {
-      await conversation.send(
-        `❌ Error verifying transaction ${txHash}. Please try again.`,
-      );
-    }
-  }
-}
 
 // In-memory storage for demo (use database in production)
 const groupConfigs = new Map<string, DualGroupConfig>();
@@ -363,7 +110,8 @@ async function main() {
     codecs: [
       new WalletSendCallsCodec(),
       new ReactionCodec(),
-      new TransactionReferenceCodec(),
+      new AttachmentCodec(),
+      new RemoteAttachmentCodec(),
     ],
   });
 
@@ -400,6 +148,7 @@ async function main() {
     enhancedGroupManager,
     groupConfigs,
   );
+  // RecoveryManager removed - using unified recovery system
   const testFlowManager = new TestFlowManager(
     textClient,
     enhancedGroupManager,
@@ -412,14 +161,7 @@ async function main() {
   // Initialize enhanced tier setup with database
   const tierSetup = new EnhancedTierSetup(usdcHandler, ipfsHandler);
 
-  // Initialize unified recovery system (replaces 3 separate recovery systems)
-  const unifiedRecovery = new UnifiedRecoverySystem(
-    textClient as any,
-    database,
-    evmAuthHandler,
-    enhancedGroupManager,
-    BASE_RPC_URL,
-  );
+  // ComprehensiveRecovery removed - using unified recovery system
 
   // Initialize persistent state manager (keep for compatibility)
   const persistentState = new PersistentStateManager();
@@ -430,8 +172,9 @@ async function main() {
     process.env.INDEXER_URL ||
     "https://8a90b832-68f2-4bb7-a355-f8a0e65cba16.squids.live/xmtp-indexer@v1/api/graphql";
   const RPC_URL = BASE_RPC_URL; // Use same RPC as other operations
-  const paymentMonitor = new PaymentMonitor(
-    BASE_RPC_URL,
+  const paymentMonitor = new HybridPaymentMonitor(
+    INDEXER_GRAPHQL_URL,
+    RPC_URL,
     agentAddress,
     enhancedGroupManager,
     groupConfigs,
@@ -442,34 +185,36 @@ async function main() {
     parseInt(FEE_BASIS_POINTS),
   );
 
+  // Initialize metadata sync job for keeping NFT images synced with XMTP groups
+  const metadataSyncJob = new MetadataSyncJob(
+    textClient as any,
+    evmAuthHandler,
+  );
+
   void logAgentDetails(textClient as any);
 
   console.log("✓ Syncing conversations...");
   await textClient.conversations.sync();
 
-  // Perform unified recovery (database + on-chain + conversations + maintenance)
-  console.log("🔄 Starting unified recovery system...");
+  // Attempt recovery of existing groups
+  console.log("🔄 Attempting to recover existing group configurations...");
   try {
-    const recoveryResult = await unifiedRecovery.performFullRecovery();
+    const recoveredConfigs = await recoveryManager.performFullRecovery();
 
     // Merge recovered configs with current groupConfigs
-    for (const [contractAddress, config] of recoveryResult.groups.entries()) {
+    for (const [contractAddress, config] of recoveredConfigs.entries()) {
       groupConfigs.set(contractAddress, config);
       // Add to event listening
       await eventAccessManager.addContractToListen(contractAddress, config);
     }
 
-    if (recoveryResult.groups.size > 0) {
-      console.log(`✅ Unified recovery complete:`);
-      console.log(`   📊 ${recoveryResult.groups.size} groups recovered`);
-      console.log(`   🔗 ${recoveryResult.foundContracts.length} contracts found`);
-      console.log(`   🔧 ${recoveryResult.fixedMetadata} metadata entries fixed`);
-      console.log(`   👥 ${recoveryResult.syncedMembers} member changes synced`);
+    if (recoveredConfigs.size > 0) {
+      console.log(`✅ Recovered ${recoveredConfigs.size} group configurations`);
     } else {
       console.log("ℹ️ No existing groups found to recover");
     }
   } catch (error) {
-    console.error("⚠️ Unified recovery failed, starting fresh:", error);
+    console.error("⚠️ Recovery failed, starting fresh:", error);
   }
 
   // FALLBACK: Manually register known groups from database if recovery failed
@@ -528,23 +273,6 @@ async function main() {
     console.error("⚠️ Database fallback failed:", dbError);
   }
 
-  // Start periodic maintenance system (metadata fixing and membership sync)
-  console.log("🔧 Starting periodic maintenance system...");
-  try {
-    const groupConfigsArray = Array.from(groupConfigs.values()).map(
-      (config) => ({
-        contractAddress: config.contractAddress,
-        groupName: config.metadata.name,
-        xmtpGroupId: config.premiumGroupId || config.salesGroupId,
-      }),
-    );
-
-    await unifiedRecovery.startPeriodicRecovery(groupConfigsArray, 30); // Every 30 minutes
-    console.log("✅ Periodic maintenance system initialized");
-  } catch (error) {
-    console.error("❌ Periodic maintenance system failed to initialize:", error);
-  }
-
   // Track conversations where welcome message has been sent
   const welcomeSentConversations = new Set<string>();
 
@@ -556,7 +284,25 @@ async function main() {
 
   // Start payment monitoring system
   console.log("💰 Starting payment monitoring...");
-  void paymentMonitor.startPaymentMonitoring();
+  void paymentMonitor.startMonitoring();
+
+  // Start metadata sync job to keep NFT images synced with XMTP group images
+  console.log("🖼️ Starting metadata sync job...");
+  try {
+    const metadataConfigs = Array.from(groupConfigs.values()).map((config) => ({
+      contractAddress: config.contractAddress,
+      groupName: config.metadata.name,
+      premiumGroupId: config.premiumGroupId,
+      salesGroupId: config.salesGroupId,
+    }));
+
+    metadataSyncJob.startMetadataSync(metadataConfigs, 6); // Every 6 hours
+    console.log(
+      "✅ Metadata sync job started - will sync NFT images with XMTP groups",
+    );
+  } catch (error) {
+    console.error("❌ Metadata sync job failed to initialize:", error);
+  }
 
   console.log("🚀 EVMAuth Groups Agent is running!");
   console.log("💰 Enhanced with USDC pricing and custom NFT images!");
@@ -566,7 +312,7 @@ async function main() {
     "  /create-group <name> - Create a new premium community (0.001 ETH)",
   );
   console.log(
-    "  /grant-trial <group> <user> <days> - Grant free trial access (creators only)",
+    "  /grant-trial <group> <address> <days> - Grant free trial access (creators only)",
   );
   console.log("  /list-groups - View your premium communities");
   console.log("  /buy-access <group_id> <tier_id> - Purchase access with USDC");
@@ -576,12 +322,6 @@ async function main() {
     "  /test-expiration - Test token expiration with ultra-short tokens",
   );
   console.log("  /help - Show this help message");
-  console.log("");
-  console.log("🔍 Address Resolution Support:");
-  console.log("  • Direct: 0x1234...");
-  console.log("  • Basename: @username.base.eth");
-  console.log("  • ENS: @username.eth");
-  console.log("  • Farcaster: @handle");
   console.log("");
   console.log("💡 Features:");
   console.log("  • User-approved transactions with 0.001 ETH deployment fee");
@@ -610,6 +350,55 @@ async function main() {
       continue;
     }
 
+    // Handle remote attachments (images during tier setup)
+    if (messageType === "remoteStaticAttachment") {
+      console.log("📸 Received image attachment!");
+      
+      try {
+        // Load and decode the attachment
+        const attachment = await RemoteAttachmentCodec.load(
+          message.content as RemoteAttachment,
+          client,
+        );
+
+        const filename = (attachment as Attachment).filename || "image.png";
+        const data = (attachment as Attachment).data;
+        
+        console.log(`📸 Processing image: ${filename} (${data.length} bytes)`);
+
+        // Check if user has an active tier setup session
+        const hasSession = await tierSetup.handleTierSetupMessage(
+          message.senderInboxId,
+          "IMAGE_ATTACHMENT", // Special marker for image
+          conversation,
+          { data, filename }, // Pass attachment data
+        );
+
+        if (!hasSession) {
+          await conversation.send(
+            "📸 I received your image! However, you need to start tier setup first.\n\n" +
+            "Use `/setup-tiers <group_name>` to begin interactive tier configuration."
+          );
+        }
+
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Error processing attachment:", errorMessage);
+        await conversation.send("❌ Error processing your image. Please try again.");
+      }
+      
+      continue;
+    }
+
+    // Skip non-text messages that aren't attachments
+    if (messageType !== "text") {
+      continue;
+    }
+
+    console.log(
+      `Received message: ${message.content as string} by ${message.senderInboxId}`,
+    );
+
     const inboxState = await client.preferences.inboxStateFromInboxIds([
       message.senderInboxId,
     ]);
@@ -618,45 +407,6 @@ async function main() {
       console.log("Unable to find member address, skipping");
       continue;
     }
-
-    /* Handle transaction reference messages (payment confirmations) */
-    if (messageType === "transactionReference") {
-      console.log("🧾 Detected transaction reference message");
-      const transactionRef = message.content as TransactionReference;
-
-      try {
-        // Create public client for transaction verification
-        const publicClient = createPublicClient({
-          chain: base,
-          transport: http(BASE_RPC_URL),
-        });
-
-        await handleTransactionReference(
-          conversation,
-          transactionRef,
-          memberAddress,
-          message.senderInboxId,
-          paymentMonitor,
-          enhancedGroupManager,
-          publicClient,
-        );
-      } catch (error) {
-        console.error("Error handling transaction reference:", error);
-        await conversation.send(
-          "❌ Error processing transaction reference. Please try again.",
-        );
-      }
-      continue;
-    }
-
-    /* Handle text messages only */
-    if (messageType !== "text") {
-      continue;
-    }
-
-    console.log(
-      `Received message: ${message.content as string} by ${message.senderInboxId}`,
-    );
 
     // Add a reaction to the message we just received (Unicode emoji)
     try {
@@ -793,8 +543,6 @@ async function main() {
           message.senderInboxId,
           messageContent,
           groupConfigs,
-          evmAuthHandler,
-          enhancedGroupManager,
         );
       } else if (command === "/list-groups") {
         await handleListGroups(
@@ -862,7 +610,7 @@ async function main() {
           evmAuthHandler,
           enhancedGroupManager,
           eventAccessManager,
-          null, // recoveryManager removed
+          recoveryManager,
           groupConfigs,
         );
       } else if (command === "/help") {
@@ -1545,7 +1293,7 @@ async function handleWithdraw(
         `✅ ETH Withdrawal Complete!\n\n` +
           `Amount: ${(Number(ethBalance) / 1e18).toFixed(6)} ETH\n` +
           `Transaction: ${withdrawHash}\n` +
-          `View: https://basescan.org/tx/${withdrawHash}`,
+          `View: https://sepolia.basescan.org/tx/${withdrawHash}`,
       );
     }
 
@@ -1641,7 +1389,6 @@ async function handleHelp(conversation: any) {
       `📊 \`/create-group <name>\` - Create a new paid group\n` +
       `⚙️ \`/setup-tiers <group_id>\` - Interactive tier setup with custom pricing\n` +
       `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
-      `🎁 \`/grant-trial <group> <user> <days>\` - Grant free trial access (creators only)\n` +
       `🎫 \`/my-tokens\` - View your access tokens\n` +
       `📄 \`/group-info <group_id>\` - Get group information\n` +
       `🔍 \`/check-purchase <contract>\` - Check for recent NFT purchase\n` +
@@ -1649,12 +1396,6 @@ async function handleHelp(conversation: any) {
       `🔧 \`/fix-access <contract>\` - Manually add yourself to premium group if you have NFT\n` +
       `🧪 \`/test-expiration\` - Test token expiration with ultra-short tokens\n` +
       `❓ \`/help\` - Show this help message\n\n` +
-      `🔍 Address Resolution:\n` +
-      `Commands support multiple address formats:\n` +
-      `• Direct: \`0x1234...\`\n` +
-      `• Basename: \`@username.base.eth\`\n` +
-      `• ENS: \`@username.eth\`\n` +
-      `• Farcaster: \`@farcaster_handle\`\n\n` +
       `Enhanced Features:\n` +
       `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
       `🎨 Custom NFT Images: Upload your own artwork for access tokens\n` +
