@@ -1043,6 +1043,14 @@ async function main() {
           unifiedRecoverySystem,
           groupConfigs,
         );
+      } else if (command === "/setup-trial-tokens") {
+        await handleSetupTrialTokens(
+          conversation,
+          evmAuthHandler,
+          groupConfigs,
+        );
+      } else if (command === "/opensea-links") {
+        await handleOpenSeaLinks(conversation, groupConfigs);
       } else {
         // Contextual welcome/help - only send once per conversation
         if (isSalesGroup && matchedConfig) {
@@ -1824,6 +1832,8 @@ async function handleHelp(conversation: any) {
       `🐛 \`/debug-contracts\` - Show contract deployment status\n` +
       `🔧 \`/fix-contracts\` - Recover correct contract addresses\n` +
       `🔄 \`/restart-recovery\` - Force complete recovery restart\n` +
+      `🎫 \`/setup-trial-tokens\` - Setup trial tokens for all contracts\n` +
+      `🌊 \`/opensea-links\` - Show OpenSea collection links\n` +
       `❓ \`/help\` - Show this help message\n\n` +
       `Enhanced Features:\n` +
       `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
@@ -2197,6 +2207,125 @@ async function handleRestartRecovery(
   } catch (error) {
     console.error("Error in restart recovery:", error);
     await conversation.send("❌ Error during recovery restart");
+  }
+}
+
+/**
+ * Setup trial tokens for contracts that need them
+ */
+async function handleSetupTrialTokens(
+  conversation: any,
+  evmAuthHandler: EVMAuthHandler,
+  groupConfigs: Map<string, DualGroupConfig>,
+) {
+  try {
+    console.log("🎫 Setting up trial tokens");
+
+    let response = "🎫 **Trial Token Setup**\n\n";
+
+    response += "📋 **Available Contracts:**\n";
+    let contractIndex = 1;
+    const contractList: string[] = [];
+
+    for (const [contractAddress, config] of groupConfigs.entries()) {
+      const groupName = config.metadata?.name || "Unknown Group";
+      response += `${contractIndex}. **${groupName}** - \`${contractAddress}\`\n`;
+      contractList.push(contractAddress);
+      contractIndex++;
+    }
+
+    response += `\n🎯 **Setting up trial tokens for all contracts...**\n\n`;
+
+    for (const [contractAddress, config] of groupConfigs.entries()) {
+      const groupName = config.metadata?.name || "Unknown Group";
+
+      try {
+        response += `🔧 **${groupName}** (\`${contractAddress}\`):\n`;
+
+        // Set up trial token (Token ID 1, 1 day duration, free)
+        await evmAuthHandler.setupAccessTiers(contractAddress, [
+          {
+            id: 1,
+            name: "Trial Access",
+            description: `24-hour trial access to ${groupName}`,
+            image:
+              "https://via.placeholder.com/400x400/22c55e/ffffff?text=Trial+Access",
+            durationDays: 1,
+            price: "0", // Free
+            currency: "USDC",
+            isActive: true,
+          },
+        ]);
+
+        response += `  ✅ Trial token (ID: 1) - 1 day free access\n`;
+        response += `  🖼️ Default trial image set\n\n`;
+      } catch (error) {
+        response += `  ❌ Error: ${error instanceof Error ? error.message : String(error)}\n\n`;
+      }
+    }
+
+    response += "🎉 **Trial token setup complete!**\n\n";
+    response += "💡 **What was set up:**\n";
+    response += "• Token ID 1: Trial Access (1 day, free)\n";
+    response += "• Default trial access image\n";
+    response += "• Ready for `/grant-trial` commands\n\n";
+    response += "🔧 **Next steps:**\n";
+    response += "• Use `/setup-tiers <group>` to add paid tiers\n";
+    response +=
+      "• Use `/grant-trial <group> <address> <days>` to grant trial access\n";
+
+    await conversation.send(response);
+  } catch (error) {
+    console.error("Error in setup trial tokens:", error);
+    await conversation.send("❌ Error setting up trial tokens");
+  }
+}
+
+/**
+ * Show OpenSea collection links for all groups
+ */
+async function handleOpenSeaLinks(
+  conversation: any,
+  groupConfigs: Map<string, DualGroupConfig>,
+) {
+  try {
+    let response = "🌊 **OpenSea Collection Links**\n\n";
+
+    if (groupConfigs.size === 0) {
+      response +=
+        "❌ No groups found. Run `/list-groups` to see available groups.\n";
+      await conversation.send(response);
+      return;
+    }
+
+    response += "🎨 **Your NFT Collections on OpenSea:**\n\n";
+
+    for (const [contractAddress, config] of groupConfigs.entries()) {
+      const groupName = config.metadata?.name || "Unknown Group";
+      const openseaUrl = `https://opensea.io/collection/base/${contractAddress.toLowerCase()}`;
+
+      response += `🎯 **${groupName}**\n`;
+      response += `📄 Contract: \`${contractAddress}\`\n`;
+      response += `🌊 OpenSea: ${openseaUrl}\n`;
+      response += `🔗 Base Scan: https://basescan.org/address/${contractAddress}\n\n`;
+    }
+
+    response += "💡 **About These Collections:**\n";
+    response += "• Each group has its own NFT contract\n";
+    response += "• Access tokens appear as NFTs on OpenSea\n";
+    response += "• Users can view/trade their access tokens\n";
+    response += "• Expired tokens may still show but won't grant access\n\n";
+
+    response += "🎨 **Collection Features:**\n";
+    response += "• Custom metadata for each tier\n";
+    response += "• Time-bound access tokens\n";
+    response += "• Automatic expiration handling\n";
+    response += "• IPFS-hosted images and metadata\n";
+
+    await conversation.send(response);
+  } catch (error) {
+    console.error("Error showing OpenSea links:", error);
+    await conversation.send("❌ Error retrieving OpenSea links");
   }
 }
 
