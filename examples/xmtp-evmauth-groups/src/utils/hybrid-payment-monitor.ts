@@ -82,6 +82,13 @@ export class HybridPaymentMonitor {
   }
 
   /**
+   * Process a payment from external source (e.g., transaction reference)
+   */
+  async processExternalPayment(payment: any, source: string): Promise<void> {
+    return this.processPayment(payment, source);
+  }
+
+  /**
    * Initialize last checked block from indexer or RPC
    */
   private async initializeLastBlock(): Promise<void> {

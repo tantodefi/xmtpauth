@@ -9,15 +9,13 @@ import {
   ReactionCodec,
 } from "@xmtp/content-type-reaction";
 import {
+  TransactionReferenceCodec,
+  type TransactionReference,
+} from "@xmtp/content-type-transaction-reference";
+import {
   ContentTypeWalletSendCalls,
   WalletSendCallsCodec,
 } from "@xmtp/content-type-wallet-send-calls";
-// Note: These content types would need to be installed separately if available
-// import { TransactionReferenceCodec } from "@xmtp/content-type-transaction-reference";
-// import {
-//   ContentTypeWalletSendCalls,
-//   WalletSendCallsCodec,
-// } from "@xmtp/content-type-wallet-send-calls";
 import {
   Client,
   IdentifierKind,
@@ -85,6 +83,183 @@ function getDataDir(): string {
   return process.env.NODE_ENV === "production" ? "/app/data" : "./.data";
 }
 
+/**
+ * Handle transaction reference messages from wallets
+ */
+async function handleTransactionReference(
+  message: any,
+  client: any,
+  paymentMonitor: HybridPaymentMonitor,
+  enhancedGroupManager: EnhancedGroupManager,
+  groupConfigs: Map<string, DualGroupConfig>,
+  agentAddress: string,
+  database: JSONDatabase,
+) {
+  try {
+    const conversation = await client.conversations.getConversationById(
+      message.conversationId,
+    );
+
+    if (!conversation) {
+      console.log("❌ Unable to find conversation for transaction reference");
+      return;
+    }
+
+    // Get sender address
+    const inboxState = await client.preferences.inboxStateFromInboxIds([
+      message.senderInboxId,
+    ]);
+    const senderAddress = inboxState[0]?.identifiers[0]?.identifier;
+
+    if (!senderAddress) {
+      console.log("❌ Unable to find sender address for transaction reference");
+      return;
+    }
+
+    // Extract transaction details
+    const transactionRef = message.content as TransactionReference;
+    const txHash = transactionRef.reference;
+    const networkId = transactionRef.networkId;
+    const metadata = transactionRef.metadata;
+
+    console.log("🔍 Transaction reference details:");
+    console.log(`  • txHash: ${txHash}`);
+    console.log(`  • networkId: ${networkId}`);
+    console.log(`  • senderAddress: ${senderAddress}`);
+    console.log(`  • metadata:`, metadata);
+
+    // Validate transaction hash format
+    if (!txHash || !txHash.startsWith("0x") || txHash.length !== 66) {
+      console.log("❌ Invalid transaction hash format");
+      await conversation.send(
+        "❌ Invalid transaction hash format. Please ensure you're sending a valid Ethereum transaction hash.",
+      );
+      return;
+    }
+
+    // Check if this is a payment to our agent
+    const isPaymentToAgent = await verifyTransactionIsPayment(
+      txHash,
+      senderAddress,
+      agentAddress,
+    );
+
+    if (!isPaymentToAgent) {
+      console.log("❌ Transaction is not a payment to agent");
+      await conversation.send(
+        `📋 Transaction Reference Received\n\n` +
+          `Transaction: ${txHash}\n` +
+          `From: ${senderAddress}\n\n` +
+          `ℹ️ This transaction doesn't appear to be a payment to our agent address (${agentAddress}).\n\n` +
+          `If you're trying to create a group, please use /create-group <name> and follow the payment instructions.`,
+      );
+      return;
+    }
+
+    console.log(
+      "✅ Valid payment transaction detected via transaction reference",
+    );
+
+    // Send immediate confirmation
+    await conversation.send(
+      `🎉 Payment Confirmed!\n\n` +
+        `Transaction: ${txHash}\n` +
+        `From: ${senderAddress}\n\n` +
+        `⚡ Processing your group creation instantly...\n` +
+        `This will take just a few seconds!`,
+    );
+
+    // Create a synthetic payment object for processing
+    const payment = {
+      id: `${txHash}-eth-txref`,
+      blockNumber: 0, // Will be filled by verification
+      timestamp: new Date().toISOString(),
+      from: senderAddress.toLowerCase(),
+      to: agentAddress.toLowerCase(),
+      value: "1000000000000000", // 0.001 ETH in wei - will be verified
+      transactionHash: txHash,
+      tokenType: "ETH" as const,
+    };
+
+    // Process the payment through the existing system
+    await paymentMonitor.processExternalPayment(
+      payment,
+      "transaction-reference",
+    );
+  } catch (error) {
+    console.error("❌ Error in handleTransactionReference:", error);
+    try {
+      const conversation = await client.conversations.getConversationById(
+        message.conversationId,
+      );
+      if (conversation) {
+        await conversation.send(
+          `❌ Error processing transaction reference: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    } catch (sendError) {
+      console.error("❌ Failed to send error message:", sendError);
+    }
+  }
+}
+
+/**
+ * Verify that a transaction is actually a payment to our agent
+ */
+async function verifyTransactionIsPayment(
+  txHash: string,
+  expectedSender: string,
+  agentAddress: string,
+): Promise<boolean> {
+  try {
+    const BASE_RPC_URL = process.env.BASE_RPC_URL;
+    if (!BASE_RPC_URL) {
+      console.log("❌ BASE_RPC_URL not configured");
+      return false;
+    }
+
+    // Get transaction receipt
+    const response = await fetch(BASE_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "eth_getTransactionByHash",
+        params: [txHash],
+        id: 1,
+      }),
+    });
+
+    const data = (await response.json()) as any;
+    const tx = data.result;
+
+    if (!tx) {
+      console.log("❌ Transaction not found on chain");
+      return false;
+    }
+
+    // Verify transaction details
+    const isToAgent = tx.to?.toLowerCase() === agentAddress.toLowerCase();
+    const hasValue = tx.value && BigInt(tx.value) >= BigInt("1000000000000000"); // 0.001 ETH
+    const isFromExpectedSender =
+      tx.from?.toLowerCase() === expectedSender.toLowerCase();
+
+    console.log("🔍 Transaction verification:");
+    console.log(`  • To agent: ${isToAgent} (${tx.to} vs ${agentAddress})`);
+    console.log(`  • Has value: ${hasValue} (${tx.value})`);
+    console.log(
+      `  • From expected: ${isFromExpectedSender} (${tx.from} vs ${expectedSender})`,
+    );
+
+    // For smart contract wallets, we may need to be more flexible with the sender check
+    // But we always require payment to agent with minimum value
+    return isToAgent && hasValue;
+  } catch (error) {
+    console.error("❌ Error verifying transaction:", error);
+    return false;
+  }
+}
+
 async function main() {
   /* Create the signer and initialize client */
   const signer = createSigner(WALLET_KEY);
@@ -100,7 +275,11 @@ async function main() {
     dbEncryptionKey,
     env: XMTP_ENV as XmtpEnv,
     dbPath: xmtpDbPath,
-    codecs: [new WalletSendCallsCodec(), new ReactionCodec()],
+    codecs: [
+      new WalletSendCallsCodec(),
+      new ReactionCodec(),
+      new TransactionReferenceCodec(),
+    ],
   });
 
   /* Get agent address */
@@ -305,11 +484,37 @@ async function main() {
   const stream = await client.conversations.streamAllMessages();
 
   for await (const message of stream) {
-    /* Ignore messages from the same agent or non-text messages */
-    if (
-      message.senderInboxId.toLowerCase() === client.inboxId.toLowerCase() ||
-      message.contentType?.typeId !== "text"
-    ) {
+    /* Ignore messages from the same agent */
+    if (message.senderInboxId.toLowerCase() === client.inboxId.toLowerCase()) {
+      continue;
+    }
+
+    /* Handle transaction reference messages */
+    if (message.contentType?.typeId === "transactionReference") {
+      console.log("🧾 Detected transaction reference message");
+      console.log(
+        "📋 Raw message content:",
+        JSON.stringify(message.content, null, 2),
+      );
+
+      try {
+        await handleTransactionReference(
+          message,
+          client,
+          paymentMonitor,
+          enhancedGroupManager,
+          groupConfigs,
+          agentAddress,
+          database,
+        );
+      } catch (error) {
+        console.error("❌ Error processing transaction reference:", error);
+      }
+      continue;
+    }
+
+    /* Skip non-text messages for regular processing */
+    if (message.contentType?.typeId !== "text") {
       continue;
     }
 
