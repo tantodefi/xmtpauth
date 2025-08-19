@@ -1037,6 +1037,12 @@ async function main() {
           database,
           groupConfigs,
         );
+      } else if (command === "/restart-recovery") {
+        await handleRestartRecovery(
+          conversation,
+          unifiedRecoverySystem,
+          groupConfigs,
+        );
       } else {
         // Contextual welcome/help - only send once per conversation
         if (isSalesGroup && matchedConfig) {
@@ -1817,6 +1823,7 @@ async function handleHelp(conversation: any) {
       `🧪 \`/test-expiration\` - Test token expiration with ultra-short tokens\n` +
       `🐛 \`/debug-contracts\` - Show contract deployment status\n` +
       `🔧 \`/fix-contracts\` - Recover correct contract addresses\n` +
+      `🔄 \`/restart-recovery\` - Force complete recovery restart\n` +
       `❓ \`/help\` - Show this help message\n\n` +
       `Enhanced Features:\n` +
       `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
@@ -2066,6 +2073,8 @@ async function handleFixContracts(
   try {
     console.log("🔧 Contract fix requested");
 
+    let response = "🔧 **Contract Recovery Process**\n\n";
+
     // Get all contracts from factory
     const agentContracts = await evmAuthHandler.getAllAgentContracts();
 
@@ -2076,7 +2085,11 @@ async function handleFixContracts(
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
 
-    let response = "🔧 **Contract Recovery Process**\n\n";
+    response += `📋 **Current Database State:**\n`;
+    dbGroups.forEach((group, index) => {
+      response += `${index + 1}. **${group.name}** → \`${group.contractAddress}\`\n`;
+    });
+    response += `\n`;
 
     if (agentContracts.length !== dbGroups.length) {
       response += `⚠️ Mismatch: ${dbGroups.length} groups in DB, ${agentContracts.length} contracts on-chain\n\n`;
@@ -2090,11 +2103,12 @@ async function handleFixContracts(
         const group = dbGroups[i];
         const proposedContract = agentContracts[i];
 
+        response += `${i + 1}. **${group.name}**\n`;
+        response += `   Current: \`${group.contractAddress}\`\n`;
+        response += `   Proposed: \`${proposedContract}\`\n`;
+
         if (group.contractAddress !== proposedContract) {
-          response += `${i + 1}. **${group.name}**\n`;
-          response += `   Current: \`${group.contractAddress}\`\n`;
-          response += `   Proposed: \`${proposedContract}\`\n`;
-          response += `   Status: Will fix ✅\n\n`;
+          response += `   Status: Fixing... ✅\n\n`;
 
           // Apply the fix
           await database.fixContractAddress(group.id, proposedContract);
@@ -2109,7 +2123,7 @@ async function handleFixContracts(
             });
           }
         } else {
-          response += `${i + 1}. **${group.name}**: Already correct ✅\n`;
+          response += `   Status: Already correct ✅\n\n`;
         }
       }
 
@@ -2129,6 +2143,60 @@ async function handleFixContracts(
   } catch (error) {
     console.error("Error in fix contracts:", error);
     await conversation.send("❌ Error during contract recovery process");
+  }
+}
+
+/**
+ * Restart recovery - force a complete recovery restart
+ */
+async function handleRestartRecovery(
+  conversation: any,
+  unifiedRecoverySystem: any,
+  groupConfigs: Map<string, DualGroupConfig>,
+) {
+  try {
+    console.log("🔄 Restarting recovery system");
+
+    let response = "🔄 **Restarting Recovery System**\n\n";
+
+    // Clear current group configs
+    const oldSize = groupConfigs.size;
+    groupConfigs.clear();
+
+    response += `🗑️ Cleared ${oldSize} existing group configurations\n\n`;
+
+    // Restart the unified recovery system
+    response += "🔍 **Starting Fresh Recovery...**\n";
+    const recoveryResults = await unifiedRecoverySystem.startRecovery();
+
+    response += `📊 **Recovery Results:**\n`;
+    response += `• Groups recovered: ${recoveryResults.groups?.size || 0}\n`;
+    response += `• Contracts found: ${recoveryResults.foundContracts?.length || 0}\n`;
+    response += `• Metadata fixed: ${recoveryResults.metadataFixed || 0}\n`;
+    response += `• Members synced: ${recoveryResults.membersSynced || 0}\n\n`;
+
+    // Copy recovered groups to the main groupConfigs
+    if (recoveryResults.groups) {
+      for (const [
+        contractAddress,
+        config,
+      ] of recoveryResults.groups.entries()) {
+        groupConfigs.set(contractAddress, config);
+      }
+    }
+
+    response += "✅ **Recovery Complete!**\n";
+    response +=
+      "All groups should now be properly loaded with correct contract addresses.\n\n";
+    response += "💡 **Next Steps:**\n";
+    response += "• Run `/list-groups` to verify all groups are visible\n";
+    response += "• Check that each group has its unique contract\n";
+    response += "• Test group functionality\n";
+
+    await conversation.send(response);
+  } catch (error) {
+    console.error("Error in restart recovery:", error);
+    await conversation.send("❌ Error during recovery restart");
   }
 }
 
