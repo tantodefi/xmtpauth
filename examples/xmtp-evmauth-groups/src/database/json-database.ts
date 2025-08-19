@@ -250,4 +250,49 @@ export class JSONDatabase {
       lastScannedBlock: this.data.lastScannedBlock,
     };
   }
+
+  // Recovery Methods
+  async fixContractAddress(
+    groupId: string,
+    newContractAddress: string,
+  ): Promise<boolean> {
+    try {
+      const groupIndex = this.data.groups.findIndex((g) => g.id === groupId);
+      if (groupIndex === -1) {
+        console.log(`❌ Group ${groupId} not found`);
+        return false;
+      }
+
+      const oldAddress = this.data.groups[groupIndex].contractAddress;
+      this.data.groups[groupIndex].contractAddress = newContractAddress;
+      this.data.groups[groupIndex].updatedAt = new Date().toISOString();
+
+      this.saveDatabase();
+
+      console.log(`✅ Fixed contract address for group ${groupId}:`);
+      console.log(`  Old: ${oldAddress}`);
+      console.log(`  New: ${newContractAddress}`);
+
+      return true;
+    } catch (error) {
+      console.error("Error fixing contract address:", error);
+      return false;
+    }
+  }
+
+  async listGroupsWithContracts(): Promise<
+    Array<{
+      id: string;
+      name: string;
+      contractAddress: string;
+      createdAt: string;
+    }>
+  > {
+    return this.data.groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      contractAddress: group.contractAddress,
+      createdAt: group.createdAt,
+    }));
+  }
 }

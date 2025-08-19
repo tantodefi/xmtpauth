@@ -215,6 +215,35 @@ export class EVMAuthHandler {
   }
 
   /**
+   * Get all contracts deployed by this agent (for debugging/recovery)
+   */
+  async getAllAgentContracts(): Promise<string[]> {
+    try {
+      const factoryRead = getContract({
+        address: this.factoryAddress as `0x${string}`,
+        abi: FACTORY_ABI,
+        client: this.publicClient,
+      });
+
+      const creatorContracts = await factoryRead.read.getCreatorContracts([
+        this.account.address as `0x${string}`,
+      ]);
+
+      console.log(
+        `🔍 Found ${creatorContracts.length} contracts deployed by agent:`,
+      );
+      creatorContracts.forEach((contract, index) => {
+        console.log(`  ${index + 1}. ${contract}`);
+      });
+
+      return creatorContracts as string[];
+    } catch (error) {
+      console.error("Error fetching agent contracts:", error);
+      return [];
+    }
+  }
+
+  /**
    * Deploy a new EVMAuth contract for a group
    */
   async deployGroupContract(
@@ -269,22 +298,61 @@ export class EVMAuthHandler {
         client: this.publicClient,
       });
 
-      // Try a few times to read the created contract address
-      for (let attempt = 0; attempt < 5; attempt++) {
-        try {
-          const creatorContracts = await factoryRead.read.getCreatorContracts([
-            this.account.address as `0x${string}`,
-          ]);
-          if (creatorContracts && creatorContracts.length > 0) {
-            const deployedContractAddress = creatorContracts[
-              creatorContracts.length - 1
-            ] as string;
-            console.log(`✅ Contract deployed at: ${deployedContractAddress}`);
-            return deployedContractAddress;
+      // Try to get the contract address from transaction receipt first
+      let deployedContractAddress: string | null = null;
+
+      // Method 1: Parse the deployment event from transaction receipt
+      try {
+        if (receipt.logs && receipt.logs.length > 0) {
+          // Look for ContractDeployed event or similar
+          for (const log of receipt.logs) {
+            if (log.topics && log.topics.length > 0) {
+              // The deployed contract address might be in the log data or topics
+              // For most factory patterns, the new contract address is in topics[1] or the log address
+              if (
+                log.address !== this.factoryAddress &&
+                log.address !== "0x0000000000000000000000000000000000000000"
+              ) {
+                deployedContractAddress = log.address;
+                console.log(
+                  `✅ Contract deployed at (from receipt): ${deployedContractAddress}`,
+                );
+                break;
+              }
+            }
           }
-        } catch {}
-        // small backoff
-        await new Promise((r) => setTimeout(r, 1000));
+        }
+      } catch (receiptError) {
+        console.log(
+          "⚠️ Could not parse deployment address from receipt:",
+          receiptError,
+        );
+      }
+
+      // Method 2: If receipt parsing failed, try reading from factory with retry
+      if (!deployedContractAddress) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            const creatorContracts = await factoryRead.read.getCreatorContracts(
+              [this.account.address as `0x${string}`],
+            );
+            if (creatorContracts && creatorContracts.length > 0) {
+              deployedContractAddress = creatorContracts[
+                creatorContracts.length - 1
+              ] as string;
+              console.log(
+                `✅ Contract deployed at (from factory): ${deployedContractAddress}`,
+              );
+              break;
+            }
+          } catch {}
+          // small backoff
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+
+      if (deployedContractAddress) {
+        return deployedContractAddress;
       }
 
       // Fallback: read all contracts and return the last one
