@@ -117,22 +117,43 @@ async function handleTransactionReference(
     }
 
     // Extract transaction details
-    const transactionRef = message.content as TransactionReference;
-    const txHash = transactionRef.reference;
-    const networkId = transactionRef.networkId;
-    const metadata = transactionRef.metadata;
+    const transactionRef = message.content as any;
+    // Handle both direct and nested transaction reference formats
+    const txData = transactionRef.transactionReference || transactionRef;
+    const txHash = txData.reference;
+    const networkId = txData.networkId;
+    const metadata = txData.metadata;
 
     console.log("🔍 Transaction reference details:");
     console.log(`  • txHash: ${txHash}`);
-    console.log(`  • networkId: ${networkId}`);
+    console.log(
+      `  • networkId: ${networkId} (${typeof networkId === "string" && networkId.startsWith("0x") ? parseInt(networkId, 16) : networkId})`,
+    );
     console.log(`  • senderAddress: ${senderAddress}`);
     console.log(`  • metadata:`, metadata);
+    console.log(`  • txData structure:`, JSON.stringify(txData, null, 2));
 
     // Validate transaction hash format
     if (!txHash || !txHash.startsWith("0x") || txHash.length !== 66) {
       console.log("❌ Invalid transaction hash format");
       await conversation.send(
         "❌ Invalid transaction hash format. Please ensure you're sending a valid Ethereum transaction hash.",
+      );
+      return;
+    }
+
+    // Validate network is Base (8453 = 0x2105)
+    const networkIdNum =
+      typeof networkId === "string" && networkId.startsWith("0x")
+        ? parseInt(networkId, 16)
+        : parseInt(networkId);
+
+    if (networkIdNum !== 8453) {
+      console.log(`❌ Invalid network: ${networkIdNum}, expected Base (8453)`);
+      await conversation.send(
+        `❌ Invalid network detected: ${networkIdNum}\n\n` +
+          `This agent only processes transactions on Base network (chain ID: 8453).\n` +
+          `Please make sure you're sending the payment on the correct network.`,
       );
       return;
     }
