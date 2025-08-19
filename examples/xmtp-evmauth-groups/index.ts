@@ -83,6 +83,201 @@ function getDataDir(): string {
   return process.env.NODE_ENV === "production" ? "/app/data" : "./.data";
 }
 
+interface TransactionAnalysis {
+  isValid: boolean;
+  type: string;
+  action: string;
+  reason?: string;
+  details?: string;
+  contractAddress?: string;
+  tokenId?: number;
+  amount?: string;
+}
+
+/**
+ * Analyze a transaction to determine its type and validity
+ */
+async function analyzeTransaction(
+  txHash: string,
+  senderAddress: string,
+  agentAddress: string,
+  senderInboxId: string,
+  paymentMonitor: HybridPaymentMonitor,
+  enhancedGroupManager: EnhancedGroupManager,
+  groupConfigs: Map<string, DualGroupConfig>,
+): Promise<TransactionAnalysis> {
+  try {
+    const BASE_RPC_URL = process.env.BASE_RPC_URL;
+    if (!BASE_RPC_URL) {
+      return {
+        isValid: false,
+        type: "unknown",
+        action: "unknown",
+        reason: "RPC URL not configured",
+      };
+    }
+
+    // Get transaction details
+    const response = await fetch(BASE_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "eth_getTransactionByHash",
+        params: [txHash],
+        id: 1,
+      }),
+    });
+
+    const data = (await response.json()) as any;
+    const tx = data.result;
+
+    if (!tx) {
+      return {
+        isValid: false,
+        type: "unknown",
+        action: "unknown",
+        reason: "Transaction not found on blockchain",
+      };
+    }
+
+    console.log("🔍 Transaction analysis:");
+    console.log(`  • From: ${tx.from}`);
+    console.log(`  • To: ${tx.to}`);
+    console.log(`  • Value: ${tx.value}`);
+    console.log(`  • Data: ${tx.input?.slice(0, 20)}...`);
+
+    // Check for ETH payment to agent (group creation)
+    const isToAgent = tx.to?.toLowerCase() === agentAddress.toLowerCase();
+    const hasValue = tx.value && BigInt(tx.value) >= BigInt("1000000000000000"); // 0.001 ETH
+
+    if (isToAgent && hasValue) {
+      return {
+        isValid: true,
+        type: "ETH Payment",
+        action: "group creation",
+        amount: tx.value,
+      };
+    }
+
+    // Check for contract interactions (access purchases)
+    const managedContracts = Array.from(groupConfigs.keys());
+    const isToManagedContract = managedContracts.some(
+      (addr) => addr.toLowerCase() === tx.to?.toLowerCase(),
+    );
+
+    if (isToManagedContract) {
+      const contractAddress = tx.to.toLowerCase();
+      const config = Array.from(groupConfigs.entries()).find(
+        ([addr, cfg]) => addr.toLowerCase() === contractAddress,
+      );
+
+      if (config) {
+        return {
+          isValid: true,
+          type: "Contract Interaction",
+          action: "access purchase",
+          contractAddress,
+          details: `Purchase for ${config[1].metadata?.name || "Premium Group"}`,
+        };
+      }
+    }
+
+    // Check for USDC token transfers (could be part of purchase flow)
+    const USDC_ADDRESS =
+      process.env.USDC_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+    const isUSDCTransfer = tx.to?.toLowerCase() === USDC_ADDRESS.toLowerCase();
+
+    if (isUSDCTransfer && tx.input && tx.input.length > 10) {
+      // This could be a USDC approve or transfer
+      return {
+        isValid: true,
+        type: "USDC Transaction",
+        action: "access purchase",
+        details: "USDC token operation (approve/transfer)",
+      };
+    }
+
+    // If we get here, it's not a recognized transaction type
+    return {
+      isValid: false,
+      type: "Unrecognized",
+      action: "unknown",
+      reason: "Transaction does not match any expected payment patterns",
+      details: `To: ${tx.to}, Value: ${tx.value}, Data: ${tx.input ? "has data" : "no data"}`,
+    };
+  } catch (error) {
+    console.error("❌ Error analyzing transaction:", error);
+    return {
+      isValid: false,
+      type: "error",
+      action: "unknown",
+      reason: "Failed to analyze transaction",
+      details: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Process different types of transactions
+ */
+async function processTransactionByType(
+  analysis: TransactionAnalysis,
+  txHash: string,
+  senderAddress: string,
+  senderInboxId: string,
+  paymentMonitor: HybridPaymentMonitor,
+  enhancedGroupManager: EnhancedGroupManager,
+): Promise<void> {
+  try {
+    switch (analysis.type) {
+      case "ETH Payment":
+        // Handle group creation payment
+        const ethPayment = {
+          id: `${txHash}-eth-txref`,
+          blockNumber: 0,
+          timestamp: new Date().toISOString(),
+          from: senderAddress.toLowerCase(),
+          to: process.env.WALLET_KEY
+            ? (
+                await createSigner(process.env.WALLET_KEY).getIdentifier()
+              ).identifier.toLowerCase()
+            : "",
+          value: analysis.amount || "1000000000000000",
+          transactionHash: txHash,
+          tokenType: "ETH" as const,
+        };
+
+        await paymentMonitor.processExternalPayment(
+          ethPayment,
+          "transaction-reference",
+        );
+        break;
+
+      case "Contract Interaction":
+      case "USDC Transaction":
+        // Handle access purchase
+        if (analysis.contractAddress) {
+          // Trigger the enhanced group manager to check for new NFT ownership
+          await enhancedGroupManager.handleTokenPurchase(
+            analysis.contractAddress,
+            senderAddress,
+            senderInboxId,
+            1, // Default token ID - will be detected from chain
+            "Premium Access",
+          );
+        }
+        break;
+
+      default:
+        console.log(`⚠️ Unhandled transaction type: ${analysis.type}`);
+    }
+  } catch (error) {
+    console.error("❌ Error processing transaction:", error);
+    throw error;
+  }
+}
+
 /**
  * Handle transaction reference messages from wallets
  */
@@ -158,54 +353,73 @@ async function handleTransactionReference(
       return;
     }
 
-    // Check if this is a payment to our agent
-    const isPaymentToAgent = await verifyTransactionIsPayment(
+    // Analyze the transaction to determine its type and validity
+    const transactionAnalysis = await analyzeTransaction(
       txHash,
       senderAddress,
       agentAddress,
+      message.senderInboxId,
+      paymentMonitor,
+      enhancedGroupManager,
+      groupConfigs,
     );
 
-    if (!isPaymentToAgent) {
-      console.log("❌ Transaction is not a payment to agent");
+    if (!transactionAnalysis.isValid) {
+      console.log(
+        `❌ Transaction analysis failed: ${transactionAnalysis.reason}`,
+      );
+
+      // Check if this user has a pending payment
+      const hasPendingPayment = paymentMonitor.hasPendingPayment(
+        message.senderInboxId,
+      );
+
       await conversation.send(
         `📋 Transaction Reference Received\n\n` +
           `Transaction: ${txHash}\n` +
-          `From: ${senderAddress}\n\n` +
-          `ℹ️ This transaction doesn't appear to be a payment to our agent address (${agentAddress}).\n\n` +
-          `If you're trying to create a group, please use /create-group <name> and follow the payment instructions.`,
+          `Network: Base (${networkIdNum})\n\n` +
+          `❌ ${transactionAnalysis.reason}\n\n` +
+          `**What I'm looking for:**\n` +
+          `• ETH payments to agent: ${agentAddress}\n` +
+          `• USDC payments to EVMAuth contracts\n` +
+          `• Smart contract interactions for access purchases\n` +
+          `• Network: Base (8453)\n\n` +
+          (hasPendingPayment
+            ? `💡 **Next Steps:**\n` +
+              `1. Look for the correct transaction in your wallet\n` +
+              `2. For group creation: ETH transfer to ${agentAddress}\n` +
+              `3. For access purchase: USDC transaction or contract interaction\n` +
+              `4. Share that specific transaction hash\n\n` +
+              `The transaction you shared: ${transactionAnalysis.details}`
+            : `💡 To get started, use: /create-group <name> or /buy-access <tier>`),
       );
       return;
     }
 
     console.log(
-      "✅ Valid payment transaction detected via transaction reference",
+      `✅ Valid ${transactionAnalysis.type} transaction detected via transaction reference`,
     );
 
     // Send immediate confirmation
     await conversation.send(
-      `🎉 Payment Confirmed!\n\n` +
-        `Transaction: ${txHash}\n` +
-        `From: ${senderAddress}\n\n` +
-        `⚡ Processing your group creation instantly...\n` +
+      `🎉 Transaction Confirmed!\n\n` +
+        `✅ Valid ${transactionAnalysis.type} transaction detected:\n` +
+        `• Transaction: ${txHash}\n` +
+        `• From: ${senderAddress}\n` +
+        `• Type: ${transactionAnalysis.type}\n` +
+        `• Network: Base (${networkIdNum})\n\n` +
+        `⚡ Processing your ${transactionAnalysis.action} instantly...\n` +
         `This will take just a few seconds!`,
     );
 
-    // Create a synthetic payment object for processing
-    const payment = {
-      id: `${txHash}-eth-txref`,
-      blockNumber: 0, // Will be filled by verification
-      timestamp: new Date().toISOString(),
-      from: senderAddress.toLowerCase(),
-      to: agentAddress.toLowerCase(),
-      value: "1000000000000000", // 0.001 ETH in wei - will be verified
-      transactionHash: txHash,
-      tokenType: "ETH" as const,
-    };
-
-    // Process the payment through the existing system
-    await paymentMonitor.processExternalPayment(
-      payment,
-      "transaction-reference",
+    // Process the transaction through the appropriate system
+    await processTransactionByType(
+      transactionAnalysis,
+      txHash,
+      senderAddress,
+      message.senderInboxId,
+      paymentMonitor,
+      enhancedGroupManager,
     );
   } catch (error) {
     console.error("❌ Error in handleTransactionReference:", error);
@@ -221,63 +435,6 @@ async function handleTransactionReference(
     } catch (sendError) {
       console.error("❌ Failed to send error message:", sendError);
     }
-  }
-}
-
-/**
- * Verify that a transaction is actually a payment to our agent
- */
-async function verifyTransactionIsPayment(
-  txHash: string,
-  expectedSender: string,
-  agentAddress: string,
-): Promise<boolean> {
-  try {
-    const BASE_RPC_URL = process.env.BASE_RPC_URL;
-    if (!BASE_RPC_URL) {
-      console.log("❌ BASE_RPC_URL not configured");
-      return false;
-    }
-
-    // Get transaction receipt
-    const response = await fetch(BASE_RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "eth_getTransactionByHash",
-        params: [txHash],
-        id: 1,
-      }),
-    });
-
-    const data = (await response.json()) as any;
-    const tx = data.result;
-
-    if (!tx) {
-      console.log("❌ Transaction not found on chain");
-      return false;
-    }
-
-    // Verify transaction details
-    const isToAgent = tx.to?.toLowerCase() === agentAddress.toLowerCase();
-    const hasValue = tx.value && BigInt(tx.value) >= BigInt("1000000000000000"); // 0.001 ETH
-    const isFromExpectedSender =
-      tx.from?.toLowerCase() === expectedSender.toLowerCase();
-
-    console.log("🔍 Transaction verification:");
-    console.log(`  • To agent: ${isToAgent} (${tx.to} vs ${agentAddress})`);
-    console.log(`  • Has value: ${hasValue} (${tx.value})`);
-    console.log(
-      `  • From expected: ${isFromExpectedSender} (${tx.from} vs ${expectedSender})`,
-    );
-
-    // For smart contract wallets, we may need to be more flexible with the sender check
-    // But we always require payment to agent with minimum value
-    return isToAgent && hasValue;
-  } catch (error) {
-    console.error("❌ Error verifying transaction:", error);
-    return false;
   }
 }
 

@@ -89,6 +89,15 @@ export class HybridPaymentMonitor {
   }
 
   /**
+   * Check if a user has pending payments
+   */
+  hasPendingPayment(senderInboxId: string): boolean {
+    return Array.from(this.pendingPayments.values()).some(
+      (p) => p.senderInboxId === senderInboxId,
+    );
+  }
+
+  /**
    * Initialize last checked block from indexer or RPC
    */
   private async initializeLastBlock(): Promise<void> {
