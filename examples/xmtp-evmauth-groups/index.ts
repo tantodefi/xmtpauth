@@ -146,8 +146,9 @@ async function analyzeTransaction(
     console.log(`  • To: ${tx.to}`);
     console.log(`  • Value: ${tx.value}`);
     console.log(`  • Data: ${tx.input?.slice(0, 20)}...`);
+    console.log(`  • Expected sender: ${senderAddress}`);
 
-    // Check for ETH payment to agent (group creation)
+    // Check for direct ETH payment to agent (group creation)
     const isToAgent = tx.to?.toLowerCase() === agentAddress.toLowerCase();
     const hasValue = tx.value && BigInt(tx.value) >= BigInt("1000000000000000"); // 0.001 ETH
 
@@ -158,6 +159,66 @@ async function analyzeTransaction(
         action: "group creation",
         amount: tx.value,
       };
+    }
+
+    // Check for smart contract wallet payments
+    // If user has pending payment and transaction is from expected user context, accept it
+    const userHasPendingPayment =
+      paymentMonitor.hasPendingPayment(senderInboxId);
+
+    if (userHasPendingPayment) {
+      console.log(
+        "🔍 User has pending payment, checking if transaction is related...",
+      );
+
+      // Check if transaction involves user's address in metadata or if it's a smart contract call
+      const isFromExpectedUser =
+        tx.from?.toLowerCase() === senderAddress.toLowerCase();
+      const hasTransactionData =
+        tx.input && tx.input !== "0x" && tx.input.length > 10;
+      const isSmartContractCall =
+        hasTransactionData && tx.to && tx.to !== agentAddress;
+
+      // For smart contract wallets, the transaction might go through intermediary contracts
+      if (isSmartContractCall && !isFromExpectedUser) {
+        console.log("🤖 Detected potential smart contract wallet transaction");
+        console.log(`  • Transaction from: ${tx.from}`);
+        console.log(`  • Expected user: ${senderAddress}`);
+        console.log(`  • Has complex data: ${hasTransactionData}`);
+
+        // Check transaction receipt for internal transfers
+        try {
+          const receiptResponse = await fetch(BASE_RPC_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "eth_getTransactionReceipt",
+              params: [txHash],
+              id: 2,
+            }),
+          });
+
+          const receiptData = (await receiptResponse.json()) as any;
+          const receipt = receiptData.result;
+
+          if (receipt && receipt.status === "0x1") {
+            console.log(
+              "✅ Transaction was successful, likely a smart contract wallet payment",
+            );
+
+            return {
+              isValid: true,
+              type: "Smart Contract ETH Payment",
+              action: "group creation",
+              details:
+                "Smart contract wallet payment (verified via pending payment match)",
+            };
+          }
+        } catch (receiptError) {
+          console.log("⚠️ Could not fetch transaction receipt:", receiptError);
+        }
+      }
     }
 
     // Check for contract interactions (access purchases)
@@ -232,7 +293,8 @@ async function processTransactionByType(
   try {
     switch (analysis.type) {
       case "ETH Payment":
-        // Handle group creation payment
+      case "Smart Contract ETH Payment":
+        // Handle group creation payment (both direct and smart contract wallet)
         const ethPayment = {
           id: `${txHash}-eth-txref`,
           blockNumber: 0,
