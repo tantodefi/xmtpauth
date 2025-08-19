@@ -8,7 +8,7 @@ import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig, GroupMetadata } from "../types/types";
 import { addressResolver } from "./address-resolver";
 import { GroupDeduplicationManager } from "./group-deduplication";
-import type { PaymentMonitor } from "./payment-monitor";
+import type { HybridPaymentMonitor } from "./hybrid-payment-monitor";
 import { createGroupCreationPayment } from "./payment-transactions";
 import type { PersistentStateManager } from "./persistent-state";
 
@@ -23,7 +23,7 @@ export async function handleCreateGroupWithPayment(
   enhancedGroupManager: EnhancedGroupManager,
   groupConfigs: Map<string, DualGroupConfig>,
   agentAddress: string,
-  paymentMonitor: PaymentMonitor,
+  paymentMonitor: HybridPaymentMonitor,
   persistentState: PersistentStateManager,
   database?: JSONDatabase,
 ): Promise<void> {
@@ -104,8 +104,7 @@ export async function handleCreateGroupWithPayment(
     await conversation.send(paymentTransaction, ContentTypeWalletSendCalls);
 
     // Register pending payment for monitoring
-    paymentMonitor.registerPendingPayment(
-      `${senderInboxId}-${groupName}-${Date.now()}`,
+    paymentMonitor.registerPayment(
       senderInboxId,
       groupName,
       memberAddress, // This is actually the creator's address
@@ -179,9 +178,10 @@ export async function handleGrantTrial(
       `🔍 Resolving address: ${userInput} with publicClient: ${!!publicClient}`,
     );
 
-    const resolution = await addressResolver.resolveAddress(
+    const resolution = await addressResolver.safeResolveAddress(
       userInput,
       publicClient,
+      "grant-trial",
     );
     console.log(`🔍 Resolution result:`, resolution);
 

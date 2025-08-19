@@ -40,6 +40,7 @@ import type {
   DualGroupConfig,
   GroupMetadata,
 } from "./src/types/types";
+import { addressResolver } from "./src/utils/address-resolver";
 import {
   handleEnhancedBuyAccess,
   handleEnhancedCreateGroup,
@@ -170,7 +171,7 @@ async function main() {
     RPC_URL,
     agentAddress,
     enhancedGroupManager,
-    groupConfigs,
+    Object.fromEntries(groupConfigs), // Convert Map to Record
   );
   const tokenSalesHandler = new TokenSalesHandler(
     evmAuthHandler,
@@ -328,11 +329,37 @@ async function main() {
     const inboxState = await client.preferences.inboxStateFromInboxIds([
       message.senderInboxId,
     ]);
-    const memberAddress = inboxState[0].identifiers[0].identifier;
-    if (!memberAddress) {
-      console.log("Unable to find member address, skipping");
+
+    // Enhanced address resolution with validation
+    const rawMemberAddress = inboxState[0]?.identifiers[0]?.identifier;
+    const addressValidation = addressResolver.validateResolvedAddress(
+      rawMemberAddress,
+      "main-message-loop",
+    );
+
+    if (!addressValidation.isValid) {
+      console.error(
+        `❌ Invalid member address for ${message.senderInboxId}: ${addressValidation.error}`,
+      );
+      try {
+        const conversation = await client.conversations.getConversationById(
+          message.conversationId,
+        );
+        if (conversation) {
+          await conversation.send(
+            "❌ Unable to process your message\n\n" +
+              "I couldn't resolve your wallet address from your XMTP inbox. " +
+              "Please make sure you're messaging from a wallet-connected XMTP client.\n\n" +
+              `Technical error: ${addressValidation.error}`,
+          );
+        }
+      } catch (sendError) {
+        console.error("Failed to send address error message:", sendError);
+      }
       continue;
     }
+
+    const memberAddress = addressValidation.normalizedAddress!;
 
     // Add a reaction to the message we just received (Unicode emoji)
     try {
