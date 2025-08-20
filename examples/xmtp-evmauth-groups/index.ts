@@ -970,6 +970,97 @@ async function main() {
           groupConfigs,
           evmAuthHandler,
         );
+      } else if (command.startsWith("/fix-welcome-messages")) {
+        console.log("🔧 Manual welcome message fix triggered");
+        try {
+          // Get all group configs
+          const allGroups = new Map(groupConfigs);
+
+          // Check and send missing welcome messages
+          let fixedCount = 0;
+          for (const [contractAddress, config] of allGroups.entries()) {
+            try {
+              await textClient.conversations.sync();
+
+              const salesGroup =
+                await textClient.conversations.getConversationById(
+                  config.salesGroupId,
+                );
+              const premiumGroup =
+                await textClient.conversations.getConversationById(
+                  config.premiumGroupId,
+                );
+
+              if (salesGroup && premiumGroup) {
+                const salesMessages = await salesGroup.messages({ limit: 10 });
+                const premiumMessages = await premiumGroup.messages({
+                  limit: 10,
+                });
+
+                const agentInboxId = textClient.inboxId.toLowerCase();
+
+                const salesHasWelcome = salesMessages.some(
+                  (msg) =>
+                    msg.senderInboxId.toLowerCase() === agentInboxId &&
+                    (msg.content as string).includes("Welcome to") &&
+                    (msg.content as string).includes("Sales"),
+                );
+
+                const premiumHasWelcome = premiumMessages.some(
+                  (msg) =>
+                    msg.senderInboxId.toLowerCase() === agentInboxId &&
+                    (msg.content as string).includes("Welcome to") &&
+                    (msg.content as string).includes("Premium"),
+                );
+
+                if (!salesHasWelcome) {
+                  await salesGroup.send(
+                    `🎉 Welcome to ${config.metadata?.name} Sales! 🎉\n\n` +
+                      `This is where you can:\n` +
+                      `🛒 Purchase access to our premium community\n` +
+                      `📋 Learn about available tiers and pricing\n` +
+                      `💬 Get support from our team\n\n` +
+                      `Once tier setup is complete, you'll be able to use:\n` +
+                      `• /buy-access to purchase premium access\n` +
+                      `• /group-info to see pricing details\n\n` +
+                      `🚀 Stay tuned for more updates!`,
+                  );
+                  fixedCount++;
+                }
+
+                if (!premiumHasWelcome) {
+                  await premiumGroup.send(
+                    `💎 Welcome to ${config.metadata?.name} Premium! 💎\n\n` +
+                      `🎉 Congratulations! You now have exclusive access to our premium community.\n\n` +
+                      `✨ Premium Benefits:\n` +
+                      `• Exclusive content and discussions\n` +
+                      `• Priority support\n` +
+                      `• Special member privileges\n` +
+                      `• Early access to new features\n\n` +
+                      `Enjoy your premium experience! 🚀`,
+                  );
+                  fixedCount++;
+                }
+              }
+            } catch (error) {
+              console.error(
+                `❌ Error fixing welcome messages for ${contractAddress}:`,
+                error,
+              );
+            }
+          }
+
+          await conversation.send(
+            `✅ Welcome message fix complete!\n\n` +
+              `🔧 Fixed ${fixedCount} missing welcome messages\n` +
+              `📊 Checked ${allGroups.size} groups total`,
+          );
+        } catch (error) {
+          console.error("❌ Error in manual welcome message fix:", error);
+          await conversation.send(
+            `❌ Error fixing welcome messages: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       } else if (command.startsWith("/grant-trial")) {
         console.log(`🎁 Processing grant-trial command: ${messageContent}`);
         try {
@@ -1819,6 +1910,7 @@ async function handleHelp(conversation: any) {
       `📊 \`/create-group <name>\` - Create a new paid group\n` +
       `⚙️ \`/setup-tiers <group_id>\` - Setup access tiers (starts at Token ID 2, since ID 1 is for trials)\n` +
       `🎫 \`/setup-trial-token <group_id>\` - Manually setup trial token (Token ID 1) if missing\n` +
+      `🔧 \`/fix-welcome-messages\` - Fix missing welcome messages for all groups\n` +
       `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
       `🎫 \`/my-tokens\` - View your access tokens\n` +
       `📄 \`/group-info <group_id>\` - Get group information\n` +

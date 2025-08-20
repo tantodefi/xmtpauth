@@ -376,11 +376,23 @@ export class HybridPaymentMonitor {
       console.log(`🎯 Creating group: ${pendingPayment.groupName}`);
 
       // Process the payment - create dual group system
+      console.log(`🔧 Parameters for createDualGroupSystem:`);
+      console.log(`  • groupName: ${pendingPayment.groupName}`);
+      console.log(`  • senderInboxId: ${pendingPayment.senderInboxId}`);
+      console.log(`  • creatorAddress: ${pendingPayment.creatorAddress}`);
+
       const groupResult = await this.groupManager.createDualGroupSystem(
         pendingPayment.groupName,
         pendingPayment.senderInboxId,
         pendingPayment.creatorAddress,
       );
+
+      console.log(`✅ Group creation result:`, {
+        contractAddress: groupResult.contractAddress,
+        salesGroupId: groupResult.salesGroup.id,
+        premiumGroupId: groupResult.premiumGroup.id,
+        configSaved: !!groupResult.config,
+      });
 
       // Send confirmation to the original conversation
       await pendingPayment.conversation.send(

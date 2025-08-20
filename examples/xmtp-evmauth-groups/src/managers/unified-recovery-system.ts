@@ -1,9 +1,9 @@
 /**
  * Unified Recovery System
- * 
+ *
  * Combines all recovery functionality into one comprehensive system:
  * 1. Database-based recovery from stored group records
- * 2. On-chain contract scanning and XMTP group discovery  
+ * 2. On-chain contract scanning and XMTP group discovery
  * 3. Metadata fixing and membership sync based on NFT ownership
  * 4. Periodic maintenance and monitoring
  */
@@ -14,8 +14,8 @@ import { base } from "viem/chains";
 import { JSONDatabase, type GroupRecord } from "../database/json-database.js";
 import { EVMAuthHandler } from "../handlers/evmauth-handler.js";
 import { IPFSMetadataHandler } from "../handlers/ipfs-metadata.js";
-import { EnhancedGroupManager } from "./enhanced-group-flow.js";
 import type { DualGroupConfig } from "../types/types.js";
+import { EnhancedGroupManager } from "./enhanced-group-flow.js";
 
 // Interfaces
 interface GroupConfig {
@@ -171,18 +171,18 @@ export class UnifiedRecoverySystem {
       // Phase 1: Database recovery
       console.log("📚 Phase 1: Database-based recovery...");
       const dbRecovery = await this.recoverFromDatabase();
-      
+
       // Phase 2: On-chain discovery
       console.log("🔗 Phase 2: On-chain contract discovery...");
       const chainRecovery = await this.discoverFromChain();
-      
+
       // Phase 3: XMTP conversation scanning
       console.log("💬 Phase 3: XMTP conversation scanning...");
       const conversationRecovery = await this.scanConversations();
 
       // Merge all discoveries
       const allGroups = new Map<string, DualGroupConfig>();
-      
+
       // Merge maps manually to avoid type issues
       if (dbRecovery.groups) {
         for (const [key, value] of dbRecovery.groups.entries()) {
@@ -209,6 +209,11 @@ export class UnifiedRecoverySystem {
       result.groups = allGroups;
       result.foundContracts = Array.from(new Set(allContracts));
 
+      // Phase 3.5: Check and send missing welcome messages
+      if (allGroups.size > 0) {
+        await this.checkAndSendMissingWelcomeMessages(allGroups);
+      }
+
       // Phase 4: Metadata fixing and membership sync
       if (result.foundContracts.length > 0) {
         console.log("🔧 Phase 4: Metadata and membership maintenance...");
@@ -220,20 +225,25 @@ export class UnifiedRecoverySystem {
             xmtpGroupId: config.premiumGroupId || config.salesGroupId,
           });
         }
-        
-        const maintenanceResult = await this.performMaintenance(groupConfigsArray);
-        
+
+        const maintenanceResult =
+          await this.performMaintenance(groupConfigsArray);
+
         result.fixedMetadata = maintenanceResult.fixedMetadata;
         result.syncedMembers = maintenanceResult.syncedMembers;
       }
 
-      console.log(`✅ Recovery complete: ${result.groups.size} groups, ${result.foundContracts.length} contracts`);
-      console.log(`🔧 Maintenance: ${result.fixedMetadata} metadata fixed, ${result.syncedMembers} members synced`);
+      console.log(
+        `✅ Recovery complete: ${result.groups.size} groups, ${result.foundContracts.length} contracts`,
+      );
+      console.log(
+        `🔧 Maintenance: ${result.fixedMetadata} metadata fixed, ${result.syncedMembers} members synced`,
+      );
 
       return result;
-
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error("❌ Recovery failed:", errorMessage);
       throw error;
     }
@@ -242,8 +252,13 @@ export class UnifiedRecoverySystem {
   /**
    * Start periodic recovery system
    */
-  async startPeriodicRecovery(groupConfigs: GroupConfig[], intervalMinutes = 30): Promise<void> {
-    console.log(`🔄 Starting periodic recovery (every ${intervalMinutes} minutes)...`);
+  async startPeriodicRecovery(
+    groupConfigs: GroupConfig[],
+    intervalMinutes = 30,
+  ): Promise<void> {
+    console.log(
+      `🔄 Starting periodic recovery (every ${intervalMinutes} minutes)...`,
+    );
 
     // Run initial maintenance
     await this.performMaintenance(groupConfigs);
@@ -255,7 +270,8 @@ export class UnifiedRecoverySystem {
         try {
           await this.performMaintenance(groupConfigs);
         } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           console.error("❌ Scheduled maintenance failed:", errorMessage);
         }
       },
@@ -333,6 +349,111 @@ export class UnifiedRecoverySystem {
   }
 
   /**
+   * Phase 1.5: Check and send missing welcome messages for recovered groups
+   */
+  private async checkAndSendMissingWelcomeMessages(
+    recoveredGroups: Map<string, DualGroupConfig>,
+  ): Promise<void> {
+    console.log("💬 Checking for missing welcome messages...");
+
+    for (const [contractAddress, config] of recoveredGroups.entries()) {
+      try {
+        console.log(
+          `🔍 Checking welcome messages for ${config.metadata?.name} (${contractAddress})`,
+        );
+
+        // Sync conversations first
+        await this.client.conversations.sync();
+
+        // Get both groups
+        const salesGroup = await this.client.conversations.getConversationById(
+          config.salesGroupId,
+        );
+        const premiumGroup =
+          await this.client.conversations.getConversationById(
+            config.premiumGroupId,
+          );
+
+        if (salesGroup && premiumGroup) {
+          // Check if welcome messages were sent (look for recent messages from agent)
+          const salesMessages = await salesGroup.messages({ limit: 10 });
+          const premiumMessages = await premiumGroup.messages({ limit: 10 });
+
+          const agentInboxId = this.client.inboxId.toLowerCase();
+
+          // Check if agent has sent welcome messages
+          const salesHasWelcome = salesMessages.some(
+            (msg) =>
+              msg.senderInboxId.toLowerCase() === agentInboxId &&
+              (msg.content as string).includes("Welcome to") &&
+              (msg.content as string).includes("Sales"),
+          );
+
+          const premiumHasWelcome = premiumMessages.some(
+            (msg) =>
+              msg.senderInboxId.toLowerCase() === agentInboxId &&
+              (msg.content as string).includes("Welcome to") &&
+              (msg.content as string).includes("Premium"),
+          );
+
+          // Send missing welcome messages
+          if (!salesHasWelcome) {
+            console.log(
+              `📝 Sending missing sales welcome message for ${config.metadata?.name}`,
+            );
+            await salesGroup.send(
+              `🎉 Welcome to ${config.metadata?.name} Sales! 🎉\n\n` +
+                `This is where you can:\n` +
+                `🛒 Purchase access to our premium community\n` +
+                `📋 Learn about available tiers and pricing\n` +
+                `💬 Get support from our team\n\n` +
+                `Once tier setup is complete, you'll be able to use:\n` +
+                `• /buy-access to purchase premium access\n` +
+                `• /group-info to see pricing details\n\n` +
+                `🚀 Stay tuned for more updates!`,
+            );
+          }
+
+          if (!premiumHasWelcome) {
+            console.log(
+              `📝 Sending missing premium welcome message for ${config.metadata?.name}`,
+            );
+            await premiumGroup.send(
+              `💎 Welcome to ${config.metadata?.name} Premium! 💎\n\n` +
+                `🎉 Congratulations! You now have exclusive access to our premium community.\n\n` +
+                `✨ Premium Benefits:\n` +
+                `• Exclusive content and discussions\n` +
+                `• Priority support\n` +
+                `• Special member privileges\n` +
+                `• Early access to new features\n\n` +
+                `Enjoy your premium experience! 🚀`,
+            );
+          }
+
+          if (salesHasWelcome && premiumHasWelcome) {
+            console.log(
+              `✅ Welcome messages already sent for ${config.metadata?.name}`,
+            );
+          }
+        } else {
+          console.log(
+            `⚠️ Could not find groups for ${config.metadata?.name} (${contractAddress})`,
+          );
+          if (!salesGroup)
+            console.log(`   Missing sales group: ${config.salesGroupId}`);
+          if (!premiumGroup)
+            console.log(`   Missing premium group: ${config.premiumGroupId}`);
+        }
+      } catch (error) {
+        console.error(
+          `❌ Error checking welcome messages for ${contractAddress}:`,
+          error,
+        );
+      }
+    }
+  }
+
+  /**
    * Phase 2: Discover contracts from on-chain data
    */
   private async discoverFromChain(): Promise<Partial<RecoveryResult>> {
@@ -342,8 +463,10 @@ export class UnifiedRecoverySystem {
     try {
       // This would require the factory contract to have discovery methods
       // For now, we'll rely on database and conversation scanning
-      console.log("⚠️ On-chain discovery not yet implemented - relying on database and conversations");
-      
+      console.log(
+        "⚠️ On-chain discovery not yet implemented - relying on database and conversations",
+      );
+
       return { groups, foundContracts };
     } catch (error) {
       console.error("❌ On-chain discovery failed:", error);
@@ -361,7 +484,7 @@ export class UnifiedRecoverySystem {
     try {
       await this.client.conversations.sync();
       const conversations = await this.client.conversations.list();
-      
+
       console.log(`🔍 Scanning ${conversations.length} conversations...`);
 
       const contractRegex = /0x[a-fA-F0-9]{40}/g;
@@ -374,7 +497,9 @@ export class UnifiedRecoverySystem {
             const text = `${conversation.name} ${conversation.description || ""}`;
             const matches = text.match(contractRegex);
             if (matches) {
-              matches.forEach((addr) => possibleContracts.add(addr.toLowerCase()));
+              matches.forEach((addr) =>
+                possibleContracts.add(addr.toLowerCase()),
+              );
             }
           }
 
@@ -384,7 +509,9 @@ export class UnifiedRecoverySystem {
             if (typeof message.content === "string") {
               const matches = message.content.match(contractRegex);
               if (matches) {
-                matches.forEach((addr) => possibleContracts.add(addr.toLowerCase()));
+                matches.forEach((addr) =>
+                  possibleContracts.add(addr.toLowerCase()),
+                );
               }
             }
           }
@@ -394,7 +521,9 @@ export class UnifiedRecoverySystem {
         }
       }
 
-      console.log(`🔍 Found ${possibleContracts.size} potential contract addresses`);
+      console.log(
+        `🔍 Found ${possibleContracts.size} potential contract addresses`,
+      );
 
       // Verify contracts by trying to call them
       for (const address of possibleContracts) {
@@ -410,7 +539,7 @@ export class UnifiedRecoverySystem {
           if (info && info.salesGroupId) {
             foundContracts.push(address);
             console.log(`✅ Verified EVMAuth contract: ${address}`);
-            
+
             // Create basic config - will be enhanced in other phases
             const config: Partial<DualGroupConfig> = {
               contractAddress: address,
@@ -424,7 +553,7 @@ export class UnifiedRecoverySystem {
                 image: "",
               },
             };
-            
+
             groups.set(address, config as DualGroupConfig);
           }
         } catch (error) {
@@ -452,7 +581,9 @@ export class UnifiedRecoverySystem {
 
     for (const config of groupConfigs) {
       try {
-        console.log(`🔧 Maintaining: ${config.groupName} (${config.contractAddress})`);
+        console.log(
+          `🔧 Maintaining: ${config.groupName} (${config.contractAddress})`,
+        );
 
         // Fix metadata if needed
         const metadataFixed = await this.fixContractMetadata(config);
@@ -461,10 +592,13 @@ export class UnifiedRecoverySystem {
         // Sync group membership
         const membersSynced = await this.syncGroupMembership(config);
         syncedMembers += membersSynced;
-
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`❌ Maintenance failed for ${config.groupName}:`, errorMessage);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error(
+          `❌ Maintenance failed for ${config.groupName}:`,
+          errorMessage,
+        );
       }
     }
 
@@ -496,8 +630,10 @@ export class UnifiedRecoverySystem {
 
           // Check if metadata URI is empty
           if (!tier.metadataURI || tier.metadataURI.length === 0) {
-            console.log(`🔧 Would fix metadata for token ${tokenId}: ${tier.name}`);
-            
+            console.log(
+              `🔧 Would fix metadata for token ${tokenId}: ${tier.name}`,
+            );
+
             // Get fallback image
             let imageHash = tier.imageIPFSHash;
             if (!imageHash || imageHash.length === 0) {
@@ -524,15 +660,20 @@ export class UnifiedRecoverySystem {
             };
 
             try {
-              const metadataHash = await this.ipfsHandler.uploadMetadata(metadata);
+              const metadataHash =
+                await this.ipfsHandler.uploadMetadata(metadata);
               const metadataURI = `ipfs://${metadataHash}`;
 
-              console.log(`✅ Would update metadata for token ${tokenId} to ${metadataURI}`);
+              console.log(
+                `✅ Would update metadata for token ${tokenId} to ${metadataURI}`,
+              );
               console.log(`   (Contract update needed via setupAccessTier)`);
               fixedCount++;
-
             } catch (uploadError) {
-              console.error(`❌ Failed to upload metadata for token ${tokenId}:`, uploadError);
+              console.error(
+                `❌ Failed to upload metadata for token ${tokenId}:`,
+                uploadError,
+              );
             }
           }
         } catch (error) {
@@ -542,11 +683,15 @@ export class UnifiedRecoverySystem {
       }
 
       if (fixedCount > 0) {
-        console.log(`✅ Fixed metadata for ${fixedCount} tokens in ${config.groupName}`);
+        console.log(
+          `✅ Fixed metadata for ${fixedCount} tokens in ${config.groupName}`,
+        );
       }
-
     } catch (error) {
-      console.error(`❌ Metadata fixing failed for ${config.groupName}:`, error);
+      console.error(
+        `❌ Metadata fixing failed for ${config.groupName}:`,
+        error,
+      );
     }
 
     return fixedCount;
@@ -564,13 +709,17 @@ export class UnifiedRecoverySystem {
       const currentTime = Math.floor(Date.now() / 1000);
 
       const validHolders = allHolders.filter(
-        (holder) => !holder.isExpired && holder.expirationTimestamp > currentTime,
+        (holder) =>
+          !holder.isExpired && holder.expirationTimestamp > currentTime,
       );
       const expiredHolders = allHolders.filter(
-        (holder) => holder.isExpired || holder.expirationTimestamp <= currentTime,
+        (holder) =>
+          holder.isExpired || holder.expirationTimestamp <= currentTime,
       );
 
-      console.log(`👥 Found ${validHolders.length} valid, ${expiredHolders.length} expired holders`);
+      console.log(
+        `👥 Found ${validHolders.length} valid, ${expiredHolders.length} expired holders`,
+      );
 
       // Get XMTP group
       const xmtpGroup = await this.getXMTPGroup(config);
@@ -627,7 +776,9 @@ export class UnifiedRecoverySystem {
                 config.contractAddress,
                 member.inboxId,
               );
-              console.log(`🚫 Removed ${holderAddress} (Token ${holder.tokenId} expired)`);
+              console.log(
+                `🚫 Removed ${holderAddress} (Token ${holder.tokenId} expired)`,
+              );
               syncedCount++;
             }
           } catch (error) {
@@ -635,10 +786,13 @@ export class UnifiedRecoverySystem {
           }
         }
       }
-
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`❌ Membership sync failed for ${config.groupName}:`, errorMessage);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(
+        `❌ Membership sync failed for ${config.groupName}:`,
+        errorMessage,
+      );
     }
 
     return syncedCount;
@@ -673,7 +827,9 @@ export class UnifiedRecoverySystem {
   /**
    * Get all NFT holders for a contract
    */
-  private async getAllNFTHolders(contractAddress: string): Promise<NFTHolder[]> {
+  private async getAllNFTHolders(
+    contractAddress: string,
+  ): Promise<NFTHolder[]> {
     const contract = getContract({
       address: contractAddress as `0x${string}`,
       abi: CONTRACT_ABI,
@@ -728,9 +884,10 @@ export class UnifiedRecoverySystem {
   private async getXMTPGroup(config: GroupConfig): Promise<Group | null> {
     try {
       if (config.xmtpGroupId) {
-        const conversation = await this.client.conversations.getConversationById(
-          config.xmtpGroupId,
-        );
+        const conversation =
+          await this.client.conversations.getConversationById(
+            config.xmtpGroupId,
+          );
         if (conversation && conversation instanceof Group) {
           return conversation;
         }
@@ -751,7 +908,10 @@ export class UnifiedRecoverySystem {
 
       return null;
     } catch (error) {
-      console.error(`❌ Error finding XMTP group for ${config.groupName}:`, error);
+      console.error(
+        `❌ Error finding XMTP group for ${config.groupName}:`,
+        error,
+      );
       return null;
     }
   }

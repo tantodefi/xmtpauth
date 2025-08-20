@@ -189,19 +189,27 @@ export class EnhancedGroupManager {
 
       // 6. Store in in-memory config for immediate access
       this.groupConfigs.set(contractAddress, groupConfig);
+      console.log(`📝 Added group config to memory: ${contractAddress} -> ${groupName}`);
 
       // 7. Store in database for persistence
       if (this.database) {
-        await this.database.createGroup({
-          name: groupName,
-          creatorInboxId,
-          creatorAddress,
-          contractAddress,
-          salesGroupId: salesGroup.id,
-          premiumGroupId: premiumGroup.id,
-          status: "created",
-        });
-        console.log("💾 Saved group to database");
+        try {
+          await this.database.createGroup({
+            name: groupName,
+            creatorInboxId,
+            creatorAddress,
+            contractAddress,
+            salesGroupId: salesGroup.id,
+            premiumGroupId: premiumGroup.id,
+            status: "created",
+          });
+          console.log("💾 Saved group to database successfully");
+        } catch (dbError) {
+          console.error("❌ Failed to save group to database:", dbError);
+          // Don't fail the entire operation if database save fails
+        }
+      } else {
+        console.log("⚠️ No database instance available for saving group");
       }
 
       console.log("✅ Dual-group system created successfully!");
