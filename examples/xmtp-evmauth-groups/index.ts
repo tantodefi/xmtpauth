@@ -218,6 +218,46 @@ async function analyzeTransaction(
           console.log("⚠️ Could not fetch transaction receipt:", receiptError);
         }
       }
+
+      // Also check if it's a direct payment from the expected user
+      if (isFromExpectedUser) {
+        console.log(
+          "✅ Direct payment from expected user with pending payment",
+        );
+
+        // Check transaction receipt to ensure it was successful
+        try {
+          const receiptResponse = await fetch(BASE_RPC_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "eth_getTransactionReceipt",
+              params: [txHash],
+              id: 3,
+            }),
+          });
+
+          const receiptData = (await receiptResponse.json()) as any;
+          const receipt = receiptData.result;
+
+          if (receipt && receipt.status === "0x1") {
+            return {
+              isValid: true,
+              type: "ETH Payment",
+              action: "group creation",
+              amount: tx.value,
+              details:
+                "Verified payment from expected user with pending payment",
+            };
+          }
+        } catch (receiptError) {
+          console.log(
+            "⚠️ Could not fetch transaction receipt for direct payment:",
+            receiptError,
+          );
+        }
+      }
     }
 
     // Check for contract interactions (access purchases)
@@ -1152,7 +1192,7 @@ async function handleSetupTrialToken(
       `🎫 Setting up trial token (Token ID 1) for ${groupName}...\n\nThis will create a 24-hour trial access token at minimal cost (1 wei).`,
     );
 
-    await evmAuthHandler.setupTrialToken(contractAddress, groupName);
+    await evmAuthHandler.setupTrialToken(contractAddress!, groupName!);
 
     await conversation.send(
       `✅ Trial token setup complete!\n\n` +

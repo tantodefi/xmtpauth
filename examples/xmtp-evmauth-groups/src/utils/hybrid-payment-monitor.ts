@@ -1,6 +1,7 @@
 import type { Conversation } from "@xmtp/node-sdk";
 import type { EnhancedGroupManager } from "../managers/enhanced-group-flow";
 import type { DualGroupConfig } from "../types/types";
+import { formatPaymentAmount } from "./format-utils";
 
 /**
  * Hybrid Payment Monitor - Best of both worlds:
@@ -363,8 +364,14 @@ export class HybridPaymentMonitor {
         return;
       }
 
+      // Format payment amount for console logging and display
+      const formattedPayment = formatPaymentAmount(
+        payment.value,
+        payment.tokenType,
+      );
+
       console.log(
-        `✅ Payment confirmed (${source}): ${payment.value} ${payment.tokenType} from ${payment.from}`,
+        `✅ Payment confirmed (${source}): ${formattedPayment} from ${payment.from}`,
       );
       console.log(`🎯 Creating group: ${pendingPayment.groupName}`);
 
@@ -378,7 +385,7 @@ export class HybridPaymentMonitor {
       // Send confirmation to the original conversation
       await pendingPayment.conversation.send(
         `✅ Payment confirmed! Group "${pendingPayment.groupName}" created successfully!\n\n` +
-          `💰 Payment: ${payment.value} ${payment.tokenType}\n` +
+          `💰 Payment: ${formattedPayment}\n` +
           `📋 Contract: ${groupResult.contractAddress}\n` +
           `🏪 Sales Group: ${groupResult.salesGroup.id}\n` +
           `💎 Premium Group: ${groupResult.premiumGroup.id}\n\n` +
