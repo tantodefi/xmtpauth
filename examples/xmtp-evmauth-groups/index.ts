@@ -1687,7 +1687,7 @@ async function handleHelp(conversation: any) {
       `Create and monetize premium XMTP groups with custom USDC pricing and NFT images!\n\n` +
       `Commands:\n` +
       `📊 \`/create-group <name>\` - Create a new paid group\n` +
-      `⚙️ \`/setup-tiers <group_id>\` - Interactive tier setup with custom pricing\n` +
+      `⚙️ \`/setup-tiers <group_id>\` - Setup access tiers (starts at Token ID 2, since ID 1 is for trials)\n` +
       `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
       `🎫 \`/my-tokens\` - View your access tokens\n` +
       `📄 \`/group-info <group_id>\` - Get group information\n` +

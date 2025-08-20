@@ -51,18 +51,7 @@ export class GroupManager {
       // 1.5. Automatically setup trial token (Token ID 1)
       console.log("🎫 Setting up trial access token...");
       try {
-        await this.evmAuthHandler.setupAccessTiers(contractAddress, [
-          {
-            id: "1",
-            name: "Trial Access",
-            description: `24-hour trial access to ${params.name}`,
-            imageUrl:
-              "https://via.placeholder.com/400x400/22c55e/ffffff?text=Trial+Access",
-            durationDays: 1,
-            priceWei: "1", // 1 wei - minimal price allowed by contract
-            isActive: true,
-          },
-        ]);
+        await this.evmAuthHandler.setupTrialToken(contractAddress, params.name);
         console.log("✅ Trial token setup complete");
       } catch (error) {
         console.error(

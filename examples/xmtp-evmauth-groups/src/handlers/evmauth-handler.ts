@@ -375,7 +375,67 @@ export class EVMAuthHandler {
   }
 
   /**
-   * Setup access tiers for a group contract
+   * Setup trial token (Token ID 1) for a group contract
+   */
+  async setupTrialToken(
+    contractAddress: string,
+    groupName: string,
+  ): Promise<void> {
+    try {
+      const contract = getContract({
+        address: contractAddress as `0x${string}`,
+        abi: GROUP_ABI,
+        client: this.walletClient,
+      });
+
+      console.log(`🎫 Setting up trial token (ID 1) for ${groupName}...`);
+
+      // Get fresh nonce and gas price
+      const agentAddress = this.walletClient.account?.address;
+      if (!agentAddress) {
+        throw new Error("No wallet address found");
+      }
+
+      const latestNonce = await this.publicClient.getTransactionCount({
+        address: agentAddress,
+        blockTag: "pending",
+      });
+
+      const gasPrice = await this.publicClient.getGasPrice();
+      const bufferedGasPrice = (gasPrice * 110n) / 100n;
+
+      console.log(
+        `🔧 Using nonce: ${latestNonce}, gas price: ${Number(bufferedGasPrice) / 1e9} gwei`,
+      );
+
+      const hash = await contract.write.setupAccessTier(
+        [
+          1n, // tokenId (always 1 for trials)
+          1n, // durationDays (1 day trial)
+          1n, // priceWei (1 wei - minimal price required)
+          "Trial Access", // name
+          `24-hour trial access to ${groupName}`, // description
+          "https://via.placeholder.com/400x400/22c55e/ffffff?text=Trial+Access", // imageHash
+          "", // metadataUri (empty for now)
+        ],
+        {
+          nonce: latestNonce,
+          gasPrice: bufferedGasPrice,
+          gas: 500000n,
+        },
+      );
+
+      console.log(`📡 Trial token transaction submitted: ${hash}`);
+      await this.publicClient.waitForTransactionReceipt({ hash });
+      console.log(`✅ Trial token (ID 1) setup complete for ${groupName}`);
+    } catch (error) {
+      console.error("Error setting up trial token:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Setup access tiers for a group contract (starts from Token ID 2)
    */
   async setupAccessTiers(
     contractAddress: string,
@@ -438,9 +498,9 @@ export class EVMAuthHandler {
         console.log(`✅ USDC token set successfully`);
       }
 
-      // Find available token IDs first
+      // Find available token IDs first (starting from 2, since 1 is reserved for trials)
       const availableTokenIds: number[] = [];
-      for (let id = 1; id <= 20; id++) {
+      for (let id = 2; id <= 20; id++) {
         try {
           const existingTier = await this.getAccessTier(contractAddress, id);
           if (!existingTier || !existingTier.isActive) {
