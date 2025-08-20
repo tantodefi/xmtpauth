@@ -440,13 +440,13 @@ async function handleTransactionReference(
           `Transaction: ${txHash}\n` +
           `Network: Base (${networkIdNum})\n\n` +
           `❌ ${transactionAnalysis.reason}\n\n` +
-          `**What I'm looking for:**\n` +
+          `What I'm looking for:\n` +
           `• ETH payments to agent: ${agentAddress}\n` +
           `• USDC payments to EVMAuth contracts\n` +
           `• Smart contract interactions for access purchases\n` +
           `• Network: Base (8453)\n\n` +
           (hasPendingPayment
-            ? `💡 **Next Steps:**\n` +
+            ? `💡 Next Steps:\n` +
               `1. Look for the correct transaction in your wallet\n` +
               `2. For group creation: ETH transfer to ${agentAddress}\n` +
               `3. For access purchase: USDC transaction or contract interaction\n` +
@@ -1851,23 +1851,23 @@ async function handleDebugContracts(
     // Get all groups from database
     const dbGroups = await database.listGroupsWithContracts();
 
-    let response = "🔍 **Contract Debug Information**\n\n";
+    let response = "🔍 Contract Debug Information\n\n";
 
-    response += `📋 **Database Groups (${dbGroups.length}):**\n`;
+    response += `📋 Database Groups (${dbGroups.length}):\n`;
     dbGroups.forEach((group, index) => {
-      response += `${index + 1}. **${group.name}**\n`;
+      response += `${index + 1}. ${group.name}\n`;
       response += `   ID: \`${group.id}\`\n`;
       response += `   Contract: \`${group.contractAddress}\`\n`;
       response += `   Created: ${new Date(group.createdAt).toLocaleString()}\n\n`;
     });
 
-    response += `🏭 **Factory Contracts (${agentContracts.length}):**\n`;
+    response += `🏭 Factory Contracts (${agentContracts.length}):\n`;
     agentContracts.forEach((contract, index) => {
       response += `${index + 1}. \`${contract}\`\n`;
     });
 
     // Check contract metadata to see what got overwritten
-    response += `\n🔍 **Contract Metadata Analysis:**\n`;
+    response += `\n🔍 Contract Metadata Analysis:\n`;
     try {
       const contractAddress = "0x602cA984D7f9C693b6061C8AaE072D6B553b0Aff";
       // We can't easily read contract metadata here without more complex setup
@@ -1880,7 +1880,7 @@ async function handleDebugContracts(
       response += `⚠️ Could not analyze contract metadata\n`;
     }
 
-    response += `\n🔧 **Issue Detection:**\n`;
+    response += `\n🔧 Issue Detection:\n`;
     const duplicateContracts = dbGroups.reduce(
       (acc: { [key: string]: string[] }, group) => {
         if (!acc[group.contractAddress]) acc[group.contractAddress] = [];
@@ -1915,7 +1915,7 @@ async function handleFixContracts(
   try {
     console.log("🔧 Contract fix requested");
 
-    let response = "🔧 **Contract Recovery Process**\n\n";
+    let response = "🔧 Contract Recovery Process\n\n";
 
     // Get all contracts from factory
     const agentContracts = await evmAuthHandler.getAllAgentContracts();
@@ -1927,9 +1927,9 @@ async function handleFixContracts(
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
 
-    response += `📋 **Current Database State:**\n`;
+    response += `📋 Current Database State:\n`;
     dbGroups.forEach((group, index) => {
-      response += `${index + 1}. **${group.name}** → \`${group.contractAddress}\`\n`;
+      response += `${index + 1}. ${group.name} → \`${group.contractAddress}\`\n`;
     });
     response += `\n`;
 
@@ -1939,13 +1939,13 @@ async function handleFixContracts(
 
     // Attempt to map contracts to groups chronologically
     if (agentContracts.length >= dbGroups.length) {
-      response += "📋 **Proposed Fixes:**\n";
+      response += "📋 Proposed Fixes:\n";
 
       for (let i = 0; i < dbGroups.length; i++) {
         const group = dbGroups[i];
         const proposedContract = agentContracts[i];
 
-        response += `${i + 1}. **${group.name}**\n`;
+        response += `${i + 1}. ${group.name}\n`;
         response += `   Current: \`${group.contractAddress}\`\n`;
         response += `   Proposed: \`${proposedContract}\`\n`;
 
@@ -1969,15 +1969,15 @@ async function handleFixContracts(
         }
       }
 
-      response += "\n🎉 **Contract addresses have been fixed!**\n";
+      response += "\n🎉 Contract addresses have been fixed!\n";
       response +=
         "The groups should now have their correct unique contracts.\n\n";
-      response += "💡 **Next Steps:**\n";
+      response += "💡 Next Steps:\n";
       response += "• Test group access functionality\n";
       response += "• Verify tier configurations\n";
       response += "• Check membership syncing\n";
     } else {
-      response += "❌ **Cannot fix**: Not enough contracts on-chain\n";
+      response += "❌ Cannot fix: Not enough contracts on-chain\n";
       response += "Some contracts may have failed to deploy properly.\n";
     }
 
@@ -1999,7 +1999,7 @@ async function handleRestartRecovery(
   try {
     console.log("🔄 Restarting recovery system");
 
-    let response = "🔄 **Restarting Recovery System**\n\n";
+    let response = "🔄 Restarting Recovery System\n\n";
 
     // Clear current group configs
     const oldSize = groupConfigs.size;
@@ -2008,10 +2008,10 @@ async function handleRestartRecovery(
     response += `🗑️ Cleared ${oldSize} existing group configurations\n\n`;
 
     // Restart the unified recovery system
-    response += "🔍 **Starting Fresh Recovery...**\n";
+    response += "🔍 Starting Fresh Recovery...\n";
     const recoveryResults = await unifiedRecoverySystem.startRecovery();
 
-    response += `📊 **Recovery Results:**\n`;
+    response += `📊 Recovery Results:\n`;
     response += `• Groups recovered: ${recoveryResults.groups?.size || 0}\n`;
     response += `• Contracts found: ${recoveryResults.foundContracts?.length || 0}\n`;
     response += `• Metadata fixed: ${recoveryResults.metadataFixed || 0}\n`;
@@ -2027,10 +2027,10 @@ async function handleRestartRecovery(
       }
     }
 
-    response += "✅ **Recovery Complete!**\n";
+    response += "✅ Recovery Complete!\n";
     response +=
       "All groups should now be properly loaded with correct contract addresses.\n\n";
-    response += "💡 **Next Steps:**\n";
+    response += "💡 Next Steps:\n";
     response += "• Run `/list-groups` to verify all groups are visible\n";
     response += "• Check that each group has its unique contract\n";
     response += "• Test group functionality\n";
@@ -2051,7 +2051,7 @@ async function handleCheckPayments(
   groupConfigs: Map<string, DualGroupConfig>,
 ) {
   try {
-    let response = "💰 **Payment Routing Check**\n\n";
+    let response = "💰 Payment Routing Check\n\n";
 
     if (groupConfigs.size === 0) {
       response +=
@@ -2068,7 +2068,7 @@ async function handleCheckPayments(
       try {
         // This would need to be implemented in EVMAuthHandler
         // For now, show the expected flow
-        response += `🎯 **${groupName}**\n`;
+        response += `🎯 ${groupName}\n`;
         response += `📄 Contract: \`${contractAddress}\`\n`;
         response += `👤 Creator: \`${config.creatorAddress || "Unknown"}\`\n`;
         response += `💰 ETH Payments: → Creator (for group creation)\n`;
@@ -2079,14 +2079,12 @@ async function handleCheckPayments(
       }
     }
 
-    response += "💡 **Payment Flow Summary:**\n";
-    response +=
-      "• **Group Creation (0.001 ETH)**: Paid to agent for deployment\n";
-    response +=
-      "• **Access Purchases (USDC)**: Paid directly to group creator\n";
-    response += "• **Trial Grants**: Free, issued by creator or agent\n\n";
+    response += "💡 Payment Flow Summary:\n";
+    response += "• Group Creation (0.001 ETH): Paid to agent for deployment\n";
+    response += "• Access Purchases (USDC): Paid directly to group creator\n";
+    response += "• Trial Grants: Free, issued by creator or agent\n\n";
 
-    response += "🔧 **If Payments Are Going Wrong:**\n";
+    response += "🔧 If Payments Are Going Wrong:\n";
     response += "• Check contract ownership with block explorer\n";
     response += "• Verify USDC approval and purchase transactions\n";
     response += "• Ensure creator address is set correctly\n";
@@ -2106,7 +2104,7 @@ async function handleOpenSeaLinks(
   groupConfigs: Map<string, DualGroupConfig>,
 ) {
   try {
-    let response = "🌊 **OpenSea Collection Links**\n\n";
+    let response = "🌊 OpenSea Collection Links\n\n";
 
     if (groupConfigs.size === 0) {
       response +=
@@ -2115,27 +2113,27 @@ async function handleOpenSeaLinks(
       return;
     }
 
-    response += "🎨 **Your NFT Collections on OpenSea:**\n\n";
+    response += "🎨 Your NFT Collections on OpenSea:\n\n";
 
     for (const [contractAddress, config] of groupConfigs.entries()) {
       const groupName = config.metadata?.name || "Unknown Group";
       const openseaUrl = `https://opensea.io/assets/base/${contractAddress.toLowerCase()}`;
       const collectionUrl = `https://opensea.io/collection/${contractAddress.toLowerCase()}`;
 
-      response += `🎯 **${groupName}**\n`;
+      response += `🎯 ${groupName}\n`;
       response += `📄 Contract: \`${contractAddress}\`\n`;
       response += `🌊 OpenSea Collection: ${collectionUrl}\n`;
       response += `🎨 OpenSea Assets: ${openseaUrl}\n`;
       response += `🔗 Base Scan: https://basescan.org/address/${contractAddress}\n\n`;
     }
 
-    response += "💡 **About These Collections:**\n";
+    response += "💡 About These Collections:\n";
     response += "• Each group has its own NFT contract\n";
     response += "• Access tokens appear as NFTs on OpenSea\n";
     response += "• Users can view/trade their access tokens\n";
     response += "• Expired tokens may still show but won't grant access\n\n";
 
-    response += "🎨 **Collection Features:**\n";
+    response += "🎨 Collection Features:\n";
     response += "• Custom metadata for each tier\n";
     response += "• Time-bound access tokens\n";
     response += "• Automatic expiration handling\n";
