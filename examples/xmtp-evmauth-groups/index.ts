@@ -922,6 +922,14 @@ async function main() {
           textClient,
           database,
         );
+      } else if (command.startsWith("/setup-trial-token")) {
+        await handleSetupTrialToken(
+          conversation,
+          message.senderInboxId,
+          messageContent,
+          groupConfigs,
+          evmAuthHandler,
+        );
       } else if (command.startsWith("/grant-trial")) {
         console.log(`🎁 Processing grant-trial command: ${messageContent}`);
         try {
@@ -1082,6 +1090,88 @@ async function main() {
         "Sorry, I encountered an error processing your command.",
       );
     }
+  }
+}
+
+async function handleSetupTrialToken(
+  conversation: any,
+  senderInboxId: string,
+  messageContent: string,
+  groupConfigs: Map<string, DualGroupConfig>,
+  evmAuthHandler: EVMAuthHandler,
+) {
+  const parts = messageContent.split(" ");
+  if (parts.length < 2) {
+    await conversation.send(
+      "Usage: /setup-trial-token <group_name_or_contract>\nExample: /setup-trial-token dstealth",
+    );
+    return;
+  }
+
+  const identifier = parts[1];
+
+  // Find group by name OR contract address
+  let groupConfig: DualGroupConfig | undefined;
+  let contractAddress: string | undefined;
+  let groupName: string | undefined;
+
+  // Try to find by contract address first
+  if (identifier.startsWith("0x") && identifier.length === 42) {
+    contractAddress = identifier;
+    groupConfig = groupConfigs.get(contractAddress);
+    groupName = groupConfig?.metadata?.name || "Unknown Group";
+  } else {
+    // Try to find by group name
+    for (const [addr, config] of groupConfigs.entries()) {
+      if (config.metadata?.name?.toLowerCase() === identifier.toLowerCase()) {
+        contractAddress = addr;
+        groupConfig = config;
+        groupName = config.metadata.name;
+        break;
+      }
+    }
+  }
+
+  if (!groupConfig || !contractAddress) {
+    await conversation.send(
+      "❌ Group not found. Use /list-groups to see available groups.",
+    );
+    return;
+  }
+
+  // Check if user is the creator
+  if (groupConfig.creatorInboxId !== senderInboxId) {
+    await conversation.send(
+      "❌ Only the group creator can setup trial tokens.",
+    );
+    return;
+  }
+
+  try {
+    await conversation.send(
+      `🎫 Setting up trial token (Token ID 1) for ${groupName}...\n\nThis will create a 24-hour trial access token at minimal cost (1 wei).`,
+    );
+
+    await evmAuthHandler.setupTrialToken(contractAddress, groupName);
+
+    await conversation.send(
+      `✅ Trial token setup complete!\n\n` +
+        `🎯 ${groupName}\n` +
+        `📄 Contract: \`${contractAddress}\`\n` +
+        `🎫 Token ID 1: Trial Access (24 hours, 1 wei)\n\n` +
+        `Users can now get trial access to your group!\n` +
+        `Next: Use /setup-tiers to add paid access tiers (Token ID 2+)`,
+    );
+  } catch (error) {
+    console.error("Error setting up trial token:", error);
+    await conversation.send(
+      `❌ Failed to setup trial token: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        `This might happen if:\n` +
+        `• Token ID 1 is already configured\n` +
+        `• Network issues\n` +
+        `• Insufficient gas\n\n` +
+        `Try again or check the contract on BaseScan.`,
+    );
   }
 }
 
@@ -1688,6 +1778,7 @@ async function handleHelp(conversation: any) {
       `Commands:\n` +
       `📊 \`/create-group <name>\` - Create a new paid group\n` +
       `⚙️ \`/setup-tiers <group_id>\` - Setup access tiers (starts at Token ID 2, since ID 1 is for trials)\n` +
+      `🎫 \`/setup-trial-token <group_id>\` - Manually setup trial token (Token ID 1) if missing\n` +
       `💰 \`/buy-access <group_id> <tier_id>\` - Purchase access with USDC\n` +
       `🎫 \`/my-tokens\` - View your access tokens\n` +
       `📄 \`/group-info <group_id>\` - Get group information\n` +
