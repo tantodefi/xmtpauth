@@ -136,10 +136,34 @@ export class EnhancedGroupManager {
       console.log("📋 Deploying EVMAuth contract with group IDs...");
       const contractAddress = await this.evmAuthHandler.deployGroupContract(
         groupName,
-        this.agentAddress, // Pass AGENT address as botAddress (not creator)
+        creatorAddress, // Pass CREATOR address as contract owner (receives payments)
         salesGroup.id, // Pass actual sales group ID
         premiumGroup.id, // Pass actual premium group ID
       );
+
+      // 4.5. Automatically setup trial token (Token ID 1)
+      console.log("🎫 Setting up trial access token...");
+      try {
+        await this.evmAuthHandler.setupAccessTiers(contractAddress, [
+          {
+            id: "1",
+            name: "Trial Access",
+            description: `24-hour trial access to ${groupName}`,
+            imageUrl:
+              "https://via.placeholder.com/400x400/22c55e/ffffff?text=Trial+Access",
+            durationDays: 1,
+            priceWei: "1", // 1 wei - minimal price allowed by contract
+            isActive: true,
+          },
+        ]);
+        console.log("✅ Trial token setup complete");
+      } catch (error) {
+        console.error(
+          "⚠️ Warning: Failed to setup trial token:",
+          error instanceof Error ? error.message : String(error),
+        );
+        // Don't fail the entire deployment if trial setup fails
+      }
 
       // 5. Create group configuration
       const groupConfig: DualGroupConfig = {

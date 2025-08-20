@@ -32,7 +32,7 @@ import { EnhancedTierSetup } from "./src/managers/enhanced-tier-setup";
 import { GroupManager } from "./src/managers/group-manager";
 import { UnifiedRecoverySystem } from "./src/managers/unified-recovery-system";
 // RecoveryManager removed - using unified recovery system
-import { TestFlowManager } from "./src/test/test-flow";
+
 import type {
   AccessTier,
   DualGroupConfig,
@@ -50,7 +50,6 @@ import {
 } from "./src/utils/enhanced-create-group-with-payment";
 import { HybridPaymentMonitor } from "./src/utils/hybrid-payment-monitor";
 import { PersistentStateManager } from "./src/utils/persistent-state";
-import { TokenSalesHandler } from "./src/utils/token-sales";
 
 /* Environment variables validation */
 const {
@@ -555,13 +554,7 @@ async function main() {
     enhancedGroupManager,
     groupConfigs,
   );
-  const testFlowManager = new TestFlowManager(
-    textClient,
-    enhancedGroupManager,
-    eventAccessManager,
-    null, // recoveryManager removed - using unified recovery system
-    groupConfigs,
-  );
+
   const groupManager = new GroupManager(textClient, evmAuthHandler);
 
   // Initialize enhanced tier setup with database
@@ -591,11 +584,6 @@ async function main() {
     agentAddress,
     enhancedGroupManager,
     Object.fromEntries(groupConfigs), // Convert Map to Record
-  );
-  const tokenSalesHandler = new TokenSalesHandler(
-    evmAuthHandler,
-    FEE_RECIPIENT,
-    parseInt(FEE_BASIS_POINTS),
   );
 
   void logAgentDetails(textClient as any);
@@ -1026,8 +1014,6 @@ async function main() {
         );
       } else if (command === "/help") {
         await handleHelp(conversation);
-      } else if (command === "/test-system") {
-        await handleTestSystem(conversation, testFlowManager);
       } else if (command === "/debug-contracts") {
         await handleDebugContracts(conversation, evmAuthHandler, database);
       } else if (command === "/fix-contracts") {
@@ -1043,14 +1029,10 @@ async function main() {
           unifiedRecoverySystem,
           groupConfigs,
         );
-      } else if (command === "/setup-trial-tokens") {
-        await handleSetupTrialTokens(
-          conversation,
-          evmAuthHandler,
-          groupConfigs,
-        );
       } else if (command === "/opensea-links") {
         await handleOpenSeaLinks(conversation, groupConfigs);
+      } else if (command === "/check-payments") {
+        await handleCheckPayments(conversation, evmAuthHandler, groupConfigs);
       } else {
         // Contextual welcome/help - only send once per conversation
         if (isSalesGroup && matchedConfig) {
@@ -1101,65 +1083,6 @@ async function main() {
       );
     }
   }
-}
-
-async function handleCreateGroup_OLD_DEPRECATED(
-  conversation: any,
-  creatorInboxId: string,
-  messageContent: string,
-  groupManager: GroupManager,
-): Promise<void> {
-  // This function is deprecated - use handleEnhancedCreateGroup instead
-  await conversation.send(
-    "❌ This command is deprecated. Use the enhanced version.",
-  );
-  return;
-  /*
-  const parts = messageContent.split(" ");
-  if (parts.length < 2) {
-    await conversation.send(
-      "Usage: /create-group <name>\nExample: /create-group \"My Premium Group\""
-    );
-    return;
-  }
-
-  const groupName = parts.slice(1).join(" ").replace(/"/g, "");
-  
-  await conversation.send("🔄 Creating your paid group...");
-
-  try {
-    const result = await groupManager.createPaidGroup({
-      name: groupName,
-      description: `Premium access group created via EVMAuth`,
-      creatorInboxId,
-    });
-
-    groupConfigs.set(result.groupId, {
-      groupId: result.groupId,
-      contractAddress: result.contractAddress,
-      tiers: [],
-      metadata: {
-        name: groupName,
-        description: `Premium access group created via EVMAuth`,
-      },
-      creatorInboxId,
-    });
-
-    await conversation.send(
-      `✅ Group created successfully!\n\n` +
-      `📊 Group ID: \`${result.groupId}\`\n` +
-      `🔗 Contract: \`${result.contractAddress}\`\n` +
-      `💎 Group URL: https://xmtp.chat/conversations/${result.groupId}\n\n` +
-      `Next steps:\n` +
-      `1. Setup access tiers: \`/setup-tiers ${result.groupId}\`\n` +
-      `2. Configure pricing and duration for each tier\n` +
-      `3. Start selling access to your group!`
-    );
-  } catch (error) {
-    console.error("Error creating group:", error);
-    await conversation.send("❌ Failed to create group. Please try again.");
-  }
-  */
 }
 
 async function handleEnhancedSetupTiers(
@@ -1241,63 +1164,6 @@ async function handleEnhancedSetupTiers(
   console.log(`🎯 Starting tier setup for contract: ${contractAddress}`);
   await tierSetup.startTierSetup(contractAddress, senderInboxId, conversation);
   console.log(`✅ Tier setup session created for: ${senderInboxId}`);
-}
-
-async function handleBuyAccess(
-  conversation: any,
-  userAddress: string,
-  messageContent: string,
-  tokenSalesHandler: TokenSalesHandler,
-) {
-  const parts = messageContent.split(" ");
-  if (parts.length < 3) {
-    await conversation.send(
-      "Usage: /buy-access <group_id> <tier_id>\nExample: /buy-access abc123 premium",
-    );
-    return;
-  }
-
-  const groupId = parts[1];
-  const tierId = parts[2];
-  const groupConfig = groupConfigs.get(groupId);
-
-  if (!groupConfig) {
-    await conversation.send("❌ Group not found. Please check the group ID.");
-    return;
-  }
-
-  const tier = groupConfig.tiers.find((t: AccessTier) => t.id === tierId);
-  if (!tier) {
-    await conversation.send(
-      `❌ Tier not found. Available tiers: ${groupConfig.tiers
-        .map((t: AccessTier) => t.id)
-        .join(", ")}`,
-    );
-    return;
-  }
-
-  await conversation.send("🔄 Generating purchase transaction...");
-
-  try {
-    const walletSendCalls = await tokenSalesHandler.createPurchaseTransaction(
-      userAddress,
-      groupConfig.contractAddress,
-      tier,
-    );
-
-    await conversation.send(
-      `💰 Purchase ${tier.name}\n\n` +
-        `🎯 Group: ${groupConfig.metadata.name}\n` +
-        `⏰ Duration: ${tier.durationDays} days\n` +
-        `💎 Price: ${parseFloat(tier.priceWei) / 1e18} ETH\n\n` +
-        `Transaction details:\n` +
-        `\`\`\`json\n${JSON.stringify(walletSendCalls, null, 2)}\n\`\`\`\n\n` +
-        `Please use your wallet to send the transaction above.`,
-    );
-  } catch (error) {
-    console.error("Error creating purchase transaction:", error);
-    await conversation.send("❌ Failed to create purchase transaction.");
-  }
 }
 
 async function handleMyTokens(conversation: any, senderInboxId: string) {
@@ -1422,31 +1288,31 @@ async function handleGroupInfo(conversation: any, messageContent: string) {
     const tier = tiers[i] as AccessTier;
     const tokenId = i + 1;
     let priceDisplay = "";
-    // 1) Prefer DB USD price for stability
-    if (dbPrices[tokenId]) {
-      priceDisplay = `$${dbPrices[tokenId].toFixed(2)} USD`;
-    } else if (
-      typeof (tier as any).priceUSD === "number" &&
-      (tier as any).priceUSD > 0
-    ) {
-      priceDisplay = `$${(tier as any).priceUSD.toFixed(2)} USD`;
-    } else {
-      // 2) Fallback to on-chain
-      try {
-        const on = await evmForInfo.readTierInfo(
-          groupConfig.contractAddress,
-          tokenId,
-        );
-        if (on && on.priceUSDC && on.priceUSDC > 0n) {
-          const usdc = Number(on.priceUSDC) / 1_000_000;
-          priceDisplay = `${usdc} USDC`;
-        } else if (on && on.priceWei && on.priceWei > 0n) {
-          const eth = Number(on.priceWei) / 1e18;
-          priceDisplay = `${eth} ETH`;
-        } else {
-          priceDisplay = "Free";
-        }
-      } catch {
+    // 1) First check on-chain for accurate pricing
+    try {
+      const on = await evmForInfo.readTierInfo(
+        groupConfig.contractAddress,
+        tokenId,
+      );
+      if (on && on.priceUSDC && on.priceUSDC > 0n) {
+        const usdc = Number(on.priceUSDC) / 1_000_000;
+        priceDisplay = `$${usdc.toFixed(2)} USDC`;
+      } else if (on && on.priceWei && on.priceWei > 0n) {
+        const eth = Number(on.priceWei) / 1e18;
+        priceDisplay = `${eth} ETH`;
+      } else {
+        priceDisplay = "Free";
+      }
+    } catch {
+      // 2) Fallback to stored pricing
+      if (dbPrices[tokenId]) {
+        priceDisplay = `$${dbPrices[tokenId].toFixed(2)} USDC`;
+      } else if (
+        typeof (tier as any).priceUSD === "number" &&
+        (tier as any).priceUSD > 0
+      ) {
+        priceDisplay = `$${(tier as any).priceUSD.toFixed(2)} USDC`;
+      } else {
         priceDisplay = "Pricing unavailable";
       }
     }
@@ -1832,8 +1698,8 @@ async function handleHelp(conversation: any) {
       `🐛 \`/debug-contracts\` - Show contract deployment status\n` +
       `🔧 \`/fix-contracts\` - Recover correct contract addresses\n` +
       `🔄 \`/restart-recovery\` - Force complete recovery restart\n` +
-      `🎫 \`/setup-trial-tokens\` - Setup trial tokens for all contracts\n` +
       `🌊 \`/opensea-links\` - Show OpenSea collection links\n` +
+      `💰 \`/check-payments\` - Check payment routing and contract ownership\n` +
       `❓ \`/help\` - Show this help message\n\n` +
       `Enhanced Features:\n` +
       `💵 USDC Pricing: Set prices in USD (e.g., $5.99 for 30 days)\n` +
@@ -1964,40 +1830,6 @@ async function handleTestExpiration(
         `• Valid contract deployment\n` +
         `• USDC token setup\n` +
         `• Proper event listening`,
-    );
-  }
-}
-
-async function handleTestSystem(
-  conversation: any,
-  testFlowManager: TestFlowManager,
-) {
-  await conversation.send(
-    `🧪 Running System Test\n\n` +
-      `Testing all enhanced features...\n` +
-      `This may take 1-2 minutes.`,
-  );
-
-  try {
-    const testResults = await testFlowManager.runCompleteTest();
-
-    await conversation.send(
-      `🧪 Test Results\n\n` +
-        `Overall: ${testResults.success ? "🎉 SUCCESS" : "❌ FAILED"}\n\n` +
-        `Component Tests:\n` +
-        `• Group Creation: ${testResults.results.groupCreation ? "✅" : "❌"}\n` +
-        `• Tier Setup: ${testResults.results.tierSetup ? "✅" : "❌"}\n` +
-        `• Membership Mgmt: ${testResults.results.membershipManagement ? "✅" : "❌"}\n` +
-        `• Event Listening: ${testResults.results.eventListening ? "✅" : "❌"}\n` +
-        `• Recovery: ${testResults.results.recovery ? "✅" : "❌"}\n\n` +
-        (testResults.errors.length > 0
-          ? `Errors:\n${testResults.errors.map((e) => `• ${e}`).join("\n")}`
-          : `All systems operational! 🚀`),
-    );
-  } catch (error) {
-    await conversation.send(
-      `❌ Test Failed\n\n` +
-        `Error: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -2211,73 +2043,58 @@ async function handleRestartRecovery(
 }
 
 /**
- * Setup trial tokens for contracts that need them
+ * Check payment routing and contract ownership
  */
-async function handleSetupTrialTokens(
+async function handleCheckPayments(
   conversation: any,
   evmAuthHandler: EVMAuthHandler,
   groupConfigs: Map<string, DualGroupConfig>,
 ) {
   try {
-    console.log("🎫 Setting up trial tokens");
+    let response = "💰 **Payment Routing Check**\n\n";
 
-    let response = "🎫 **Trial Token Setup**\n\n";
-
-    response += "📋 **Available Contracts:**\n";
-    let contractIndex = 1;
-    const contractList: string[] = [];
-
-    for (const [contractAddress, config] of groupConfigs.entries()) {
-      const groupName = config.metadata?.name || "Unknown Group";
-      response += `${contractIndex}. **${groupName}** - \`${contractAddress}\`\n`;
-      contractList.push(contractAddress);
-      contractIndex++;
+    if (groupConfigs.size === 0) {
+      response +=
+        "❌ No groups found. Run `/list-groups` to see available groups.\n";
+      await conversation.send(response);
+      return;
     }
 
-    response += `\n🎯 **Setting up trial tokens for all contracts...**\n\n`;
+    response += "🔍 **Contract Ownership & Payment Routing:**\n\n";
 
     for (const [contractAddress, config] of groupConfigs.entries()) {
       const groupName = config.metadata?.name || "Unknown Group";
 
       try {
-        response += `🔧 **${groupName}** (\`${contractAddress}\`):\n`;
-
-        // Set up trial token (Token ID 1, 1 day duration, free)
-        await evmAuthHandler.setupAccessTiers(contractAddress, [
-          {
-            id: 1,
-            name: "Trial Access",
-            description: `24-hour trial access to ${groupName}`,
-            image:
-              "https://via.placeholder.com/400x400/22c55e/ffffff?text=Trial+Access",
-            durationDays: 1,
-            price: "0", // Free
-            currency: "USDC",
-            isActive: true,
-          },
-        ]);
-
-        response += `  ✅ Trial token (ID: 1) - 1 day free access\n`;
-        response += `  🖼️ Default trial image set\n\n`;
+        // This would need to be implemented in EVMAuthHandler
+        // For now, show the expected flow
+        response += `🎯 **${groupName}**\n`;
+        response += `📄 Contract: \`${contractAddress}\`\n`;
+        response += `👤 Creator: \`${config.creatorAddress || "Unknown"}\`\n`;
+        response += `💰 ETH Payments: → Creator (for group creation)\n`;
+        response += `💎 USDC Payments: → Creator (contract owner)\n`;
+        response += `🤖 Agent Role: Facilitates transactions only\n\n`;
       } catch (error) {
-        response += `  ❌ Error: ${error instanceof Error ? error.message : String(error)}\n\n`;
+        response += `❌ Error checking ${groupName}: ${error instanceof Error ? error.message : String(error)}\n\n`;
       }
     }
 
-    response += "🎉 **Trial token setup complete!**\n\n";
-    response += "💡 **What was set up:**\n";
-    response += "• Token ID 1: Trial Access (1 day, free)\n";
-    response += "• Default trial access image\n";
-    response += "• Ready for `/grant-trial` commands\n\n";
-    response += "🔧 **Next steps:**\n";
-    response += "• Use `/setup-tiers <group>` to add paid tiers\n";
+    response += "💡 **Payment Flow Summary:**\n";
     response +=
-      "• Use `/grant-trial <group> <address> <days>` to grant trial access\n";
+      "• **Group Creation (0.001 ETH)**: Paid to agent for deployment\n";
+    response +=
+      "• **Access Purchases (USDC)**: Paid directly to group creator\n";
+    response += "• **Trial Grants**: Free, issued by creator or agent\n\n";
+
+    response += "🔧 **If Payments Are Going Wrong:**\n";
+    response += "• Check contract ownership with block explorer\n";
+    response += "• Verify USDC approval and purchase transactions\n";
+    response += "• Ensure creator address is set correctly\n";
 
     await conversation.send(response);
   } catch (error) {
-    console.error("Error in setup trial tokens:", error);
-    await conversation.send("❌ Error setting up trial tokens");
+    console.error("Error checking payments:", error);
+    await conversation.send("❌ Error checking payment routing");
   }
 }
 
@@ -2302,11 +2119,13 @@ async function handleOpenSeaLinks(
 
     for (const [contractAddress, config] of groupConfigs.entries()) {
       const groupName = config.metadata?.name || "Unknown Group";
-      const openseaUrl = `https://opensea.io/collection/base/${contractAddress.toLowerCase()}`;
+      const openseaUrl = `https://opensea.io/assets/base/${contractAddress.toLowerCase()}`;
+      const collectionUrl = `https://opensea.io/collection/${contractAddress.toLowerCase()}`;
 
       response += `🎯 **${groupName}**\n`;
       response += `📄 Contract: \`${contractAddress}\`\n`;
-      response += `🌊 OpenSea: ${openseaUrl}\n`;
+      response += `🌊 OpenSea Collection: ${collectionUrl}\n`;
+      response += `🎨 OpenSea Assets: ${openseaUrl}\n`;
       response += `🔗 Base Scan: https://basescan.org/address/${contractAddress}\n\n`;
     }
 

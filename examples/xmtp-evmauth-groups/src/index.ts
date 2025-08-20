@@ -15,14 +15,10 @@ export { EnhancedGroupManager } from "./managers/enhanced-group-flow";
 // RecoveryManager removed - using unified recovery system
 
 // Utils
-export { TokenSalesHandler } from "./utils/token-sales";
 export {
   handleEnhancedCreateGroup,
   handleEnhancedBuyAccess,
 } from "./utils/enhanced-create-group";
-
-// Test
-export { TestFlowManager } from "./test/test-flow";
 
 // Types
 export type * from "./types/types";
