@@ -733,7 +733,7 @@ async function main() {
   console.log(
     "  /grant-trial <group> <address> <days> - Grant free trial access (creators only)",
   );
-  console.log("  /list-groups - View your premium communities");
+  console.log("  /list-groups - View your premium communities with invite links");
   console.log("  /buy-access <group_id> <tier_id> - Purchase access with USDC");
   console.log("  /my-tokens - View your access tokens");
   console.log("  /group-info <group_id> - Get group information and pricing");
@@ -1002,15 +1002,17 @@ async function main() {
                 const salesHasWelcome = salesMessages.some(
                   (msg) =>
                     msg.senderInboxId.toLowerCase() === agentInboxId &&
-                    (msg.content as string).includes("Welcome to") &&
-                    (msg.content as string).includes("Sales"),
+                    typeof msg.content === "string" &&
+                    msg.content.includes("Welcome to") &&
+                    msg.content.includes("Sales"),
                 );
 
                 const premiumHasWelcome = premiumMessages.some(
                   (msg) =>
                     msg.senderInboxId.toLowerCase() === agentInboxId &&
-                    (msg.content as string).includes("Welcome to") &&
-                    (msg.content as string).includes("Premium"),
+                    typeof msg.content === "string" &&
+                    msg.content.includes("Welcome to") &&
+                    msg.content.includes("Premium"),
                 );
 
                 if (!salesHasWelcome) {
@@ -1205,7 +1207,7 @@ async function main() {
               '• /create-group "My Premium Group" — deploy contract + groups\n' +
               "• /setup-tiers <group_or_contract> — interactive tier setup\n" +
               "• /buy-access <group_or_contract> <tier_id> — purchase access\n" +
-              "• /list-groups — see your groups\n" +
+              "• /list-groups — see your groups + invite links\n" +
               "• /help — full guide",
           );
 

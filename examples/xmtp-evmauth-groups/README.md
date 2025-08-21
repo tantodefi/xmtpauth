@@ -92,7 +92,7 @@ yarn check-metadata
 
 ### **Group Management**
 - `/create-group <name>` - Create premium community (0.001 ETH)
-- `/list-groups` - View your communities
+- `/list-groups` - View your communities with Coinbase Wallet invite links
 - `/group-info <group_id>` - Get pricing and member info
 
 ### **Access Control**
@@ -267,7 +267,7 @@ yarn start
 **Commands to try**:
 ```
 /help                           # See all commands
-/list-groups                    # View available groups
+/list-groups                    # View your groups + invite links
 /group-info dstealth            # Check pricing for dstealth group
 /grant-trial dstealth @vitalik.eth 7   # Grant trial (if you're creator)
 ```

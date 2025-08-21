@@ -385,15 +385,17 @@ export class UnifiedRecoverySystem {
           const salesHasWelcome = salesMessages.some(
             (msg) =>
               msg.senderInboxId.toLowerCase() === agentInboxId &&
-              (msg.content as string).includes("Welcome to") &&
-              (msg.content as string).includes("Sales"),
+              typeof msg.content === "string" &&
+              msg.content.includes("Welcome to") &&
+              msg.content.includes("Sales"),
           );
 
           const premiumHasWelcome = premiumMessages.some(
             (msg) =>
               msg.senderInboxId.toLowerCase() === agentInboxId &&
-              (msg.content as string).includes("Welcome to") &&
-              (msg.content as string).includes("Premium"),
+              typeof msg.content === "string" &&
+              msg.content.includes("Welcome to") &&
+              msg.content.includes("Premium"),
           );
 
           // Send missing welcome messages

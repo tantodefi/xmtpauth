@@ -73,3 +73,4 @@ export function formatAddress(address: string): string {
 export function formatNumber(num: number): string {
   return num.toLocaleString();
 }
+

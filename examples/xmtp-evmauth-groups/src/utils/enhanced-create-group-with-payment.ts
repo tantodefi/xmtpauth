@@ -422,6 +422,11 @@ export async function handleListGroups(
       response += `   👥 Sales Group: ${group.salesGroupId}\n`;
       response += `   🔒 Premium Group: ${group.premiumGroupId}\n`;
 
+      // Add Coinbase Wallet chat invite links
+      response += `   🔗 Invite Links:\n`;
+      response += `      • Sales: https://wallet.coinbase.com/chat/l/${senderInboxId}/${group.salesGroupId}\n`;
+      response += `      • Premium: https://wallet.coinbase.com/chat/l/${senderInboxId}/${group.premiumGroupId}\n`;
+
       // Add balance information if evmAuthHandler is available
       if (evmAuthHandler) {
         try {
