@@ -1178,6 +1178,50 @@ async function main() {
           unifiedRecoverySystem,
           groupConfigs,
         );
+      } else if (command === "/manual-audit") {
+        try {
+          let response = "🔄 Running Enhanced Membership Audit\n\n";
+
+          if (groupConfigs.size === 0) {
+            response += "❌ No groups found.\n";
+            await conversation.send(response);
+            return;
+          }
+
+          for (const [contractAddress, config] of groupConfigs.entries()) {
+            response += `📋 Auditing: ${config.metadata?.name}\n`;
+
+            try {
+              const auditResults =
+                await enhancedGroupManager.auditGroupMembership(
+                  contractAddress,
+                );
+
+              response += `  ✅ Valid members: ${auditResults.validMembers.length}\n`;
+              response += `  ➕ Added members: ${auditResults.addedMembers.length}\n`;
+              response += `  🚫 Removed members: ${auditResults.removedMembers.length}\n`;
+
+              if (auditResults.addedMembers.length > 0) {
+                response += `  New members: ${auditResults.addedMembers.join(", ")}\n`;
+              }
+
+              if (auditResults.removedMembers.length > 0) {
+                response += `  Removed: ${auditResults.removedMembers.join(", ")}\n`;
+              }
+            } catch (auditError) {
+              response += `  ❌ Audit failed: ${auditError}\n`;
+            }
+
+            response += "\n";
+          }
+
+          await conversation.send(response);
+        } catch (error) {
+          await conversation.send(
+            `❌ Failed to run manual audit\n\n` +
+              `Error: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       } else if (command === "/opensea-links") {
         await handleOpenSeaLinks(conversation, groupConfigs);
       } else if (command === "/check-payments") {
@@ -1931,6 +1975,7 @@ async function handleHelp(conversation: any) {
       `🐛 \`/debug-contracts\` - Show contract deployment status\n` +
       `🔧 \`/fix-contracts\` - Recover correct contract addresses\n` +
       `🔄 \`/restart-recovery\` - Force complete recovery restart\n` +
+      `🔍 \`/manual-audit\` - Run enhanced membership audit to add missing token holders\n` +
       `🌊 \`/opensea-links\` - Show OpenSea collection links\n` +
       `💰 \`/check-payments\` - Check payment routing and contract ownership\n` +
       `❓ \`/help\` - Show this help message\n\n` +

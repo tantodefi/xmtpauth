@@ -189,7 +189,9 @@ export class EnhancedGroupManager {
 
       // 6. Store in in-memory config for immediate access
       this.groupConfigs.set(contractAddress, groupConfig);
-      console.log(`📝 Added group config to memory: ${contractAddress} -> ${groupName}`);
+      console.log(
+        `📝 Added group config to memory: ${contractAddress} -> ${groupName}`,
+      );
 
       // 7. Store in database for persistence
       if (this.database) {
@@ -479,6 +481,7 @@ export class EnhancedGroupManager {
 
   /**
    * Audit premium group membership against on-chain token validity
+   * Both removes expired members AND adds missing token holders
    */
   async auditGroupMembership(contractAddress: string): Promise<{
     addedMembers: string[];
@@ -501,8 +504,13 @@ export class EnhancedGroupManager {
       return { addedMembers, removedMembers, validMembers };
     }
 
+    // STEP 1: Remove expired members (existing logic)
     const members = await premiumGroup.members();
+    const currentMemberInboxIds = new Set<string>();
+
     for (const member of members) {
+      currentMemberInboxIds.add(member.inboxId.toLowerCase());
+
       // Skip bot and admins
       if (
         member.inboxId.toLowerCase() === this.client.inboxId.toLowerCase() ||
@@ -530,9 +538,76 @@ export class EnhancedGroupManager {
       if (hasAccess) {
         validMembers.push(member.inboxId);
       } else {
-        await premiumGroup.removeMembers([member.inboxId]);
-        removedMembers.push(member.inboxId);
+        try {
+          await premiumGroup.removeMembers([member.inboxId]);
+          removedMembers.push(member.inboxId);
+          console.log(`🚫 Removed expired member: ${member.inboxId}`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to remove member ${member.inboxId}:`, error);
+        }
       }
+    }
+
+    // STEP 2: Add missing token holders (NEW LOGIC)
+    try {
+      // Get all token holders for this contract
+      const allTokenHolders = await (
+        this.evmAuthHandler as any
+      ).getAllTokenHolders(contractAddress);
+
+      for (const holder of allTokenHolders) {
+        try {
+          // Check if holder has valid (non-expired) access
+          const hasValidAccess = await this.evmAuthHandler.checkTokenAccess(
+            contractAddress,
+            holder.address,
+          );
+
+          if (!hasValidAccess) {
+            continue; // Skip expired tokens
+          }
+
+          // Try to get holder's inbox ID from stored mapping
+          const holderInboxId = await (
+            this.evmAuthHandler as any
+          ).getUserInboxId(contractAddress, holder.address);
+
+          if (!holderInboxId) {
+            console.log(
+              `⚠️ No inbox ID stored for token holder ${holder.address}`,
+            );
+            continue; // Can't add without inbox ID
+          }
+
+          // Check if already a member
+          if (currentMemberInboxIds.has(holderInboxId.toLowerCase())) {
+            continue; // Already in group
+          }
+
+          // Add to premium group
+          console.log(
+            `➕ Adding missing token holder to premium group: ${holderInboxId}`,
+          );
+          await this.addMemberToPremiumGroup(
+            contractAddress,
+            holderInboxId,
+            `Token ${holder.tokenId}`,
+            holder.tokenId,
+          );
+
+          addedMembers.push(holderInboxId);
+          console.log(
+            `✅ Added missing member: ${holderInboxId} (Token ${holder.tokenId})`,
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ Failed to add token holder ${holder.address}:`,
+            error,
+          );
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Failed to fetch token holders for audit:`, error);
     }
 
     return { addedMembers, removedMembers, validMembers };

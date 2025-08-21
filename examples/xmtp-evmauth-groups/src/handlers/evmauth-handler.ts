@@ -149,6 +149,14 @@ const GROUP_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  // getUserInboxId(address) -> string
+  {
+    inputs: [{ name: "user", type: "address" }],
+    name: "getUserInboxId",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 // Factory Contract ABI (v1)
@@ -1514,6 +1522,119 @@ export class EVMAuthHandler {
       return true; // If this succeeds, it's a V2 contract
     } catch (error) {
       return false; // If this fails, it's likely a V1 contract
+    }
+  }
+
+  /**
+   * Get all token holders for a contract by scanning Transfer events
+   */
+  async getAllTokenHolders(contractAddress: string): Promise<
+    Array<{
+      address: string;
+      tokenId: number;
+      balance: bigint;
+    }>
+  > {
+    try {
+      const contract = getContract({
+        address: contractAddress as `0x${string}`,
+        abi: GROUP_ABI,
+        client: this.publicClient,
+      });
+
+      const holders: Array<{
+        address: string;
+        tokenId: number;
+        balance: bigint;
+      }> = [];
+
+      // Get Transfer events (for ERC1155, we look for single transfers)
+      const transferLogs = await this.publicClient.getLogs({
+        address: contractAddress as `0x${string}`,
+        // ERC1155 TransferSingle event signature
+        topics: [
+          "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62",
+        ],
+        fromBlock: 0n,
+        toBlock: "latest",
+      });
+
+      // Track unique holders
+      const uniqueHolders = new Set<string>();
+
+      for (const log of transferLogs) {
+        try {
+          // Decode the TransferSingle event
+          // TransferSingle(address operator, address from, address to, uint256 id, uint256 value)
+          if (log.topics.length >= 4 && log.data) {
+            const to = "0x" + log.topics[3]?.slice(-40); // Extract 'to' address from topic
+            const tokenIdHex = log.data.slice(0, 66); // First 32 bytes = tokenId
+            const tokenId = parseInt(tokenIdHex, 16);
+
+            if (to !== "0x0000000000000000000000000000000000000000") {
+              uniqueHolders.add(to + ":" + tokenId);
+            }
+          }
+        } catch (decodeError) {
+          // Skip malformed logs
+          continue;
+        }
+      }
+
+      // Check current balances for each holder
+      for (const holderToken of uniqueHolders) {
+        try {
+          const [address, tokenIdStr] = holderToken.split(":");
+          const tokenId = parseInt(tokenIdStr);
+
+          const balance = await contract.read.balanceOf([
+            address as `0x${string}`,
+            BigInt(tokenId),
+          ]);
+
+          if (balance > 0n) {
+            holders.push({
+              address: address.toLowerCase(),
+              tokenId,
+              balance,
+            });
+          }
+        } catch (balanceError) {
+          console.warn(
+            `Failed to check balance for ${holderToken}:`,
+            balanceError,
+          );
+        }
+      }
+
+      return holders;
+    } catch (error) {
+      console.error("Error getting all token holders:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get user's stored inbox ID from contract
+   */
+  async getUserInboxId(
+    contractAddress: string,
+    userAddress: string,
+  ): Promise<string | null> {
+    try {
+      const contract = getContract({
+        address: contractAddress as `0x${string}`,
+        abi: GROUP_ABI,
+        client: this.publicClient,
+      });
+
+      const inboxId = await contract.read.getUserInboxId([
+        userAddress as `0x${string}`,
+      ]);
+      return inboxId || null;
+    } catch (error) {
+      console.warn(`Failed to get inbox ID for ${userAddress}:`, error);
+      return null;
     }
   }
 }
