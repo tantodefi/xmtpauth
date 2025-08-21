@@ -16,12 +16,7 @@ import {
   ContentTypeWalletSendCalls,
   WalletSendCallsCodec,
 } from "@xmtp/content-type-wallet-send-calls";
-import {
-  Client,
-  IdentifierKind,
-  type Group,
-  type XmtpEnv,
-} from "@xmtp/node-sdk";
+import { Client, Group, IdentifierKind, type XmtpEnv } from "@xmtp/node-sdk";
 import { JSONDatabase } from "./src/database/json-database";
 import { EventDrivenAccessManager } from "./src/handlers/event-driven-access";
 import { EVMAuthHandler } from "./src/handlers/evmauth-handler";
@@ -856,8 +851,12 @@ async function main() {
       command = command.replace("/crate-group", "/create-group");
     }
 
-    // Determine context (sales vs premium) and tag requirement
+    // Determine conversation type and mention requirements
     const convoId = conversation.id;
+    const isGroupConversation = conversation instanceof Group;
+    const isDMConversation = !isGroupConversation;
+
+    // Find if this is one of our managed groups
     let matchedConfig: DualGroupConfig | undefined;
     for (const cfg of groupConfigs.values()) {
       if (
@@ -868,15 +867,22 @@ async function main() {
         break;
       }
     }
+
     const isSalesGroup =
       matchedConfig?.salesGroupId?.toLowerCase() === convoId.toLowerCase();
     const isPremiumGroup =
       matchedConfig?.premiumGroupId?.toLowerCase() === convoId.toLowerCase();
     const mentionedAgent = /@xmtpauth\.base\.eth/i.test(messageContent);
 
-    // Only respond in premium or other groups when tagged; sales always allowed
-    const isGroupConvo = !!matchedConfig; // our managed groups
-    if (!isSalesGroup && isGroupConvo && !mentionedAgent) {
+    // Mention filtering logic:
+    // - Always respond in DMs (1-on-1 conversations)
+    // - In sales groups: always respond (these are public discussion spaces)
+    // - In premium groups: only respond when mentioned (avoid spam in paid groups)
+    // - In other group chats: only respond when mentioned (be respectful)
+    if (isGroupConversation && !isSalesGroup && !mentionedAgent) {
+      console.log(
+        `🤐 Skipping group message (not mentioned): ${messageContent.slice(0, 50)}...`,
+      );
       continue;
     }
 
