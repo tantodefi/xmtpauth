@@ -733,7 +733,9 @@ async function main() {
   console.log(
     "  /grant-trial <group> <address> <days> - Grant free trial access (creators only)",
   );
-  console.log("  /list-groups - View your premium communities with invite links");
+  console.log(
+    "  /list-groups - View your premium communities with invite links",
+  );
   console.log("  /buy-access <group_id> <tier_id> - Purchase access with USDC");
   console.log("  /my-tokens - View your access tokens");
   console.log("  /group-info <group_id> - Get group information and pricing");
