@@ -1,40 +1,71 @@
 {
-  "name": "@xmtpauth/contractsv2",
-  "version": "1.0.0",
-  "description": "EVMAuth V2 - Modular architecture with plugin extensions",
+  "name": "@xmtpauth/contracts-v2",
+  "version": "2.0.0",
+  "private": true,
+  "description": "XMTP Authentication Contracts V2 - Built on EVMAuth ERC1155/6909 Architecture",
   "keywords": [
-    "ethereum",
-    "smart-contracts",
-    "evmauth",
     "xmtp",
-    "access-control",
+    "authentication",
     "erc1155",
-    "modular",
-    "extensions"
+    "erc6909",
+    "smart-contracts",
+    "ethereum",
+    "solidity"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xmtp/xmtpauth.git",
+    "directory": "contractsv2"
+  },
   "license": "MIT",
   "author": "XMTP Auth Team",
-  "main": "index.js",
   "scripts": {
+    "build": "hardhat compile",
     "clean": "hardhat clean",
-    "compile": "hardhat compile",
-    "deploy:base-mainnet": "hardhat run scripts/deploy.js --network baseMainnet",
-    "deploy:base-sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
+    "coverage": "hardhat coverage",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "flatten": "hardhat flatten",
+    "gas-report": "REPORT_GAS=true hardhat test",
+    "lint": "solhint 'src/**/*.sol'",
+    "lint:fix": "solhint 'src/**/*.sol' --fix",
     "node": "hardhat node",
-    "test": "hardhat test",
-    "test:gas": "REPORT_GAS=true hardhat test"
+    "test": "hardhat test test/index.js",
+    "test:integration": "hardhat test test/integration/**/*.test.js",
+    "test:unit": "hardhat test test/unit/**/*.test.js",
+    "test:validate": "node test/validate.js",
+    "verify": "hardhat verify"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.0"
+    "@openzeppelin/contracts": "^5.0.0",
+    "@openzeppelin/contracts-upgradeable": "^5.0.0"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "hardhat": "^2.19.0"
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-foundry": "^1.2.0",
+    "@nomicfoundation/hardhat-ignition": "^0.15.0",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "@types/chai": "^4.2.0",
+    "@types/mocha": ">=9.1.0",
+    "@types/node": ">=18.0.0",
+    "chai": "^4.2.0",
+    "ethers": "^6.4.0",
+    "hardhat": "^2.19.0",
+    "hardhat-gas-reporter": "^1.0.8",
+    "solhint": "^4.0.0",
+    "solidity-coverage": "^0.8.1",
+    "ts-node": ">=8.0.0",
+    "typechain": "^8.3.0",
+    "typescript": ">=4.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
-
-
-
-
-

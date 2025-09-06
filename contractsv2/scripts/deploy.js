@@ -1,164 +1,222 @@
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 
 async function main() {
-  console.log("🚀 Deploying EVMAuth V2 System...\n");
-
-  // Get deployer account
   const [deployer] = await ethers.getSigners();
-  console.log(`📝 Deploying contracts with account: ${deployer.address}`);
+
+  console.log("Deploying contracts with the account:", deployer.address);
   console.log(
-    `💰 Account balance: ${ethers.formatEther(await ethers.provider.getBalance(deployer.address))} ETH\n`,
+    "Account balance:",
+    (await ethers.provider.getBalance(deployer.address)).toString(),
   );
 
   // Configuration
   const config = {
-    feeRecipient: process.env.FEE_RECIPIENT || deployer.address,
-    feeBasisPoints: process.env.FEE_BASIS_POINTS || 250, // 2.5%
-    deploymentFee: ethers.parseEther("0.0001"), // 0.0001 ETH
-    initialOwner: process.env.INITIAL_OWNER || deployer.address,
+    // Platform fee configuration
+    feeRecipient: deployer.address, // Change this to actual fee recipient
+    feeBasisPoints: 250, // 2.5% platform fee
+
+    // Admin configuration
+    adminDelay: 2 * 24 * 60 * 60, // 2 days in seconds
+
+    // Default URI
+    baseURI: "https://api.xmtpauth.com/metadata/{id}",
+
+    // Treasury (can be same as deployer initially)
+    treasury: deployer.address,
   };
 
-  console.log("📋 Configuration:");
-  console.log(`   Fee Recipient: ${config.feeRecipient}`);
-  console.log(
-    `   Fee Basis Points: ${config.feeBasisPoints} (${config.feeBasisPoints / 100}%)`,
-  );
-  console.log(
-    `   Deployment Fee: ${ethers.formatEther(config.deploymentFee)} ETH`,
-  );
-  console.log(`   Initial Owner: ${config.initialOwner}\n`);
+  console.log("Deployment configuration:");
+  console.log("- Fee Recipient:", config.feeRecipient);
+  console.log("- Fee Basis Points:", config.feeBasisPoints);
+  console.log("- Admin Delay:", config.adminDelay, "seconds");
+  console.log("- Base URI:", config.baseURI);
+  console.log("- Treasury:", config.treasury);
 
-  // Deploy Simplified Factory V2
-  console.log("📦 Deploying SimpleFactoryV2...");
-  const EVMAuthFactoryV2 = await ethers.getContractFactory("SimpleFactoryV2");
-  const factory = await EVMAuthFactoryV2.deploy(
-    config.feeRecipient,
-    config.feeBasisPoints,
-    config.initialOwner,
-  );
-  await factory.waitForDeployment();
-  const factoryAddress = await factory.getAddress();
-  console.log(`✅ SimpleFactoryV2 deployed to: ${factoryAddress}`);
+  try {
+    // 1. Deploy the implementation contract for XMTPAuthERC1155
+    console.log("\n1. Deploying XMTPAuthERC1155 implementation...");
+    const XMTPAuthERC1155 = await ethers.getContractFactory("XMTPAuthERC1155");
 
-  // Set deployment fee
-  if (config.deploymentFee > 0) {
-    console.log("\n⚙️  Setting deployment fee...");
-    const setFeeTx = await factory.updateDeploymentFee(config.deploymentFee);
-    await setFeeTx.wait();
+    // Deploy as implementation (not initialized)
+    const implementation = await XMTPAuthERC1155.deploy();
+    await implementation.waitForDeployment();
+    const implementationAddress = await implementation.getAddress();
+
     console.log(
-      `✅ Deployment fee set to: ${ethers.formatEther(config.deploymentFee)} ETH`,
+      "XMTPAuthERC1155 implementation deployed to:",
+      implementationAddress,
     );
-  }
 
-  // Deploy example EVMAuth contract with XMTP extension
-  console.log("\n🧪 Deploying example EVMAuth contract with XMTP extension...");
-  const exampleTx = await factory.deployEVMAuthWithXMTP(
-    "Test Group",
-    "1.0.0",
-    "https://api.example.com/metadata/{id}.json",
-    0, // No delay for ownership transfer
-    "test-sales-group-id",
-    "test-premium-group-id",
-    deployer.address, // Bot address (using deployer for testing)
-    { value: config.deploymentFee },
-  );
-  const receipt = await exampleTx.wait();
+    // 2. Deploy the factory contract
+    console.log("\n2. Deploying XMTPAuthFactory...");
+    const XMTPAuthFactory = await ethers.getContractFactory("XMTPAuthFactory");
 
-  // Parse events to get deployed addresses
-  let baseContractAddress, xmtpExtensionAddress;
-  for (const log of receipt.logs) {
-    try {
-      const parsed = factory.interface.parseLog(log);
-      if (parsed.name === "ContractDeployed") {
-        baseContractAddress = parsed.args.contractAddress;
-      } else if (parsed.name === "ExtensionDeployed") {
-        xmtpExtensionAddress = parsed.args.extensionAddress;
+    const factory = await XMTPAuthFactory.deploy(
+      implementationAddress,
+      config.feeRecipient,
+      config.feeBasisPoints,
+      deployer.address, // factory owner
+    );
+
+    await factory.waitForDeployment();
+    const factoryAddress = await factory.getAddress();
+
+    console.log("XMTPAuthFactory deployed to:", factoryAddress);
+
+    // 3. Test deployment by creating a sample contract
+    console.log("\n3. Testing deployment with sample contract...");
+
+    const sampleConfig = {
+      groupName: "Sample XMTP Group",
+      groupDescription: "A sample group for testing",
+      groupImageUrl: "https://example.com/image.jpg",
+      baseURI: config.baseURI,
+      salesGroupId: "sample-sales-group-id",
+      premiumGroupId: "sample-premium-group-id",
+      botAddress: deployer.address, // Using deployer as bot for testing
+      treasury: config.treasury,
+      adminDelay: config.adminDelay,
+    };
+
+    const deployTx = await factory.deployXMTPAuthContract(sampleConfig, {
+      value: 0, // No deployment fee initially
+    });
+
+    const receipt = await deployTx.wait();
+
+    // Get the deployed contract address from events
+    const deployEvent = receipt.logs.find((log) => {
+      try {
+        const parsed = factory.interface.parseLog(log);
+        return parsed.name === "ContractDeployed";
+      } catch {
+        return false;
       }
-    } catch (e) {
-      // Skip unparseable logs
+    });
+
+    if (deployEvent) {
+      const parsedEvent = factory.interface.parseLog(deployEvent);
+      const sampleContractAddress = parsedEvent.args.contractAddress;
+      console.log(
+        "Sample XMTPAuth contract deployed to:",
+        sampleContractAddress,
+      );
+
+      // 4. Verify the sample contract works
+      console.log("\n4. Verifying sample contract...");
+      const sampleContract = XMTPAuthERC1155.attach(sampleContractAddress);
+
+      // Test basic functionality
+      const xmtpInfo = await sampleContract.xmtpInfo();
+      console.log("XMTP Info:", {
+        salesGroupId: xmtpInfo.salesGroupId,
+        premiumGroupId: xmtpInfo.premiumGroupId,
+        botAddress: xmtpInfo.botAddress,
+        isActive: xmtpInfo.isActive,
+      });
+
+      // Create a test token
+      console.log("\n5. Creating test access tier...");
+      const tokenConfig = {
+        isTransferable: true,
+        price: ethers.parseEther("0.01"), // 0.01 ETH
+        ttl: 30 * 24 * 60 * 60, // 30 days
+      };
+
+      const newTokenTx = await sampleContract.newToken(tokenConfig);
+      await newTokenTx.wait();
+
+      const tokenId = 1; // First token ID
+      const tokenConfigResult = await sampleContract.tokenConfig(tokenId);
+      console.log("Test token created:", {
+        id: tokenId,
+        isTransferable: tokenConfigResult.isTransferable,
+        price: ethers.formatEther(tokenConfigResult.price),
+        ttl: tokenConfigResult.ttl.toString(),
+      });
+
+      // Setup XMTP tier
+      const setupTierTx = await sampleContract.setupXMTPAccessTier(
+        tokenId,
+        "Basic Access",
+        "30-day basic access to premium group",
+        "QmSampleImageHash",
+        "https://api.xmtpauth.com/metadata/1",
+      );
+      await setupTierTx.wait();
+
+      const xmtpTier = await sampleContract.getXMTPTier(tokenId);
+      console.log("XMTP tier configured:", {
+        name: xmtpTier.name,
+        description: xmtpTier.description,
+        isActive: xmtpTier.isActive,
+      });
     }
-  }
 
-  console.log(
-    `✅ Example EVMAuth contract deployed to: ${baseContractAddress}`,
-  );
-  console.log(`✅ Example XMTP extension deployed to: ${xmtpExtensionAddress}`);
-
-  // Setup example access tiers
-  if (baseContractAddress && xmtpExtensionAddress) {
-    console.log("\n⚙️  Setting up example access tiers...");
-
-    const baseContract = await ethers.getContractAt(
-      "EVMAuthV2",
-      baseContractAddress,
-    );
-    const xmtpExtension = await ethers.getContractAt(
-      "XMTPGroupExtension",
-      xmtpExtensionAddress,
-    );
-
-    // Setup base token metadata and XMTP tier info
-    const setupTx1 = await baseContract.setMetadata(
-      1, // tokenId
-      true, // active
-      true, // burnable
-      false, // transferable (soulbound)
-      ethers.parseEther("0.001"), // 0.001 ETH
-      7 * 24 * 60 * 60, // 7 days TTL
-    );
-    await setupTx1.wait();
-
-    const setupTx2 = await xmtpExtension.setupXMTPAccessTier(
-      1, // tokenId
-      "Weekly Access",
-      "7-day access to premium group",
-      "QmExampleImageHash",
-      "https://api.example.com/metadata/1.json",
-    );
-    await setupTx2.wait();
-
+    // 6. Display deployment summary
+    console.log("\n" + "=".repeat(60));
+    console.log("DEPLOYMENT SUMMARY");
+    console.log("=".repeat(60));
     console.log(
-      `✅ Example tier setup complete (Token ID: 1, Price: 0.001 ETH, Duration: 7 days)`,
+      "Network:",
+      await ethers.provider.getNetwork().then((n) => n.name),
     );
-  }
-
-  // Summary
-  console.log("\n🎉 Deployment Complete!");
-  console.log("=".repeat(60));
-  console.log(`📋 Factory Address: ${factoryAddress}`);
-  if (baseContractAddress) {
-    console.log(`📋 Example Base Contract: ${baseContractAddress}`);
-  }
-  if (xmtpExtensionAddress) {
-    console.log(`📋 Example XMTP Extension: ${xmtpExtensionAddress}`);
-  }
-  console.log(`📋 Network: ${network.name}`);
-  console.log(`📋 Chain ID: ${(await ethers.provider.getNetwork()).chainId}`);
-  console.log("=".repeat(60));
-
-  // Verification instructions
-  console.log("\n📝 To verify contracts on Basescan:");
-  console.log(
-    `npx hardhat verify --network ${network.name} ${factoryAddress} "${config.feeRecipient}" ${config.feeBasisPoints} "${config.initialOwner}"`,
-  );
-
-  if (baseContractAddress) {
+    console.log("Deployer:", deployer.address);
+    console.log("Implementation:", implementationAddress);
+    console.log("Factory:", factoryAddress);
+    if (deployEvent) {
+      const parsedEvent = factory.interface.parseLog(deployEvent);
+      console.log("Sample Contract:", parsedEvent.args.contractAddress);
+    }
+    console.log("\nFactory Configuration:");
+    console.log("- Fee Recipient:", await factory.feeRecipient());
     console.log(
-      `npx hardhat verify --network ${network.name} ${baseContractAddress} "Test Group" "1.0.0" "https://api.example.com/metadata/{id}.json" 0 "${deployer.address}"`,
+      "- Fee Basis Points:",
+      (await factory.feeBasisPoints()).toString(),
     );
-  }
-
-  if (xmtpExtensionAddress) {
     console.log(
-      `npx hardhat verify --network ${network.name} ${xmtpExtensionAddress} "${baseContractAddress}" "test-sales-group-id" "test-premium-group-id" "${deployer.address}" "${deployer.address}"`,
+      "- Deployment Fee:",
+      ethers.formatEther(await factory.deploymentFee()),
     );
+    console.log(
+      "- Total Contracts:",
+      (await factory.getTotalContracts()).toString(),
+    );
+
+    console.log("\n" + "=".repeat(60));
+    console.log("VERIFICATION COMMANDS");
+    console.log("=".repeat(60));
+    console.log(
+      `npx hardhat verify --network ${process.env.HARDHAT_NETWORK || "localhost"} ${implementationAddress}`,
+    );
+    console.log(
+      `npx hardhat verify --network ${process.env.HARDHAT_NETWORK || "localhost"} ${factoryAddress} "${implementationAddress}" "${config.feeRecipient}" ${config.feeBasisPoints} "${deployer.address}"`,
+    );
+
+    console.log("\n" + "=".repeat(60));
+    console.log("NEXT STEPS");
+    console.log("=".repeat(60));
+    console.log("1. Update fee recipient if needed:");
+    console.log(
+      `   await factory.updateFeeConfiguration("NEW_FEE_RECIPIENT", ${config.feeBasisPoints})`,
+    );
+    console.log("2. Set deployment fee if desired:");
+    console.log(
+      `   await factory.updateDeploymentFee(ethers.parseEther("0.001"))`,
+    );
+    console.log("3. Deploy additional contracts:");
+    console.log(`   await factory.deployGroupContract(...)`);
+  } catch (error) {
+    console.error("Deployment failed:", error);
+    process.exit(1);
   }
 }
 
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("❌ Deployment failed:");
     console.error(error);
     process.exit(1);
   });

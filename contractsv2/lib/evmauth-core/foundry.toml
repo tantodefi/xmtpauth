@@ -1,0 +1,28 @@
+[profile.default]
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+
+# Required settings for OpenZeppelin Foundry Upgrades
+# Source: https://github.com/OpenZeppelin/openzeppelin-foundry-upgrades?tab=readme-ov-file#before-running
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
+
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "openzeppelin-foundry-upgrades/=lib/openzeppelin-foundry-upgrades/src/",
+    "script/=script/",
+    "src/=src/",
+    "test/=test/"
+]
+
+[fmt]
+bracket_spacing = true
+
+[doc]
+out = "docs"
+repository = "https://github.com/evmauth/evmauth-core"

@@ -1,0 +1,45 @@
+{
+  "name": "@examples/xmtpauth-agent-sdk",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Modern XMTP agent for monetized group chats using agent-sdk with inline actions and enhanced UX",
+  "keywords": [
+    "xmtp",
+    "agent",
+    "groups",
+    "evmauth",
+    "nft",
+    "monetization",
+    "inline-actions",
+    "base",
+    "agent-sdk"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx --env-file .env --watch src/index.ts",
+    "gen:keys": "tsx ../../scripts/generateKeys.ts",
+    "lint": "cd ../.. && yarn eslint examples/xmtpauth-agent-sdk",
+    "start": "tsx src/index.ts",
+    "test": "tsx src/test.ts"
+  },
+  "dependencies": {
+    "@xmtp/agent-sdk": "^0.0.7",
+    "@xmtp/content-type-primitives": "^2.0.2",
+    "@xmtp/content-type-reaction": "^1.1.8",
+    "@xmtp/content-type-remote-attachment": "^1.1.9",
+    "@xmtp/content-type-transaction-reference": "^2.0.2",
+    "@xmtp/content-type-wallet-send-calls": "^1.0.1",
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0",
+    "uint8arrays": "^5.1.0",
+    "viem": "^2.22.17"
+  },
+  "devDependencies": {
+    "tsx": "*",
+    "typescript": "*"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

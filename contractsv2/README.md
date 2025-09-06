@@ -1,385 +1,375 @@
-# EVMAuth V2 - Modular Smart Contracts
+# XMTP Authentication Contracts V2
 
-EVMAuth V2 represents a **modular, plugin-based architecture** that extends the official EVMAuth core contracts with specialized functionality for XMTP group management.
+Enhanced XMTP authentication smart contracts built on the EVMAuth ERC1155/6909 architecture. This version combines the robust, modular design of the EVMAuth system with XMTP-specific functionality for group access management.
 
-## 🏗️ Architecture Overview
+## Overview
 
-### **Modular Design Pattern**
+XMTPAuth V2 provides token-gated access control for XMTP groups with the following key features:
 
-```
-┌─────────────────────────────────────────────────────┐
-│                EVMAuthV2 (Base)                     │
-│  • Core EVMAuth functionality                       │
-│  • ERC-1155 with expiration                         │
-│  • Purchasable tokens                               │
-│  • Extension registry                               │
-└─────────────────────┬───────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────┐
-│            XMTPGroupExtension                       │
-│  • XMTP conversation integration                    │
-│  • Inbox ID mapping                                 │
-│  • Group-specific purchase tracking                 │
-│  • Agent automation support                        │
-└─────────────────────────────────────────────────────┘
-```
+- **ERC1155-based Access Tokens**: NFT-compatible tokens with expiry and pricing
+- **XMTP Integration**: Direct integration with XMTP groups and inbox ID management
+- **Flexible Payment Options**: Support for ETH and ERC20 token payments (USDC, etc.)
+- **Role-based Access Control**: Comprehensive permission system with time-delayed admin transfers
+- **Factory Pattern**: Gas-efficient deployment using minimal proxies
+- **Upgradeable Architecture**: UUPS proxy pattern for future improvements
 
-### **Key Improvements Over V1**
-
-| Aspect | V1 (Custom) | V2 (Modular) |
-|--------|-------------|--------------|
-| **Base** | Custom implementation | Official EVMAuth core |
-| **Architecture** | Monolithic | Plugin-based extensions |
-| **Reusability** | XMTP-specific | Core + specialized extensions |
-| **Upgradability** | Limited | Extension-based upgrades |
-| **Standards Compliance** | Custom patterns | EVMAuth standards |
-| **Maintenance** | Full responsibility | Shared with EVMAuth ecosystem |
-
-## 📁 Contract Structure
+## Architecture
 
 ### Core Contracts
 
-1. **`EVMAuthV2.sol`** - Enhanced base contract with extension support
-2. **`EVMAuthFactoryV2.sol`** - Factory for deploying modular systems
-3. **`base/`** - Official EVMAuth core contracts
-   - `EVMAuthAccessControl.sol`
-   - `EVMAuthBaseERC1155.sol`
-   - `EVMAuthPurchasableERC1155.sol`
-   - `EVMAuthExpiringERC1155.sol`
+#### XMTPAuthERC1155
+The main authentication contract that inherits from `EVMAuth1155XP20`, providing:
 
-### Extensions
+- **Token Management**: Create and configure access tiers with expiry times
+- **XMTP Integration**: Link with XMTP sales and premium groups
+- **Purchase System**: Native ETH and ERC20 token payment support
+- **Access Control**: Role-based permissions with account freezing
+- **Inbox ID Mapping**: Link Ethereum addresses to XMTP inbox IDs
 
-4. **`extensions/XMTPGroupExtension.sol`** - XMTP-specific functionality
-   - Group conversation integration
-   - Inbox ID mapping
-   - Purchase tracking with XMTP data
-   - Agent automation support
+#### XMTPAuthFactory
+Factory contract for deploying XMTP authentication contracts:
 
-## 🚀 Quick Start
+- **Minimal Proxy Deployment**: Gas-efficient contract creation
+- **Platform Fees**: Configurable platform fee collection
+- **Contract Tracking**: Registry of all deployed contracts
+- **Deterministic Deployment**: Optional deterministic address generation
+
+### Inherited Features from EVMAuth
+
+The contracts inherit advanced features from the EVMAuth architecture:
+
+#### TokenAccessControl
+- **Roles**: Admin, Upgrade Manager, Access Manager, Token Manager, Minter, Burner, Treasurer
+- **Account Freezing**: Ability to freeze/unfreeze accounts
+- **Pausable Operations**: Emergency pause functionality
+- **Time-delayed Admin**: Secure admin role transfers
+
+#### TokenConfiguration
+- **Sequential Token IDs**: Automatic token ID assignment
+- **Transferability Control**: Configure which tokens can be transferred
+- **Unified Configuration**: Single struct for all token properties
+
+#### TokenExpiry
+- **Time-to-Live (TTL)**: Automatic token expiration
+- **Balance Records**: Efficient tracking of token expiry times
+- **Pruning**: Gas optimization through expired record cleanup
+
+#### TokenPurchase & TokenPurchaseERC20
+- **Native Currency**: Direct ETH purchases
+- **ERC20 Support**: USDC and other token payments
+- **Treasury Management**: Configurable revenue collection
+- **Purchase Validation**: Comprehensive payment verification
+
+## Contract Variants
+
+The EVMAuth architecture provides multiple contract variants:
+
+| Contract | Token Standard | Features |
+|----------|:--------------:|:---------|
+| EVMAuth1155 | ERC-1155 | Base functionality |
+| EVMAuth1155P | ERC-1155 | + Native token purchase |
+| EVMAuth1155P20 | ERC-1155 | + ERC20 token purchase |
+| EVMAuth1155X | ERC-1155 | + Token expiry |
+| EVMAuth1155XP | ERC-1155 | + Expiry + Native purchase |
+| **EVMAuth1155XP20** | ERC-1155 | + **All features** |
+
+XMTPAuthERC1155 is based on EVMAuth1155XP20 for maximum functionality.
+
+## 🔌 Extension System
+
+XMTPAuth V2 features a powerful extension system that allows you to add custom functionality without modifying the core contracts. Extensions are separate contracts that receive notifications about token purchases, grants, and revocations.
+
+### Built-in Extensions
+
+#### MegapotExtension 🎰
+Automatically purchases lottery tickets when users buy access tokens, creating a gamified experience.
+
+**Features:**
+- Automatic lottery ticket purchases on token purchases
+- Configurable ticket amounts (fixed or value-proportional)
+- USDC funding and management
+- Referrer fee support
+- Comprehensive statistics and error handling
+
+**Usage:**
+```solidity
+// Deploy with Megapot extension
+(address baseContract, address megapotExt) = factory.deployXMTPAuthWithMegapot(
+    config,
+    "0xbEDd4F2beBE9E3E636161E644759f3cbe3d51B95", // Megapot on Base
+    referrerAddress
+);
+```
+
+### Custom Extensions
+
+Create your own extensions by implementing the `IExtension` interface:
+
+```solidity
+interface IExtension {
+    function onTokenPurchased(address buyer, uint256 tokenId, uint256 amount, uint256 totalPrice, address paymentToken) external;
+    function onTokenGranted(address recipient, uint256 tokenId, uint256 amount, address grantedBy) external;
+    function onTokenRevoked(address user, uint256 tokenId, uint256 amount, string memory reason) external;
+    function getExtensionInfo() external view returns (string memory name, string memory version, bool isActive);
+}
+```
+
+**Extension Use Cases:**
+- 🎮 **Gaming Integration**: Award in-game items or currency
+- 💎 **Staking Rewards**: Earn tokens for holding access tokens
+- 🏆 **Achievement Systems**: Unlock badges and achievements
+- 📱 **Notifications**: Send push notifications or Discord messages
+- 💰 **Referral Programs**: Reward users for referrals
+- 🎁 **NFT Rewards**: Mint special NFTs for milestones
+
+See [EXTENSION_SYSTEM.md](./EXTENSION_SYSTEM.md) for detailed documentation.
+
+## Deployment
 
 ### Prerequisites
 
-- Node.js v18+
-- Hardhat development framework
-- MetaMask or compatible wallet
-
-### Installation
-
 ```bash
-# Navigate to contractsv2
-cd contractsv2
-
-# Install dependencies
 npm install
+# or
+yarn install
 ```
 
-### Configuration
+### Environment Setup
 
 Create a `.env` file:
 
 ```bash
-# Private key for deployment
-PRIVATE_KEY=0x...
-
-# Network RPC URLs
-BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
-BASE_MAINNET_RPC_URL=https://mainnet.base.org
-
-# Contract configuration
-FEE_RECIPIENT=0x...
-FEE_BASIS_POINTS=250
-INITIAL_OWNER=0x...
-
-# Optional: Basescan API key for verification
-BASESCAN_API_KEY=...
+PRIVATE_KEY=your_private_key_here
+INFURA_PROJECT_ID=your_infura_project_id
+ETHERSCAN_API_KEY=your_etherscan_api_key
+POLYGONSCAN_API_KEY=your_polygonscan_api_key
+COINMARKETCAP_API_KEY=your_coinmarketcap_api_key
 ```
 
-## 📋 Deployment
-
-### Local Development
+### Deploy to Local Network
 
 ```bash
 # Start local Hardhat node
-npm run node
+npx hardhat node
 
-# Deploy to local network (new terminal)
+# Deploy contracts
 npm run deploy:local
 ```
 
-### Base Sepolia (Testnet)
+### Deploy to Testnet
 
 ```bash
-npm run deploy:base-sepolia
+npm run deploy:sepolia
 ```
 
-### Base Mainnet (Production)
+### Deploy to Mainnet
 
 ```bash
-npm run deploy:base-mainnet
+npm run deploy:mainnet
 ```
 
-## 🔧 Usage Examples
+## Usage
 
-### Deploy Complete System
-
-```javascript
-// Deploy factory
-const factory = await EVMAuthFactoryV2.deploy(
-  feeRecipient,
-  feeBasisPoints,
-  initialOwner
-);
-
-// Deploy EVMAuth + XMTP extension in one transaction
-const [baseContract, xmtpExtension] = await factory.deployEVMAuthWithXMTP(
-  "My Group",
-  "1.0.0",
-  "https://api.example.com/metadata/{id}.json",
-  0, // no ownership delay
-  "sales-group-id",
-  "premium-group-id",
-  botAddress,
-  { value: deploymentFee }
-);
-```
-
-### Setup Access Tiers
-
-```javascript
-// Setup base token metadata
-await baseContract.setMetadata(
-  1, // tokenId
-  true, // active
-  true, // burnable
-  false, // transferable (soulbound)
-  ethers.parseEther("0.001"), // price
-  7 * 24 * 60 * 60 // 7 days TTL
-);
-
-// Setup XMTP-specific tier info
-await xmtpExtension.setupXMTPAccessTier(
-  1, // tokenId
-  "Weekly Access",
-  "7-day access to premium group",
-  "QmImageHash",
-  "https://api.example.com/metadata/1.json"
-);
-```
-
-### Purchase Access (XMTP-aware)
-
-```javascript
-// Purchase through XMTP extension
-await xmtpExtension.purchaseXMTPAccess(
-  tokenId,
-  "transaction-hash-for-tracking",
-  { value: price }
-);
-
-// Grant access (for trials)
-await xmtpExtension.grantXMTPAccess(
-  userAddress,
-  tokenId,
-  userInboxId
-);
-```
-
-### Check Access
-
-```javascript
-// Check if user has valid access
-const hasAccess = await xmtpExtension.hasValidXMTPAccess(userAddress);
-
-// Check by inbox ID
-const hasAccessByInbox = await xmtpExtension.hasValidAccessByInboxId(inboxId);
-
-// Batch check multiple users
-const results = await xmtpExtension.batchCheckXMTPAccess([addr1, addr2, addr3]);
-```
-
-## 🔌 Extension Development
-
-### Creating Custom Extensions
-
-1. **Inherit from base contracts** or implement required interfaces
-2. **Register with base contract** via `registerExtension()`
-3. **Use extension-safe functions** like `extMint()`, `extBurn()`
+### Factory Deployment
 
 ```solidity
-contract MyCustomExtension is Ownable {
-    EVMAuthV2 public immutable evmAuth;
-    
-    constructor(address _evmAuth) {
-        evmAuth = EVMAuthV2(_evmAuth);
-    }
-    
-    function customMint(address to, uint256 id, uint256 amount) external {
-        // Custom logic here
-        evmAuth.extMint(to, id, amount, "");
-    }
-}
-```
-
-### Extension Registration
-
-```javascript
-// Register extension with base contract
-const extensionId = ethers.keccak256(ethers.toUtf8Bytes("MY_EXTENSION"));
-await baseContract.registerExtension(extensionId, extensionAddress);
-
-// Deploy via factory
-await factory.deployExtension(
-  baseContractAddress,
-  extensionId,
-  constructorData
+// Deploy factory with implementation
+XMTPAuthFactory factory = new XMTPAuthFactory(
+    implementationAddress,
+    feeRecipient,
+    250, // 2.5% fee
+    owner
 );
 ```
 
-## 🔐 Security Features
-
-### Inherited from EVMAuth Core
-
-- **Role-based Access Control** with admin roles
-- **Blacklisting** functionality for malicious accounts
-- **ReentrancyGuard** protection
-- **Time-locked Ownership** transfers
-- **Comprehensive Input Validation**
-
-### V2 Enhancements
-
-- **Extension Authorization** system
-- **Plugin Isolation** - extensions can't interfere with each other
-- **Safe Function Calls** - extensions use controlled interfaces
-- **Factory Validation** - only authorized templates can be deployed
-
-## 📊 Gas Optimization
-
-### Efficient Batch Operations
+### Create XMTP Auth Contract
 
 ```solidity
-// Batch metadata queries
-TokenMetadata[] memory metadata = evmAuth.metadataOfAll();
+// Simple deployment
+address authContract = factory.deployGroupContract(
+    "My XMTP Group",
+    "Premium access group",
+    "https://example.com/image.jpg",
+    "sales-group-id",
+    "premium-group-id",
+    botAddress
+);
 
-// Batch access checks
-bool[] memory access = xmtpExtension.batchCheckXMTPAccess(users);
+// Advanced deployment with custom config
+XMTPAuthFactory.DeploymentConfig memory config = XMTPAuthFactory.DeploymentConfig({
+    groupName: "Advanced Group",
+    groupDescription: "Advanced XMTP group",
+    groupImageUrl: "https://example.com/image.jpg",
+    baseURI: "https://api.example.com/metadata/",
+    salesGroupId: "sales-group-id",
+    premiumGroupId: "premium-group-id",
+    botAddress: botAddress,
+    treasury: treasuryAddress,
+    adminDelay: 2 days
+});
 
-// Batch price updates
-evmAuth.setPriceOfBatch(tokenIds, prices);
+address authContract = factory.deployXMTPAuthContract(config);
+
+// Deploy with Megapot extension for gamified experience
+(address authContract, address megapotExtension) = factory.deployXMTPAuthWithMegapot(
+    config,
+    "0xbEDd4F2beBE9E3E636161E644759f3cbe3d51B95", // Megapot contract on Base
+    referrerAddress // Optional referrer for lottery fees
+);
 ```
 
-### Storage Optimization
+### Configure Access Tiers
 
-- **Packed Structs** for minimal storage slots
-- **Lazy Deletion** for expired tokens
-- **Efficient Mappings** for quick lookups
+```solidity
+XMTPAuthERC1155 auth = XMTPAuthERC1155(authContract);
 
-## 🧪 Testing
+// Create token configuration
+TokenConfiguration.TokenConfig memory config = TokenConfiguration.TokenConfig({
+    isTransferable: true,
+    price: 0.01 ether,
+    ttl: 30 days
+});
+
+// Create new access tier
+uint256 tokenId = auth.newToken(config);
+
+// Setup XMTP-specific metadata
+auth.setupXMTPAccessTier(
+    tokenId,
+    "Premium Access",
+    "30-day premium group access",
+    "QmImageHash",
+    "https://api.example.com/metadata/1"
+);
+```
+
+### Purchase Access
+
+```solidity
+// Purchase with ETH
+auth.purchase{value: 0.01 ether}(tokenId, 1);
+
+// Purchase with USDC
+IERC20 usdc = IERC20(usdcAddress);
+usdc.approve(address(auth), price);
+auth.purchase(usdcAddress, tokenId, 1);
+
+// Purchase with transaction tracking
+auth.purchaseXMTPAccess{value: 0.01 ether}(
+    tokenId,
+    1,
+    "0x1234567890abcdef..." // transaction hash
+);
+```
+
+### Access Control
+
+```solidity
+// Check access by address
+bool hasAccess = auth.hasValidXMTPAccess(userAddress);
+
+// Check access by XMTP inbox ID
+bool hasAccess = auth.hasValidAccessByInboxId("inbox-id");
+
+// Grant access (admin/bot only)
+auth.grantXMTPAccess(userAddress, tokenId, 1, "inbox-id");
+
+// Revoke access (admin only)
+auth.revokeXMTPAccess(userAddress, tokenId, "Policy violation");
+```
+
+## Security Features
+
+### Role-based Access Control
+
+- **DEFAULT_ADMIN_ROLE**: Overall contract administration
+- **UPGRADE_MANAGER_ROLE**: Contract upgrades
+- **ACCESS_MANAGER_ROLE**: Pause/unpause and account freezing
+- **TOKEN_MANAGER_ROLE**: Token configuration and metadata
+- **MINTER_ROLE**: Token minting
+- **BURNER_ROLE**: Token burning
+- **TREASURER_ROLE**: Treasury address management
+
+### Time-delayed Admin Transfers
+
+Admin role transfers require a time delay (default 2 days) for security.
+
+### Account Freezing
+
+Ability to freeze accounts to prevent purchases, transfers, or token receipt.
+
+### Pausable Operations
+
+Emergency pause functionality for all contract operations.
+
+## Gas Optimization
+
+### Minimal Proxy Pattern
+
+Factory uses OpenZeppelin's `Clones` library for gas-efficient deployments.
+
+### Efficient Balance Tracking
+
+Token expiry system uses optimized balance record tracking with automatic pruning.
+
+### Batch Operations
+
+Support for batch token operations to reduce gas costs.
+
+## Testing
 
 ```bash
-# Compile contracts
-npm run compile
-
 # Run tests
 npm test
 
 # Run tests with gas reporting
-npm run test:gas
+npm run gas-report
 
-# Clean build artifacts
-npm run clean
+# Run coverage
+npm run coverage
 ```
 
-## 📈 Migration from V1
+## Verification
 
-### Feature Parity Matrix
+After deployment, verify contracts on Etherscan:
 
-| V1 Feature | V2 Implementation | Status |
-|------------|-------------------|---------|
-| Time-bound tokens | `EVMAuthExpiringERC1155` | ✅ Complete |
-| Purchase functionality | `EVMAuthPurchasableERC1155` | ✅ Complete |
-| XMTP integration | `XMTPGroupExtension` | ✅ Complete |
-| Inbox ID mapping | `XMTPGroupExtension` | ✅ Complete |
-| Access checking | Enhanced in extension | ✅ Complete |
-| Factory deployment | `EVMAuthFactoryV2` | ✅ Complete |
-| Platform fees | Factory + base contract | ✅ Complete |
+```bash
+# Verify implementation
+npx hardhat verify --network sepolia IMPLEMENTATION_ADDRESS
 
-### Migration Steps
-
-1. **Deploy V2 system** using factory
-2. **Setup equivalent tiers** with same pricing/duration
-3. **Migrate user data** (inbox IDs, purchase history)
-4. **Update agent integration** to use V2 contracts
-5. **Sunset V1 contracts** after verification
-
-## 🔗 Integration with XMTP Agent
-
-The V2 system maintains full compatibility with existing XMTP agent patterns:
-
-```typescript
-// Agent integration remains the same
-const hasAccess = await xmtpExtension.hasValidXMTPAccess(userAddress);
-const hasAccessByInbox = await xmtpExtension.hasValidAccessByInboxId(inboxId);
-
-// Enhanced features
-const tierInfo = await xmtpExtension.getXMTPTier(tokenId);
-const purchaseHistory = await xmtpExtension.getXMTPUserPurchases(userAddress);
+# Verify factory
+npx hardhat verify --network sepolia FACTORY_ADDRESS "IMPLEMENTATION_ADDRESS" "FEE_RECIPIENT" 250 "OWNER_ADDRESS"
 ```
 
-## 🆚 V1 vs V2 Comparison
+## Integration with XMTP Agents
 
-### Advantages of V2
+The contracts are designed to work seamlessly with XMTP agents:
 
-✅ **Standards Compliance** - Built on official EVMAuth core  
-✅ **Modular Architecture** - Plugin-based extensions  
-✅ **Ecosystem Compatibility** - Works with EVMAuth tools  
-✅ **Upgradability** - Add new extensions without base changes  
-✅ **Reusability** - Core contracts usable for other purposes  
-✅ **Maintenance** - Shared responsibility with EVMAuth team  
+1. **Inbox ID Management**: Agents can store and retrieve user inbox IDs
+2. **Access Verification**: Real-time access checking for group membership
+3. **Purchase Tracking**: Detailed purchase history with transaction hashes
+4. **Event Monitoring**: Comprehensive events for agent integration
 
-### When to Use V2
+See the [XMTP Agent Examples](../examples/) for implementation details.
 
-- **Production deployments** requiring long-term stability
-- **Multiple extension needs** beyond just XMTP
-- **Ecosystem integration** with other EVMAuth projects
-- **Team development** with multiple developers
-- **Regulatory compliance** requiring standard patterns
+## Upgradeability
 
-### When V1 Might Still Be Preferred
+Contracts use the UUPS (Universal Upgradeable Proxy Standard) pattern:
 
-- **Rapid prototyping** with full control
-- **Single-purpose applications** only needing XMTP
-- **Custom modifications** not suitable for plugins
-- **Legacy integrations** already built on V1
+- Implementation contracts can be upgraded
+- Admin role required for upgrades
+- Time-delayed admin transfers for security
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](../LICENSE.md) for details.
 
-## 🆘 Support
+## Contributing
 
-- **Issues**: [GitHub Issues](https://github.com/xmtpauth/xmtpauth/issues)
-- **EVMAuth Documentation**: [https://evmauth.io](https://evmauth.io)
-- **XMTP Documentation**: [https://docs.xmtp.org](https://docs.xmtp.org)
-- **Community**: [XMTP Discord](https://discord.gg/xmtp)
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for development guidelines.
 
----
+## Support
 
-## 🔧 Environment Variables Reference
-
-```bash
-# Required for deployment
-PRIVATE_KEY=0x...                    # Deployer private key
-BASE_SEPOLIA_RPC_URL=https://...     # Base Sepolia RPC
-BASE_MAINNET_RPC_URL=https://...     # Base Mainnet RPC
-
-# Optional configuration
-FEE_RECIPIENT=0x...                  # Platform fee recipient
-FEE_BASIS_POINTS=250                 # Platform fee (250 = 2.5%)
-INITIAL_OWNER=0x...                  # Contract owner
-BASESCAN_API_KEY=...                 # For contract verification
-```
-
-
-
-
-
+For questions and support:
+- GitHub Issues: [Create an issue](https://github.com/xmtp/xmtpauth/issues)
+- XMTP Discord: [Join the community](https://discord.gg/xmtp)
