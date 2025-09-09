@@ -2,16 +2,18 @@
 pragma solidity ^0.8.26;
 
 import { IExtension } from "../../interfaces/IExtension.sol";
+import { IMegapotExtension } from "../../interfaces/IMegapotExtension.sol";
 import { IMegapot } from "../../interfaces/IMegapot.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title MegapotExtension
  * @dev Extension that automatically purchases Megapot lottery tickets when users buy access tokens
  */
-contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
+contract MegapotExtension is IMegapotExtension, Ownable, ReentrancyGuard {
   // Megapot integration
   IMegapot public megapot;
   IERC20 public megapotToken;
@@ -32,10 +34,10 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     uint256 maxTicketAmount; // Maximum USDC per purchase for tickets
   }
 
-  MegapotConfig public config;
+  MegapotConfig public extensionConfig;
 
   // Tracking
-  mapping(address => uint256) public userTicketsPurchased;
+  mapping(address => uint256) public ticketsPurchasedByUser;
   mapping(address => uint256) public userTokenPurchases;
   uint256 public totalTicketsPurchased;
   uint256 public totalTokensSold;
@@ -91,7 +93,7 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     megapotToken = IERC20(megapot.token());
     referrer = _referrer;
 
-    config = MegapotConfig({
+    extensionConfig = MegapotConfig({
       isActive: true,
       ticketsPerPurchase: 1,
       minPurchaseForTicket: 1e6, // 1 USDC (6 decimals) minimum for ERC20 purchases
@@ -121,9 +123,9 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     address paymentToken
   ) external override {
     if (
-      !config.isActive ||
+      !extensionConfig.isActive ||
       !megapot.allowPurchasing() ||
-      totalPrice < config.minPurchaseForTicket
+      totalPrice < extensionConfig.minPurchaseForTicket
     ) {
       return;
     }
@@ -132,7 +134,9 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     uint256 ticketCost;
     bool success;
 
-    if (config.useDirectFunding && paymentToken == address(megapotToken)) {
+    if (
+      extensionConfig.useDirectFunding && paymentToken == address(megapotToken)
+    ) {
       // Try direct funding from purchase amount
       (ticketsToBuy, ticketCost) = _calculateDirectFundingTickets(totalPrice);
 
@@ -163,7 +167,7 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     }
 
     if (success) {
-      userTicketsPurchased[buyer] += ticketsToBuy;
+      // Track that this user contributed to group tickets
       userTokenPurchases[buyer] += amount;
       totalTicketsPurchased += ticketsToBuy;
       totalTokensSold += amount;
@@ -211,7 +215,7 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     override
     returns (string memory, string memory, bool)
   {
-    return ("MegapotExtension", "2.0.0", config.isActive);
+    return ("MegapotExtension", "2.0.0", extensionConfig.isActive);
   }
 
   function _calculateTicketCount(
@@ -219,17 +223,17 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     uint256 totalPrice
   ) internal view returns (uint256) {
     uint256 tickets;
-    if (config.useTokenValue) {
+    if (extensionConfig.useTokenValue) {
       uint256 ticketPrice = megapot.ticketPrice();
       if (ticketPrice == 0) return 0;
       tickets = (totalPrice * 10) / (ticketPrice * 100);
       if (tickets == 0) tickets = 1;
     } else {
-      tickets = config.ticketsPerPurchase;
+      tickets = extensionConfig.ticketsPerPurchase;
     }
     return
-      tickets > config.maxTicketsPerPurchase
-        ? config.maxTicketsPerPurchase
+      tickets > extensionConfig.maxTicketsPerPurchase
+        ? extensionConfig.maxTicketsPerPurchase
         : tickets;
   }
 
@@ -251,7 +255,8 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     }
 
     megapotToken.approve(address(megapot), totalCost);
-    try megapot.purchaseTickets(referrer, totalCost, user) returns (
+    // Tickets go to the group/community (treasury) instead of individual user
+    try megapot.purchaseTickets(referrer, totalCost, owner()) returns (
       bool success
     ) {
       return success;
@@ -271,40 +276,35 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     uint256 purchaseAmount
   ) internal view returns (uint256 ticketsToBuy, uint256 ticketCost) {
     // Calculate available funding based on percentage
-    uint256 availableFunding = (purchaseAmount * config.fundingPercentage) /
-      10000;
+    uint256 availableFunding = (purchaseAmount *
+      extensionConfig.fundingPercentage) / 10000;
 
-    // Check minimum funding requirement
-    if (availableFunding < config.minTicketAmount) {
-      return (0, 0);
-    }
-
-    // Get current ticket price from Megapot
+    // Get current ticket price from Megapot (assumed to be $1 = 1e6 in 6 decimals)
     uint256 ticketPrice = megapot.ticketPrice();
     if (ticketPrice == 0) {
       return (0, 0);
     }
 
-    // Calculate maximum tickets we can buy
-    uint256 maxTickets = availableFunding / ticketPrice;
+    // Convert available funding to dollars (assuming 6 decimals)
+    uint256 availableDollars = availableFunding / 1e6;
+
+    // Buy 1 ticket per dollar, rounded down
+    uint256 maxTickets = availableDollars;
 
     // Apply limits
-    if (maxTickets > config.maxTicketsPerPurchase) {
-      maxTickets = config.maxTicketsPerPurchase;
+    if (maxTickets > extensionConfig.maxTicketsPerPurchase) {
+      maxTickets = extensionConfig.maxTicketsPerPurchase;
     }
 
-    // Ensure at least 1 ticket if we have enough funding
-    if (maxTickets == 0 && availableFunding >= ticketPrice) {
-      maxTickets = 1;
+    // Cap by maximum ticket amount setting (limit total cost in dollars)
+    uint256 maxDollarsAllowed = extensionConfig.maxTicketAmount / 1e6;
+    if (maxTickets > maxDollarsAllowed) {
+      maxTickets = maxDollarsAllowed;
     }
 
-    // Cap by maximum ticket amount setting (limit total cost, not ticket count)
-    uint256 maxCostAllowed = config.maxTicketAmount;
-    uint256 calculatedCost = maxTickets * ticketPrice;
-
-    if (calculatedCost > maxCostAllowed) {
-      // Reduce tickets to fit within cost limit
-      maxTickets = maxCostAllowed / ticketPrice;
+    // Ensure we have at least the minimum funding if we want to buy tickets
+    if (maxTickets > 0 && availableFunding < extensionConfig.minTicketAmount) {
+      return (0, 0);
     }
 
     ticketsToBuy = maxTickets;
@@ -318,7 +318,7 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
    */
   function _purchaseMegapotTicketsWithDirectFunding(
     address user,
-    uint256 ticketCount,
+    uint256 /* ticketCount */,
     uint256 totalCost
   ) internal returns (bool) {
     // Check if we have enough USDC balance (should have been transferred to us)
@@ -330,7 +330,8 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
 
     // Approve and purchase tickets
     megapotToken.approve(address(megapot), totalCost);
-    try megapot.purchaseTickets(referrer, totalCost, user) returns (
+    // Tickets go to the group/community (treasury) instead of individual user
+    try megapot.purchaseTickets(referrer, totalCost, owner()) returns (
       bool success
     ) {
       return success;
@@ -360,11 +361,11 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
       );
     }
 
-    config.isActive = _isActive;
-    config.ticketsPerPurchase = _ticketsPerPurchase;
-    config.minPurchaseForTicket = _minPurchaseForTicket;
-    config.useTokenValue = _useTokenValue;
-    config.maxTicketsPerPurchase = _maxTicketsPerPurchase;
+    extensionConfig.isActive = _isActive;
+    extensionConfig.ticketsPerPurchase = _ticketsPerPurchase;
+    extensionConfig.minPurchaseForTicket = _minPurchaseForTicket;
+    extensionConfig.useTokenValue = _useTokenValue;
+    extensionConfig.maxTicketsPerPurchase = _maxTicketsPerPurchase;
 
     emit ConfigurationUpdated(
       _isActive,
@@ -391,10 +392,10 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
     require(_minTicketAmount > 0, "Min ticket amount must be > 0");
     require(_maxTicketAmount >= _minTicketAmount, "Max must be >= min");
 
-    config.useDirectFunding = _useDirectFunding;
-    config.fundingPercentage = _fundingPercentage;
-    config.minTicketAmount = _minTicketAmount;
-    config.maxTicketAmount = _maxTicketAmount;
+    extensionConfig.useDirectFunding = _useDirectFunding;
+    extensionConfig.fundingPercentage = _fundingPercentage;
+    extensionConfig.minTicketAmount = _minTicketAmount;
+    extensionConfig.maxTicketAmount = _maxTicketAmount;
 
     emit DirectFundingConfigUpdated(
       _useDirectFunding,
@@ -444,7 +445,7 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
       uint256 estimatedTicketsFromBalance
     )
   {
-    ticketsPurchased = userTicketsPurchased[user];
+    ticketsPurchased = ticketsPurchasedByUser[user];
     tokenPurchases = userTokenPurchases[user];
     uint256 balance = megapotToken.balanceOf(address(this));
     uint256 ticketPrice = megapot.ticketPrice();
@@ -470,13 +471,51 @@ contract MegapotExtension is IExtension, Ownable, ReentrancyGuard {
   }
 
   function getConfiguration() external view returns (MegapotConfig memory) {
-    return config;
+    return extensionConfig;
+  }
+
+  function getFundingPercentage() external view returns (uint256) {
+    return extensionConfig.fundingPercentage;
+  }
+
+  function userTicketsPurchased(address user) external view returns (uint256) {
+    return ticketsPurchasedByUser[user];
+  }
+
+  function config()
+    external
+    view
+    returns (
+      bool isActive,
+      uint256 ticketsPerPurchase,
+      uint256 minPurchaseForTicket,
+      bool useTokenValue,
+      uint256 maxTicketsPerPurchase,
+      uint256 linkedAt,
+      bool useDirectFunding,
+      uint256 fundingPercentage,
+      uint256 minTicketAmount,
+      uint256 maxTicketAmount
+    )
+  {
+    return (
+      extensionConfig.isActive,
+      extensionConfig.ticketsPerPurchase,
+      extensionConfig.minPurchaseForTicket,
+      extensionConfig.useTokenValue,
+      extensionConfig.maxTicketsPerPurchase,
+      extensionConfig.linkedAt,
+      extensionConfig.useDirectFunding,
+      extensionConfig.fundingPercentage,
+      extensionConfig.minTicketAmount,
+      extensionConfig.maxTicketAmount
+    );
   }
 
   function canPurchaseTickets(
     uint256 ticketCount
   ) external view returns (bool) {
-    if (!config.isActive || !megapot.allowPurchasing()) return false;
+    if (!extensionConfig.isActive || !megapot.allowPurchasing()) return false;
     uint256 ticketPrice = megapot.ticketPrice();
     uint256 totalCost = ticketPrice * ticketCount;
     uint256 balance = megapotToken.balanceOf(address(this));

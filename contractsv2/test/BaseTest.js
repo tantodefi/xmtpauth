@@ -46,17 +46,9 @@ class BaseTest {
     }
 
     // Deploy library first
-    const XMTPLibrary = await ethers.getContractFactory("XMTPLibrary");
-    const library = await XMTPLibrary.deploy();
-    await library.waitForDeployment();
-    this.contracts.library = library;
 
-    // Deploy main contract with library linking
-    const XMTPAuthERC1155 = await ethers.getContractFactory("XMTPAuthERC1155", {
-      libraries: {
-        XMTPLibrary: await library.getAddress(),
-      },
-    });
+    // Deploy main contract
+    const XMTPAuthERC1155 = await ethers.getContractFactory("XMTPAuthERC1155");
     const authContract = await XMTPAuthERC1155.deploy();
     await authContract.waitForDeployment();
     this.contracts.authContract = authContract;
@@ -212,15 +204,13 @@ class BaseTest {
    * Get contract size information
    */
   async getContractInfo() {
-    const { authContract, library } = this.contracts;
+    const { authContract } = this.contracts;
 
     const authCode = await ethers.provider.getCode(
       await authContract.getAddress(),
     );
-    const libCode = await ethers.provider.getCode(await library.getAddress());
 
     const authSize = (authCode.length - 2) / 2;
-    const libSize = (libCode.length - 2) / 2;
 
     return {
       authContract: {
@@ -228,11 +218,6 @@ class BaseTest {
         size: authSize,
         deployable: authSize <= 24576,
       },
-      library: {
-        address: await library.getAddress(),
-        size: libSize,
-      },
-      totalSize: authSize + libSize,
     };
   }
 
@@ -282,11 +267,7 @@ class BaseTest {
       // Attach to the deployed contract
       const XMTPAuthERC1155 = await ethers.getContractFactory(
         "XMTPAuthERC1155",
-        {
-          libraries: {
-            XMTPLibrary: await this.contracts.library.getAddress(),
-          },
-        },
+        {},
       );
       authContract = XMTPAuthERC1155.attach(deployedAddress);
 
@@ -308,24 +289,22 @@ class BaseTest {
         .connect(this.accounts.owner)
         .registerExtension(megapotId, await megapotExtension.getAddress());
 
-      // Configure Megapot if custom config provided
-      if (Object.keys(megapotConfig).length > 0) {
-        const {
-          useDirectFunding = true,
-          fundingPercentage = 250,
-          minTicketAmount = ethers.parseUnits("1", 6),
-          maxTicketAmount = ethers.parseUnits("10", 6),
-        } = megapotConfig;
+      // Configure Megapot with defaults or custom config
+      const {
+        useDirectFunding = true,
+        fundingPercentage = 250,
+        minTicketAmount = ethers.parseUnits("1", 6),
+        maxTicketAmount = ethers.parseUnits("10", 6),
+      } = megapotConfig;
 
-        await megapotExtension
-          .connect(this.accounts.owner)
-          .updateDirectFundingConfig(
-            useDirectFunding,
-            fundingPercentage,
-            minTicketAmount,
-            maxTicketAmount,
-          );
-      }
+      await megapotExtension
+        .connect(this.accounts.owner)
+        .updateDirectFundingConfig(
+          useDirectFunding,
+          fundingPercentage,
+          minTicketAmount,
+          maxTicketAmount,
+        );
     } else {
       // Deploy without Megapot using factory
       const deploymentConfig = {
@@ -354,11 +333,7 @@ class BaseTest {
       // Attach to the deployed contract
       const XMTPAuthERC1155 = await ethers.getContractFactory(
         "XMTPAuthERC1155",
-        {
-          libraries: {
-            XMTPLibrary: await this.contracts.library.getAddress(),
-          },
-        },
+        {},
       );
       authContract = XMTPAuthERC1155.attach(deployedAddress);
     }
@@ -493,15 +468,8 @@ const deployXMTPAuth = async (
   await baseTest.setupAccounts();
 
   // Set up minimal contracts structure for the helper
-  if (!library) {
-    const XMTPLibrary = await ethers.getContractFactory("XMTPLibrary");
-    library = await XMTPLibrary.deploy();
-    await library.waitForDeployment();
-  }
-
   baseTest.contracts = {
     factory: factory,
-    library: library,
   };
 
   // Use provided mocks or deploy new ones

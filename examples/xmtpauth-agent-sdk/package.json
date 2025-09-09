@@ -20,10 +20,11 @@
     "dev": "tsx --env-file .env --watch src/index.ts",
     "gen:keys": "tsx ../../scripts/generateKeys.ts",
     "lint": "cd ../.. && yarn eslint examples/xmtpauth-agent-sdk",
-    "start": "tsx src/index.ts",
+    "start": "npx tsx --env-file .env src/index.ts",
     "test": "tsx src/test.ts"
   },
   "dependencies": {
+    "@neynar/nodejs-sdk": "^2.8.0",
     "@xmtp/agent-sdk": "^0.0.7",
     "@xmtp/content-type-primitives": "^2.0.2",
     "@xmtp/content-type-reaction": "^1.1.8",

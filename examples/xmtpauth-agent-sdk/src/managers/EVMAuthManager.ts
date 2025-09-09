@@ -621,6 +621,85 @@ export class EVMAuthManager {
   }
 
   /**
+   * Purchase access and potentially trigger MegaPot ticket purchase
+   */
+  async purchaseAccessWithMegaPot(
+    contractAddress: string,
+    tokenId: number,
+    purchaserInboxId: string,
+    megaPotManager?: any,
+    paymentMethod: "ETH" | "USDC" = "ETH",
+  ): Promise<{
+    txHash: string;
+    megaPotResult?: { boughtTickets: boolean; tickets?: number; cost?: string };
+  }> {
+    try {
+      // Execute the purchase
+      const txHash = await this.purchaseAccess(
+        contractAddress,
+        tokenId,
+        paymentMethod,
+      );
+
+      // Get tier information for MegaPot calculation
+      const groupContract = getContract({
+        address: contractAddress as `0x${string}`,
+        abi: GROUP_ABI,
+        client: this.walletClient,
+      });
+
+      const tierData = (await groupContract.read.accessTiers([
+        BigInt(tokenId),
+      ])) as readonly [
+        bigint,
+        bigint,
+        bigint,
+        string,
+        string,
+        string,
+        string,
+        boolean,
+        bigint,
+      ];
+      const tierPrice = paymentMethod === "ETH" ? tierData[1] : tierData[2];
+
+      // Convert to USDC amount for MegaPot processing (USDC has 6 decimals)
+      const purchaseAmount =
+        paymentMethod === "ETH"
+          ? (Number(tierPrice) / 10 ** 18).toString() // Convert ETH to readable
+          : (Number(tierPrice) / 10 ** 6).toString(); // Convert USDC to readable
+
+      // Trigger MegaPot purchase if manager is provided and auto-purchase is enabled
+      let megaPotResult;
+      if (megaPotManager) {
+        // Get group info for tracking
+        const groups = await this.getUserGroups("");
+        const group = groups.find(
+          (g) =>
+            g.contractAddress.toLowerCase() === contractAddress.toLowerCase(),
+        );
+
+        if (group) {
+          megaPotResult = await megaPotManager.processNFTPurchase(
+            purchaseAmount,
+            {
+              groupId: group.id,
+              groupName: group.name,
+              contractAddress: group.contractAddress,
+              purchaserInboxId: purchaserInboxId,
+            },
+          );
+        }
+      }
+
+      return { txHash, megaPotResult };
+    } catch (error) {
+      console.error("❌ Failed to purchase access:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Check if user has valid access token - PRODUCTION VERSION
    */
   async hasValidAccess(

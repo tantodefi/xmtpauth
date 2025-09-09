@@ -1,10 +1,10 @@
-# 🚀 XMTP EVMAuth Groups Agent v2
+# 🚀 XMTPAuth Agent
 
 **Modern XMTP agent built with @xmtp/agent-sdk featuring inline actions and streamlined UX**
 
-Create and monetize premium XMTP groups with time-bound NFT access tokens on Base network. This v2 agent leverages the new XMTP Agent SDK with middleware, filters, and inline action buttons for an enhanced user experience.
+Create and monetize premium XMTP groups with time-bound NFT access tokens on Base network. This agent leverages the new XMTP Agent SDK with middleware, filters, and inline action buttons for an enhanced user experience.
 
-## ✨ New Features in v2
+## ✨ Key Features
 
 - 🎯 **Inline Action Buttons**: Interactive UI with clickable buttons instead of text commands
 - 🔧 **Middleware Architecture**: Modern Node.js patterns with command routing and filters  
@@ -12,6 +12,7 @@ Create and monetize premium XMTP groups with time-bound NFT access tokens on Bas
 - 🔄 **Transaction Confirmations**: Inline transaction approval/rejection buttons
 - 📱 **Streamlined UX**: Reduced friction with smart defaults and guided flows
 - 🚀 **Agent SDK**: Built on the modern @xmtp/agent-sdk with better performance
+- 🎰 **MegaPot Lottery**: Integrated lottery ticket purchasing and winnings sharing
 
 ## 🏗️ Architecture
 
@@ -23,7 +24,57 @@ Create and monetize premium XMTP groups with time-bound NFT access tokens on Bas
 │ • Middleware        │    │ • Intent Handling   │    │ • Group Access V1   │
 │ • Filters           │    │ • Welcome Messages  │    │ • ERC-1155 Tokens   │
 │ • Event-Driven      │    │ • TX Confirmations  │    │ • USDC Payments     │
+│ • Natural Language  │    │ • MegaPot Lottery   │    │ • MegaPot Lottery   │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
+```
+
+## 🎯 Three Main User Flows
+
+### 1. 🎰 **Setup MegaPot Lottery**
+Configure automatic lottery ticket purchases from group revenue:
+
+```bash
+# Environment-based setup (recommended)
+MEGAPOT_CONTRACT_ADDRESS=0x6f03c7BCaDAdBf5E6F5900DA3d56AdD8FbDac5De  # Testnet
+MEGAPOT_USDC_ADDRESS=0xA4253E7C13525287C56550b8708100f93E60509f      # MPUSDC
+
+# Interactive configuration (available after group creation)
+/config-megapot auto-purchase on
+/config-megapot percentage 5
+/config-megapot group-share on
+
+# Or setup during group creation flow:
+# 1. /create-group "My Community"
+# 2. Click "🎰 Setup Lottery" in success message
+```
+
+### 2. 💰 **Setup EVMAuth Pricing Layer**
+Configure monetization for your premium groups:
+
+```bash
+# Create a premium group
+/create-group "My Premium Community"
+
+/setup-tiers  # Configure pricing tiers interactively
+```
+
+### 3. 🎫 **Interact with MegaPot Manager**
+Direct lottery management and earnings:
+
+```bash
+# Buy tickets
+/buy-tickets 10
+
+# Schedule purchases
+/schedule-tickets 5 daily 30
+
+# Claim earnings
+/claim-fees
+/claim-winnings
+
+# Manage liquidity
+/add-liquidity 100
+/withdraw-liquidity
 ```
 
 ## 🚀 Quick Start
@@ -80,7 +131,7 @@ yarn start
 Instead of showing a wall of text, users get interactive buttons:
 
 ```
-🚀 Welcome to EVMAuth Groups Agent v2!
+🚀 Welcome to XMTPAuth Agent!
 
 Create and monetize premium XMTP groups with time-bound NFT access tokens.
 
@@ -91,7 +142,7 @@ Create and monetize premium XMTP groups with time-bound NFT access tokens.
 ```
 
 ### Group Creation Flow
-Streamlined with confirmations:
+Complete setup with pricing tiers and lottery integration:
 
 ```
 Create premium group "My Community"?
@@ -101,6 +152,21 @@ Create premium group "My Community"?
 🎫 Features: Time-bound NFT access tokens
 
 [✅ Create Group] [❌ Cancel]
+```
+
+After creation, configure your group:
+
+```
+✅ Group Created Successfully!
+
+📋 Group: My Community
+🆔 ID: abc123...
+📄 Contract: 0x1234...
+💰 Cost: 0.001 ETH
+
+Next steps: Set up pricing tiers and lottery integration!
+
+[⚙️ Setup Pricing Tiers] [🎰 Setup Lottery] [📋 View All Groups]
 ```
 
 ### Transaction Confirmations
@@ -228,6 +294,106 @@ class CustomEVMAuthManager extends EVMAuthManager {
   }
 }
 ```
+
+## 🎰 MegaPot Lottery Integration
+
+The agent includes built-in MegaPot lottery functionality for automated ticket purchasing and winnings management.
+
+### Features
+
+- **🎫 Instant Ticket Purchases**: Buy lottery tickets with USDC on Base network
+- **⏰ Scheduled Purchases**: Set up recurring ticket buys (daily, weekly, monthly)
+- **💰 Auto-Purchase from Sales**: Automatically allocate percentage of group sales to lottery
+- **🏆 Winnings Tracking**: Monitor lottery winnings and statistics
+- **🎉 Group Sharing**: Automatically share winnings with all group members
+- **⚙️ Configurable Settings**: Customize purchase behavior and percentages
+
+### Commands
+
+```bash
+# Buy tickets instantly
+/buy-tickets 10
+
+# Schedule recurring purchases
+/schedule-tickets 5 daily 30    # 5 tickets daily for 30 days
+/schedule-tickets 10 weekly 12  # 10 tickets weekly for 12 weeks
+
+# View lottery status and stats
+/megapot-status
+
+# Configure auto-purchase settings
+/config-megapot min-tickets 1
+/config-megapot percentage 5
+/config-megapot auto-purchase on
+/config-megapot group-share on
+
+# Claim earnings
+/claim-fees                      # Claim referral fees
+/claim-winnings                  # Claim lottery winnings
+
+# Liquidity management
+/add-liquidity 100              # Add 100 USDC liquidity
+/withdraw-liquidity             # Withdraw all LP liquidity
+
+# Network configuration is set via environment variables in .env
+```
+
+### Natural Language Support
+
+The agent responds to natural language commands:
+
+```
+"hey xmtpauth buy 10 tickets now"
+"hey xmpt buy 1 ticket every day for 30 days"
+"how many tickets have I bought?"
+"what's my megapot status?"
+```
+
+### Configuration Options
+
+- **Minimum Tickets**: Set minimum number of tickets per purchase
+- **Sales Percentage**: Percentage of group sales to allocate to lottery
+- **Auto-Purchase**: Enable/disable automatic ticket purchases from sales
+- **Group Sharing**: Share lottery winnings with all group members
+- **Network**: Environment-based configuration for mainnet/testnet
+- **Referrer Address**: Agent earns referral fees on all ticket purchases
+
+### Winnings Management
+
+- Automatic winnings detection every 5 minutes
+- Winnings tracking and statistics
+- Group-wide winnings announcements
+- Configurable sharing with premium groups
+
+### Liquidity Provider Features
+
+- **Add Liquidity**: Earn fees from ticket purchases
+- **Withdraw Liquidity**: Remove liquidity with earned fees
+- **LP Management**: Full liquidity provider functionality
+
+### Referral System
+
+- **Agent as Referrer**: Agent automatically earns referral fees
+- **Fee Claiming**: Claim accumulated referral fees
+- **Transparent Tracking**: All referral earnings are tracked
+
+### Network Configuration
+
+Network configuration is set via environment variables in `.env`:
+
+```bash
+# Testnet Configuration (Default - Active)
+MEGAPOT_CONTRACT_ADDRESS=0x6f03c7BCaDAdBf5E6F5900DA3d56AdD8FbDac5De  # Base Sepolia
+MEGAPOT_USDC_ADDRESS=0xA4253E7C13525287C56550b8708100f93E60509f      # MPUSDC
+
+# Mainnet Configuration (Uncomment for production)
+# MEGAPOT_CONTRACT_ADDRESS=0xbEDd4F2beBE9E3E636161E644759f3cbe3d51B95  # Base Mainnet
+# MEGAPOT_USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913     # USDC
+```
+
+- **Testnet**: Base Sepolia with MPUSDC test token
+- **Mainnet**: Base Mainnet with real USDC
+- **Configuration**: Set in `.env` file, requires restart to change
 
 ## 🚀 Deployment
 

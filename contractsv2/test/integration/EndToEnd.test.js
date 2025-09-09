@@ -318,14 +318,8 @@ describe("XMTP Auth V2 - End-to-End Integration", function () {
       const deployedAddress = deploymentEvent.args.contractAddress;
 
       // Connect to deployed contract
-      const XMTPAuthERC1155 = await ethers.getContractFactory(
-        "XMTPAuthERC1155",
-        {
-          libraries: {
-            XMTPLibrary: await contracts.library.getAddress(),
-          },
-        },
-      );
+      const XMTPAuthERC1155 =
+        await ethers.getContractFactory("XMTPAuthERC1155");
       const deployedContract = XMTPAuthERC1155.attach(deployedAddress);
 
       // Use deployed contract for full user flow
@@ -377,8 +371,6 @@ describe("XMTP Auth V2 - End-to-End Integration", function () {
 
       console.log("\n📊 Contract Size Report:");
       console.log(`Main Contract: ${info.authContract.size} bytes`);
-      console.log(`Library: ${info.library.size} bytes`);
-      console.log(`Total: ${info.totalSize} bytes`);
       console.log(
         `Mainnet Deployable: ${info.authContract.deployable ? "Yes" : "No"}`,
       );

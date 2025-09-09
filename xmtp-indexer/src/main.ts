@@ -137,8 +137,8 @@ processor.run(database, async (ctx) => {
                 expiresAtHex !==
                   "0000000000000000000000000000000000000000000000000000000000000000" &&
                 !expiresAtHex.match(/^0+$/)
-                ? BigInt("0x" + expiresAtHex)
-                : BigInt(0);
+                  ? BigInt("0x" + expiresAtHex)
+                  : BigInt(0);
               expiresAt =
                 expiresAtTimestamp > 0n
                   ? new Date(Number(expiresAtTimestamp) * 1000)
@@ -325,12 +325,12 @@ processor.run(database, async (ctx) => {
         }
 
         // Handle ETH transfers to agent
-      if (
-        transaction.to?.toLowerCase() === AGENT_ADDRESS.toLowerCase() &&
-        transaction.value &&
-        BigInt(transaction.value) > 0n
-      ) {
-        const value = BigInt(transaction.value);
+        if (
+          transaction.to?.toLowerCase() === AGENT_ADDRESS.toLowerCase() &&
+          transaction.value &&
+          BigInt(transaction.value) > 0n
+        ) {
+          const value = BigInt(transaction.value);
 
           // Log all transactions to agent for debugging
           console.log(`📡 Transaction to agent detected: ${transaction.hash}`);
@@ -353,23 +353,23 @@ processor.run(database, async (ctx) => {
           }
           const isPayment = value >= MIN_PAYMENT_WEI && isSuccessful;
 
-        const transfer = new EthTransfer({
-          id: `${transaction.hash}-eth`,
-          blockNumber: block.header.height,
-          timestamp: new Date(block.header.timestamp),
-          transactionHash: transaction.hash,
-          from: transaction.from.toLowerCase(),
-          to: transaction.to.toLowerCase(),
-          value: value,
-          tokenType: "ETH",
-          isPayment: isPayment,
+          const transfer = new EthTransfer({
+            id: `${transaction.hash}-eth`,
+            blockNumber: block.header.height,
+            timestamp: new Date(block.header.timestamp),
+            transactionHash: transaction.hash,
+            from: transaction.from.toLowerCase(),
+            to: transaction.to.toLowerCase(),
+            value: value,
+            tokenType: "ETH",
+            isPayment: isPayment,
             status: isSuccessful ? "success" : "failed",
-        });
+          });
 
-        ethTransfers.push(transfer);
+          ethTransfers.push(transfer);
 
-        if (isPayment) {
-          console.log(
+          if (isPayment) {
+            console.log(
               `💰 ETH PAYMENT CONFIRMED: ${value} wei (${Number(value) / 1e18} ETH) from ${transaction.from} to ${transaction.to}`,
             );
           } else if (!isSuccessful) {

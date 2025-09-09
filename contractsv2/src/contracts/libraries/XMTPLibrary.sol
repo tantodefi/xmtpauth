@@ -20,9 +20,7 @@ library XMTPLibrary {
           uint256 platformFee = (amount * feeBasisPoints) / 10000;
           if (platformFee > 0 && address(this).balance >= platformFee) {
             // Use call instead of transfer for better compatibility
-            (bool success, ) = payable(feeRecipient).call{ value: platformFee }(
-              ""
-            );
+            payable(feeRecipient).call{ value: platformFee }("");
             // If transfer fails, continue anyway (fees are optional)
             // require(success, "Fee transfer failed");
           }

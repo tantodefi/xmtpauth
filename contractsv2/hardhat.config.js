@@ -24,7 +24,7 @@ module.exports = {
         enabled: true,
         runs: 1, // Lower runs for smaller bytecode size
       },
-      viaIR: false, // Disable via-IR to fix compilation hanging
+      viaIR: true, // Enable via-IR to handle stack overflow
       evmVersion: "cancun", // Support for transient storage
     },
   },

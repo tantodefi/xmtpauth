@@ -45,14 +45,8 @@ describe("XMTPAuthFactory - Integration Tests", function () {
       const deployedAddress = deploymentEvent.args.contractAddress;
 
       // Verify deployed contract
-      const XMTPAuthERC1155 = await ethers.getContractFactory(
-        "XMTPAuthERC1155",
-        {
-          libraries: {
-            XMTPLibrary: await contracts.library.getAddress(),
-          },
-        },
-      );
+      const XMTPAuthERC1155 =
+        await ethers.getContractFactory("XMTPAuthERC1155");
       const deployedContract = XMTPAuthERC1155.attach(deployedAddress);
 
       expect(await deployedContract.treasury()).to.equal(treasury.address);
@@ -215,14 +209,8 @@ describe("XMTPAuthFactory - Integration Tests", function () {
         (log) => log.fragment && log.fragment.name === "ContractDeployed",
       );
 
-      const XMTPAuthERC1155 = await ethers.getContractFactory(
-        "XMTPAuthERC1155",
-        {
-          libraries: {
-            XMTPLibrary: await contracts.library.getAddress(),
-          },
-        },
-      );
+      const XMTPAuthERC1155 =
+        await ethers.getContractFactory("XMTPAuthERC1155");
       deployedAuthContract = XMTPAuthERC1155.attach(
         deploymentEvent.args.contractAddress,
       );

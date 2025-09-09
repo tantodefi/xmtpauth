@@ -55,7 +55,6 @@ class ValidationSuite {
 
     // Verify core contracts deployed
     expect(contracts.authContract).to.not.be.undefined;
-    expect(contracts.library).to.not.be.undefined;
     expect(contracts.factory).to.not.be.undefined;
     console.log("✅ Core contracts deployed");
 
@@ -67,7 +66,6 @@ class ValidationSuite {
     // Check contract size
     const info = await this.test.getContractInfo();
     console.log(`📏 Contract size: ${info.authContract.size} bytes`);
-    console.log(`📏 Library size: ${info.library.size} bytes`);
 
     if (info.authContract.size > 24576) {
       console.log("⚠️  Requires L2 deployment (Base, Arbitrum, etc.)");

@@ -26,8 +26,6 @@ describe("XMTPAuthERC1155 - Core Functionality", function () {
       const info = await test.getContractInfo();
 
       console.log(`📏 Auth Contract: ${info.authContract.size} bytes`);
-      console.log(`📏 Library: ${info.library.size} bytes`);
-      console.log(`📏 Total: ${info.totalSize} bytes`);
 
       // Contract should require L2 deployment
       expect(info.authContract.size).to.be.greaterThan(24576);

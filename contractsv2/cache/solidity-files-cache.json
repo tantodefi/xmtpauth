@@ -1,6 +1,80 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/interfaces/IERC20.sol": {
+      "lastModificationDate": 1756846033832,
+      "contentHash": "68620db2da7583d9a4919096ac77f577",
+      "sourceName": "@openzeppelin/contracts/interfaces/IERC20.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../token/ERC20/IERC20.sol"
+      ],
+      "versionPragmas": [
+        ">=0.4.16"
+      ],
+      "artifacts": []
+    },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/interfaces/IERC165.sol": {
+      "lastModificationDate": 1756846033778,
+      "contentHash": "947853028399b7de34bcc3704ee06e99",
+      "sourceName": "@openzeppelin/contracts/interfaces/IERC165.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../utils/introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        ">=0.4.16"
+      ],
+      "artifacts": []
+    },
     "/Users/rob/xmtpauth/contractsv2/src/base/AccountFreezable.sol": {
       "lastModificationDate": 1757103357609,
       "contentHash": "0a9068b72d5e2ff933db958feb0bae61",
@@ -12,7 +86,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -51,7 +125,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -88,7 +162,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -130,7 +204,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -170,7 +244,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -211,7 +285,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -257,7 +331,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -296,7 +370,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -333,7 +407,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -364,43 +438,6 @@
         "ERC1967Utils"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/StorageSlot.sol": {
-      "lastModificationDate": 1756846034314,
-      "contentHash": "e656d64c4ce918f3d13030b91c935134",
-      "sourceName": "@openzeppelin/contracts/utils/StorageSlot.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "StorageSlot"
-      ]
-    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/Address.sol": {
       "lastModificationDate": 1756846032015,
       "contentHash": "2a06d82f31f75087bf90231599da4f1c",
@@ -412,7 +449,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -440,6 +477,43 @@
         "Address"
       ]
     },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/StorageSlot.sol": {
+      "lastModificationDate": 1756846034314,
+      "contentHash": "e656d64c4ce918f3d13030b91c935134",
+      "sourceName": "@openzeppelin/contracts/utils/StorageSlot.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "StorageSlot"
+      ]
+    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/interfaces/IERC1967.sol": {
       "lastModificationDate": 1756846033825,
       "contentHash": "3c9577899f440b0c66e880c96e9250bb",
@@ -451,7 +525,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -488,7 +562,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -525,7 +599,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -562,7 +636,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -605,7 +679,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -642,7 +716,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -668,45 +742,6 @@
         "IERC5313"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/access/extensions/IAccessControlDefaultAdminRules.sol": {
-      "lastModificationDate": 1756846033621,
-      "contentHash": "02fae33d4d6acec5988a811961ec8d88",
-      "sourceName": "@openzeppelin/contracts/access/extensions/IAccessControlDefaultAdminRules.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../IAccessControl.sol"
-      ],
-      "versionPragmas": [
-        ">=0.8.4"
-      ],
-      "artifacts": [
-        "IAccessControlDefaultAdminRules"
-      ]
-    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/math/SafeCast.sol": {
       "lastModificationDate": 1756846034259,
       "contentHash": "2adca1150f58fc6f3d1f0a0f22ee7cca",
@@ -718,7 +753,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -755,7 +790,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -784,6 +819,45 @@
         "Math"
       ]
     },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/access/extensions/IAccessControlDefaultAdminRules.sol": {
+      "lastModificationDate": 1756846033621,
+      "contentHash": "02fae33d4d6acec5988a811961ec8d88",
+      "sourceName": "@openzeppelin/contracts/access/extensions/IAccessControlDefaultAdminRules.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../IAccessControl.sol"
+      ],
+      "versionPragmas": [
+        ">=0.8.4"
+      ],
+      "artifacts": [
+        "IAccessControlDefaultAdminRules"
+      ]
+    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol": {
       "lastModificationDate": 1756846033781,
       "contentHash": "7074c93b1ea0a122063f26ddd1db1032",
@@ -795,7 +869,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -832,7 +906,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -872,7 +946,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -909,7 +983,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -948,7 +1022,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -988,7 +1062,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1027,7 +1101,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1063,6 +1137,45 @@
         "ERC1155Upgradeable"
       ]
     },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol": {
+      "lastModificationDate": 1756846033703,
+      "contentHash": "33e0e83862852391c28e4dd1b8bd9cf2",
+      "sourceName": "@openzeppelin/contracts/token/ERC1155/IERC1155.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../utils/introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.2"
+      ],
+      "artifacts": [
+        "IERC1155"
+      ]
+    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/Arrays.sol": {
       "lastModificationDate": 1756846032083,
       "contentHash": "e19f50397668e814730982e8f2aa6e56",
@@ -1074,7 +1187,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1105,45 +1218,6 @@
         "Arrays"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC1155/IERC1155.sol": {
-      "lastModificationDate": 1756846033703,
-      "contentHash": "33e0e83862852391c28e4dd1b8bd9cf2",
-      "sourceName": "@openzeppelin/contracts/token/ERC1155/IERC1155.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../../utils/introspection/IERC165.sol"
-      ],
-      "versionPragmas": [
-        ">=0.6.2"
-      ],
-      "artifacts": [
-        "IERC1155"
-      ]
-    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol": {
       "lastModificationDate": 1756846033716,
       "contentHash": "954b62833ba591c2f2ad3354a5048f2a",
@@ -1155,7 +1229,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1194,7 +1268,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1231,7 +1305,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1257,10 +1331,10 @@
         "SlotDerivation"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155URIStorageUpgradeable.sol": {
-      "lastModificationDate": 1756846030517,
-      "contentHash": "47de617872c1ad3fa110e3cb5f45a735",
-      "sourceName": "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155URIStorageUpgradeable.sol",
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/math/SignedMath.sol": {
+      "lastModificationDate": 1756846034269,
+      "contentHash": "ae3528afb8bdb0a7dcfba5b115ee8074",
+      "sourceName": "@openzeppelin/contracts/utils/math/SignedMath.sol",
       "solcConfig": {
         "version": "0.8.26",
         "settings": {
@@ -1268,7 +1342,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1287,15 +1361,13 @@
         }
       },
       "imports": [
-        "@openzeppelin/contracts/utils/Strings.sol",
-        "../ERC1155Upgradeable.sol",
-        "../../../proxy/utils/Initializable.sol"
+        "./SafeCast.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
-        "ERC1155URIStorageUpgradeable"
+        "SignedMath"
       ]
     },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/Strings.sol": {
@@ -1309,7 +1381,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1339,10 +1411,10 @@
         "Strings"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/math/SignedMath.sol": {
-      "lastModificationDate": 1756846034269,
-      "contentHash": "ae3528afb8bdb0a7dcfba5b115ee8074",
-      "sourceName": "@openzeppelin/contracts/utils/math/SignedMath.sol",
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155URIStorageUpgradeable.sol": {
+      "lastModificationDate": 1756846030517,
+      "contentHash": "47de617872c1ad3fa110e3cb5f45a735",
+      "sourceName": "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155URIStorageUpgradeable.sol",
       "solcConfig": {
         "version": "0.8.26",
         "settings": {
@@ -1350,7 +1422,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -1369,656 +1441,15 @@
         }
       },
       "imports": [
-        "./SafeCast.sol"
+        "@openzeppelin/contracts/utils/Strings.sol",
+        "../ERC1155Upgradeable.sol",
+        "../../../proxy/utils/Initializable.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
-        "SignedMath"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/Create2.sol": {
-      "lastModificationDate": 1756846032624,
-      "contentHash": "841323ddbb94316c3f9ae8a19ce080ff",
-      "sourceName": "@openzeppelin/contracts/utils/Create2.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./Errors.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "Create2"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/proxy/Clones.sol": {
-      "lastModificationDate": 1756846032596,
-      "contentHash": "1dd02316d75b8147282bef56d72f21f0",
-      "sourceName": "@openzeppelin/contracts/proxy/Clones.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../utils/Create2.sol",
-        "../utils/Errors.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "Clones"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/contracts/XMTPAuthFactory.sol": {
-      "lastModificationDate": 1757102960510,
-      "contentHash": "f618244e428c916fef112b04485f5c94",
-      "sourceName": "src/contracts/XMTPAuthFactory.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./XMTPAuthERC1155.sol",
-        "./extensions/MegapotExtension.sol",
-        "../interfaces/IFactory.sol",
-        "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
-        "@openzeppelin/contracts/proxy/Clones.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "XMTPAuthFactory"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/contracts/XMTPAuthERC1155.sol": {
-      "lastModificationDate": 1757118215795,
-      "contentHash": "77b80354fbbdfbf21ac46d8f2a3bbff5",
-      "sourceName": "src/contracts/XMTPAuthERC1155.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "lib/evmauth-core/src/EVMAuth1155.sol",
-        "../interfaces/IExtension.sol",
-        "../interfaces/IExtensionRegistry.sol",
-        "../interfaces/IXMTP.sol",
-        "../interfaces/IFactory.sol",
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-        "./libraries/XMTPLibrary.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "AggregatorV3Interface",
-        "IUniswapV3Factory",
-        "IUniswapV3Pool",
-        "XMTPAuthERC1155"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/contracts/extensions/MegapotExtension.sol": {
-      "lastModificationDate": 1757117134651,
-      "contentHash": "48a51d2cb85e7116a7740ad9bae26e6c",
-      "sourceName": "src/contracts/extensions/MegapotExtension.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../../interfaces/IExtension.sol",
-        "../../interfaces/IMegapot.sol",
-        "@openzeppelin/contracts/access/Ownable.sol",
-        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "MegapotExtension"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IFactory.sol": {
-      "lastModificationDate": 1756880861573,
-      "contentHash": "43796cd0a5653610c671b3e77031e143",
-      "sourceName": "src/interfaces/IFactory.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "IFactory"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/access/Ownable.sol": {
-      "lastModificationDate": 1756846034151,
-      "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
-      "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../utils/Context.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "Ownable"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol": {
-      "lastModificationDate": 1756846034226,
-      "contentHash": "190613e556d509d9e9a0ea43dc5d891d",
-      "sourceName": "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "ReentrancyGuard"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IExtension.sol": {
-      "lastModificationDate": 1756886757909,
-      "contentHash": "900c14489a1c6e37bab81798964f778d",
-      "sourceName": "src/interfaces/IExtension.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "IExtension"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IExtensionRegistry.sol": {
-      "lastModificationDate": 1756850989826,
-      "contentHash": "3f9db508a5f74935d43c43ebab01a391",
-      "sourceName": "src/interfaces/IExtensionRegistry.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "IExtensionRegistry"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IXMTP.sol": {
-      "lastModificationDate": 1756878034197,
-      "contentHash": "53f017e8488758160b15de70de87bf79",
-      "sourceName": "src/interfaces/IXMTP.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "IXMTP"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/contracts/libraries/XMTPLibrary.sol": {
-      "lastModificationDate": 1757105977574,
-      "contentHash": "49cfd1231edcfd0ce2b45657c956d26f",
-      "sourceName": "src/contracts/libraries/XMTPLibrary.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-        "../../interfaces/IFactory.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "XMTPLibrary"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/lib/evmauth-core/src/EVMAuth1155.sol": {
-      "lastModificationDate": 1757103144360,
-      "contentHash": "3d28d646aa11752c0276e10aff117023",
-      "sourceName": "lib/evmauth-core/src/EVMAuth1155.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "src/base/EVMAuth.sol",
-        "src/base/TokenEphemeral.sol",
-        "src/base/TokenPurchasable.sol",
-        "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol",
-        "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol",
-        "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155URIStorageUpgradeable.sol",
-        "@openzeppelin/contracts/utils/introspection/IERC165.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "EVMAuth1155"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
-      "lastModificationDate": 1756846033836,
-      "contentHash": "9261adf6457863de3e9892f51317ec89",
-      "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        ">=0.4.16"
-      ],
-      "artifacts": [
-        "IERC20"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/base/EVMAuth.sol": {
-      "lastModificationDate": 1757103357603,
-      "contentHash": "24c9fb8c1745ef91be93690b3ce2cc49",
-      "sourceName": "src/base/EVMAuth.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "src/base/TokenAccessControl.sol",
-        "src/base/TokenEnumerable.sol",
-        "src/base/TokenEphemeral.sol",
-        "src/base/TokenPurchasable.sol",
-        "src/base/TokenTransferable.sol",
-        "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "EVMAuth"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/base/TokenEphemeral.sol": {
-      "lastModificationDate": 1757103357605,
-      "contentHash": "80c9351ec9d1dabc12c939bcf5cb3798",
-      "sourceName": "src/base/TokenEphemeral.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "TokenEphemeral"
+        "ERC1155URIStorageUpgradeable"
       ]
     },
     "/Users/rob/xmtpauth/contractsv2/src/base/TokenPurchasable.sol": {
@@ -2032,7 +1463,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2063,84 +1494,6 @@
         "TokenPurchasable"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/src/base/TokenEnumerable.sol": {
-      "lastModificationDate": 1757103357602,
-      "contentHash": "82d907483bb02cda0c4e6da8588dfb42",
-      "sourceName": "src/base/TokenEnumerable.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "TokenEnumerable"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/base/TokenTransferable.sol": {
-      "lastModificationDate": 1757103357608,
-      "contentHash": "5a41ee2752c990d2793ece2802cafcb6",
-      "sourceName": "src/base/TokenTransferable.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "TokenTransferable"
-      ]
-    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol": {
       "lastModificationDate": 1756846032281,
       "contentHash": "e170ab8e20aa72e5eb337c1966d297d1",
@@ -2152,7 +1505,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2181,6 +1534,43 @@
         "ReentrancyGuardTransientUpgradeable"
       ]
     },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+      "lastModificationDate": 1756846033836,
+      "contentHash": "9261adf6457863de3e9892f51317ec89",
+      "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.4.16"
+      ],
+      "artifacts": [
+        "IERC20"
+      ]
+    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol": {
       "lastModificationDate": 1756846034263,
       "contentHash": "1fb9edee1d763745a62d0b1954998792",
@@ -2192,7 +1582,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2232,7 +1622,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2269,7 +1659,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2298,10 +1688,10 @@
         "IERC1363"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/interfaces/IERC20.sol": {
-      "lastModificationDate": 1756846033832,
-      "contentHash": "68620db2da7583d9a4919096ac77f577",
-      "sourceName": "@openzeppelin/contracts/interfaces/IERC20.sol",
+    "/Users/rob/xmtpauth/contractsv2/lib/evmauth-core/src/EVMAuth1155.sol": {
+      "lastModificationDate": 1757103144360,
+      "contentHash": "3d28d646aa11752c0276e10aff117023",
+      "sourceName": "lib/evmauth-core/src/EVMAuth1155.sol",
       "solcConfig": {
         "version": "0.8.26",
         "settings": {
@@ -2309,7 +1699,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2328,17 +1718,25 @@
         }
       },
       "imports": [
-        "../token/ERC20/IERC20.sol"
+        "src/base/EVMAuth.sol",
+        "src/base/TokenEphemeral.sol",
+        "src/base/TokenPurchasable.sol",
+        "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol",
+        "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol",
+        "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155URIStorageUpgradeable.sol",
+        "@openzeppelin/contracts/utils/introspection/IERC165.sol"
       ],
       "versionPragmas": [
-        ">=0.4.16"
+        "^0.8.24"
       ],
-      "artifacts": []
+      "artifacts": [
+        "EVMAuth1155"
+      ]
     },
-    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/interfaces/IERC165.sol": {
-      "lastModificationDate": 1756846033778,
-      "contentHash": "947853028399b7de34bcc3704ee06e99",
-      "sourceName": "@openzeppelin/contracts/interfaces/IERC165.sol",
+    "/Users/rob/xmtpauth/contractsv2/src/base/TokenEphemeral.sol": {
+      "lastModificationDate": 1757103357605,
+      "contentHash": "80c9351ec9d1dabc12c939bcf5cb3798",
+      "sourceName": "src/base/TokenEphemeral.sol",
       "solcConfig": {
         "version": "0.8.26",
         "settings": {
@@ -2346,7 +1744,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2365,12 +1763,616 @@
         }
       },
       "imports": [
-        "../utils/introspection/IERC165.sol"
+        "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol"
       ],
       "versionPragmas": [
-        ">=0.4.16"
+        "^0.8.24"
       ],
-      "artifacts": []
+      "artifacts": [
+        "TokenEphemeral"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/base/EVMAuth.sol": {
+      "lastModificationDate": 1757103357603,
+      "contentHash": "24c9fb8c1745ef91be93690b3ce2cc49",
+      "sourceName": "src/base/EVMAuth.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "src/base/TokenAccessControl.sol",
+        "src/base/TokenEnumerable.sol",
+        "src/base/TokenEphemeral.sol",
+        "src/base/TokenPurchasable.sol",
+        "src/base/TokenTransferable.sol",
+        "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "EVMAuth"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/base/TokenEnumerable.sol": {
+      "lastModificationDate": 1757103357602,
+      "contentHash": "82d907483bb02cda0c4e6da8588dfb42",
+      "sourceName": "src/base/TokenEnumerable.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "TokenEnumerable"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/base/TokenTransferable.sol": {
+      "lastModificationDate": 1757103357608,
+      "contentHash": "5a41ee2752c990d2793ece2802cafcb6",
+      "sourceName": "src/base/TokenTransferable.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "TokenTransferable"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/Create2.sol": {
+      "lastModificationDate": 1756846032624,
+      "contentHash": "841323ddbb94316c3f9ae8a19ce080ff",
+      "sourceName": "@openzeppelin/contracts/utils/Create2.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./Errors.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "Create2"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/proxy/Clones.sol": {
+      "lastModificationDate": 1756846032596,
+      "contentHash": "1dd02316d75b8147282bef56d72f21f0",
+      "sourceName": "@openzeppelin/contracts/proxy/Clones.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../utils/Create2.sol",
+        "../utils/Errors.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "Clones"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/contracts/XMTPAuthFactory.sol": {
+      "lastModificationDate": 1757102960510,
+      "contentHash": "f618244e428c916fef112b04485f5c94",
+      "sourceName": "src/contracts/XMTPAuthFactory.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./XMTPAuthERC1155.sol",
+        "./extensions/MegapotExtension.sol",
+        "../interfaces/IFactory.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/proxy/Clones.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "XMTPAuthFactory"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/contracts/XMTPAuthERC1155.sol": {
+      "lastModificationDate": 1757180262865,
+      "contentHash": "1a672fad6a077a8ae8a66f1dc3a7150a",
+      "sourceName": "src/contracts/XMTPAuthERC1155.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "lib/evmauth-core/src/EVMAuth1155.sol",
+        "../interfaces/IExtension.sol",
+        "../interfaces/IExtensionRegistry.sol",
+        "../interfaces/IMegapotExtension.sol",
+        "../interfaces/IXMTP.sol",
+        "../interfaces/IFactory.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/utils/Strings.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "AggregatorV3Interface",
+        "IUniswapV3Factory",
+        "IUniswapV3Pool",
+        "XMTPAuthERC1155"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/contracts/extensions/MegapotExtension.sol": {
+      "lastModificationDate": 1757181346098,
+      "contentHash": "6af8a95bfc5746588d992625a528d283",
+      "sourceName": "src/contracts/extensions/MegapotExtension.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../interfaces/IExtension.sol",
+        "../../interfaces/IMegapotExtension.sol",
+        "../../interfaces/IMegapot.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/utils/Strings.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "MegapotExtension"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IFactory.sol": {
+      "lastModificationDate": 1756880861573,
+      "contentHash": "43796cd0a5653610c671b3e77031e143",
+      "sourceName": "src/interfaces/IFactory.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "IFactory"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/access/Ownable.sol": {
+      "lastModificationDate": 1756846034151,
+      "contentHash": "d3c790edc9ccf808a17c5a6cd13614fd",
+      "sourceName": "@openzeppelin/contracts/access/Ownable.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../utils/Context.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "Ownable"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol": {
+      "lastModificationDate": 1756846034226,
+      "contentHash": "190613e556d509d9e9a0ea43dc5d891d",
+      "sourceName": "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ReentrancyGuard"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IExtension.sol": {
+      "lastModificationDate": 1756886757909,
+      "contentHash": "900c14489a1c6e37bab81798964f778d",
+      "sourceName": "src/interfaces/IExtension.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "IExtension"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IMegapotExtension.sol": {
+      "lastModificationDate": 1757182880574,
+      "contentHash": "5d74d0b429b3e8f4c88bf28386aafa13",
+      "sourceName": "src/interfaces/IMegapotExtension.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IExtension.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "IMegapotExtension"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IExtensionRegistry.sol": {
+      "lastModificationDate": 1756850989826,
+      "contentHash": "3f9db508a5f74935d43c43ebab01a391",
+      "sourceName": "src/interfaces/IExtensionRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "IExtensionRegistry"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/interfaces/IXMTP.sol": {
+      "lastModificationDate": 1756878034197,
+      "contentHash": "53f017e8488758160b15de70de87bf79",
+      "sourceName": "src/interfaces/IXMTP.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "IXMTP"
+      ]
     },
     "/Users/rob/xmtpauth/contractsv2/src/interfaces/IMegapot.sol": {
       "lastModificationDate": 1756850989870,
@@ -2383,7 +2385,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2420,7 +2422,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2446,123 +2448,6 @@
         "Context"
       ]
     },
-    "/Users/rob/xmtpauth/contractsv2/src/mocks/MockFailingExtension.sol": {
-      "lastModificationDate": 1756955423555,
-      "contentHash": "25cd3c91af67b122714c9cd4a9f710a1",
-      "sourceName": "src/mocks/MockFailingExtension.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../interfaces/IExtension.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "MockFailingExtension"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/mocks/MockExtension.sol": {
-      "lastModificationDate": 1756883797504,
-      "contentHash": "3b2e7020462bfc113f90c596cbc88206",
-      "sourceName": "src/mocks/MockExtension.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../interfaces/IExtension.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "MockExtension"
-      ]
-    },
-    "/Users/rob/xmtpauth/contractsv2/src/mocks/FailingExtension.sol": {
-      "lastModificationDate": 1756886983287,
-      "contentHash": "5fe9e561be036557ef45cfcb49bd3301",
-      "sourceName": "src/mocks/FailingExtension.sol",
-      "solcConfig": {
-        "version": "0.8.26",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 1
-          },
-          "viaIR": false,
-          "evmVersion": "cancun",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "../interfaces/IExtension.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.26"
-      ],
-      "artifacts": [
-        "FailingExtension"
-      ]
-    },
     "/Users/rob/xmtpauth/contractsv2/node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
       "lastModificationDate": 1756846033899,
       "contentHash": "513778b30d2750f5d2b9b19bbcf748a5",
@@ -2574,7 +2459,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2613,7 +2498,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2655,7 +2540,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2694,7 +2579,7 @@
             "enabled": true,
             "runs": 1
           },
-          "viaIR": false,
+          "viaIR": true,
           "evmVersion": "cancun",
           "outputSelection": {
             "*": {
@@ -2721,6 +2606,163 @@
       ],
       "artifacts": [
         "MockMegapot"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/contracts/libraries/XMTPLibrary.sol": {
+      "lastModificationDate": 1757138381012,
+      "contentHash": "1d70e9acd7d830e821195447c2f74d72",
+      "sourceName": "src/contracts/libraries/XMTPLibrary.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "../../interfaces/IFactory.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "XMTPLibrary"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/mocks/MockFailingExtension.sol": {
+      "lastModificationDate": 1757205022794,
+      "contentHash": "ee843595a83f57721ca51949f43b4e2e",
+      "sourceName": "src/mocks/MockFailingExtension.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../interfaces/IExtension.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "MockFailingExtension"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/mocks/MockExtension.sol": {
+      "lastModificationDate": 1757142285136,
+      "contentHash": "c85dc16c35b5ce1d36265b4f3ca2078f",
+      "sourceName": "src/mocks/MockExtension.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../interfaces/IExtension.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "MockExtension"
+      ]
+    },
+    "/Users/rob/xmtpauth/contractsv2/src/mocks/FailingExtension.sol": {
+      "lastModificationDate": 1756886983287,
+      "contentHash": "5fe9e561be036557ef45cfcb49bd3301",
+      "sourceName": "src/mocks/FailingExtension.sol",
+      "solcConfig": {
+        "version": "0.8.26",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1
+          },
+          "viaIR": true,
+          "evmVersion": "cancun",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../interfaces/IExtension.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.26"
+      ],
+      "artifacts": [
+        "FailingExtension"
       ]
     }
   }

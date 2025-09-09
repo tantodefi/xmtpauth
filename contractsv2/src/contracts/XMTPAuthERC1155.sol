@@ -4,10 +4,12 @@ pragma solidity ^0.8.26;
 import { EVMAuth1155 } from "lib/evmauth-core/src/EVMAuth1155.sol";
 import { IExtension } from "../interfaces/IExtension.sol";
 import { IExtensionRegistry } from "../interfaces/IExtensionRegistry.sol";
+import { IMegapotExtension } from "../interfaces/IMegapotExtension.sol";
 import { IXMTP } from "../interfaces/IXMTP.sol";
 import { IFactory } from "../interfaces/IFactory.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { XMTPLibrary } from "./libraries/XMTPLibrary.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+// import { XMTPLibrary } from "./libraries/XMTPLibrary.sol";
 
 // Custom error types for XMTP dual payment system
 error InsufficientPayment(
@@ -282,7 +284,6 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
    * @param priceWei Price in wei (0 for free tokens like trials)
    * @param name Human-readable name for the access tier
    * @param description Description of what this access tier provides
-   * @param imageHash IPFS hash or URL for token image
    * @param metadataUri URI for additional token metadata
    */
   function setupAccessTier(
@@ -291,7 +292,7 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
     uint256 priceWei,
     string memory name,
     string memory description,
-    string memory imageHash,
+    string memory /* imageHash */,
     string memory metadataUri
   ) public onlyRole(TOKEN_MANAGER_ROLE) {
     require(durationDays > 0, "Duration must be positive");
@@ -415,12 +416,12 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
     // Create token if it doesn't exist
     if (!exists(tokenId)) {
       // Create token with default configuration (0 price, transferable, no TTL)
-      EVMAuthTokenConfig memory config = EVMAuthTokenConfig({
-        price: 0,
-        erc20Prices: new PaymentToken[](0),
-        ttl: 0,
-        transferable: true
-      });
+      // EVMAuthTokenConfig memory config = EVMAuthTokenConfig({
+      //   price: 0,
+      //   erc20Prices: new PaymentToken[](0),
+      //   ttl: 0,
+      //   transferable: true
+      // });
 
       // For specific token IDs, we need to ensure the nextTokenID is correct
       if (tokenId >= nextTokenID()) {
@@ -493,6 +494,25 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
     _recordXMTPPurchase(to, id, amount, totalPrice, address(0), "");
   }
 
+  // Temporarily disable _completePurchase override
+  /*
+  function _completePurchase(
+    address receiver,
+    uint256 id,
+    uint256 amount,
+    uint256 totalPrice
+  ) internal virtual override {
+    // For ETH purchases, payment token is address(0)
+    _completePurchaseWithPaymentToken(
+      receiver,
+      id,
+      amount,
+      totalPrice,
+      address(0)
+    );
+  }
+  */
+
   /**
    * @dev Complete purchase with proper payment token tracking for extensions
    */
@@ -508,6 +528,9 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
 
     // Record XMTP-specific purchase data with correct payment token
     _recordXMTPPurchase(receiver, id, amount, totalPrice, paymentToken, "");
+
+    // Notify extensions about the purchase
+    _notifyExtensionsOfPurchase(receiver, id, amount, totalPrice, paymentToken);
 
     // Emit the standard TokenPurchased event
     emit TokenPurchased(_msgSender(), receiver, id, amount, totalPrice);
@@ -529,10 +552,10 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
     require(receiver != address(0), "Invalid receiver address");
     require(amount > 0, "Invalid token quantity");
     require(exists(id), "Token does not exist");
-    
+
     uint256 unitPrice = tokenPrice(id);
     require(unitPrice > 0, "Token not for sale with native currency");
-    
+
     uint256 totalPrice = unitPrice * amount;
 
     if (msg.value < totalPrice) {
@@ -547,8 +570,14 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
     // XMTP Custom Logic: Only send platform fees, keep rest as ETH TVL
     _handleETHPlatformFees(totalPrice);
 
-    // Complete the purchase (mint tokens)
-    _completePurchase(receiver, id, amount, totalPrice);
+    // Complete the purchase (mint tokens) with proper payment token tracking
+    _completePurchaseWithPaymentToken(
+      receiver,
+      id,
+      amount,
+      totalPrice,
+      address(0)
+    );
   }
 
   /**
@@ -564,52 +593,79 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
       revert InvalidERC20PaymentToken(paymentToken);
     }
 
-    // Get the ERC20 price for this token using evmauth-core
     uint256 unitPrice = tokenERC20Price(id, paymentToken);
     uint256 totalPrice = unitPrice * amount;
 
     IERC20 token = IERC20(paymentToken);
 
-    // Check allowance
     uint256 allowance = token.allowance(_msgSender(), address(this));
     if (allowance < totalPrice) {
       revert InsufficientERC20Allowance(paymentToken, totalPrice, allowance);
     }
 
-    // Check balance
     uint256 balance = token.balanceOf(_msgSender());
     if (balance < totalPrice) {
       revert InsufficientERC20Balance(paymentToken, totalPrice, balance);
     }
 
+    // Get factory fee configuration
+    uint256 feeBasisPoints = IFactory(factory).feeBasisPoints();
+    address feeRecipient = IFactory(factory).feeRecipient();
+
     // XMTP Custom Logic: Handle platform fees with optional Megapot integration
-    uint256 megapotAmount = 0;
     address megapotExtension = _getMegapotExtension();
     uint256 megapotPercentage = _getMegapotPercentage();
 
     if (megapotExtension != address(0) && megapotPercentage > 0) {
-      // Use new 3-way split with Megapot
-      megapotAmount = XMTPLibrary.handleERC20PlatformFeesWithMegapot(
-        factory,
-        paymentToken,
-        totalPrice,
-        treasury(),
-        megapotExtension,
-        megapotPercentage,
-        _msgSender()
-      );
+      // 3-way split with Megapot
+      uint256 platformFee = 0;
+      if (feeBasisPoints > 0 && feeRecipient != address(0)) {
+        platformFee = (totalPrice * feeBasisPoints) / 10000;
+      }
+      uint256 megapotAmount = (totalPrice * megapotPercentage) / 10000;
+      uint256 creatorAmount = totalPrice - platformFee - megapotAmount;
+
+      if (platformFee > 0) {
+        require(
+          token.transferFrom(_msgSender(), feeRecipient, platformFee),
+          "Platform fee transfer failed"
+        );
+      }
+      if (megapotAmount > 0) {
+        require(
+          token.transferFrom(_msgSender(), megapotExtension, megapotAmount),
+          "Megapot transfer failed"
+        );
+      }
+      if (creatorAmount > 0) {
+        require(
+          token.transferFrom(_msgSender(), treasury(), creatorAmount),
+          "Creator revenue transfer failed"
+        );
+      }
     } else {
-      // Use original 2-way split (backward compatibility)
-    XMTPLibrary.handleERC20PlatformFeesAndRevenue(
-      factory,
-      paymentToken,
-      totalPrice,
-      treasury(),
-      _msgSender()
-    );
+      // 2-way split (backward compatibility)
+      uint256 platformFee = 0;
+      if (feeBasisPoints > 0 && feeRecipient != address(0)) {
+        platformFee = (totalPrice * feeBasisPoints) / 10000;
+      }
+      uint256 creatorAmount = totalPrice - platformFee;
+
+      if (platformFee > 0) {
+        require(
+          token.transferFrom(_msgSender(), feeRecipient, platformFee),
+          "Platform fee transfer failed"
+        );
+      }
+      if (creatorAmount > 0) {
+        require(
+          token.transferFrom(_msgSender(), treasury(), creatorAmount),
+          "Creator revenue transfer failed"
+        );
+      }
     }
 
-    // Complete the purchase (mint tokens) with proper payment token tracking
+    // Complete the purchase with proper extension tracking
     _completePurchaseWithPaymentToken(
       receiver,
       id,
@@ -738,9 +794,7 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
           uint256 platformFee = (amount * feeBasisPoints) / 10000;
           if (platformFee > 0 && address(this).balance >= platformFee) {
             // Use call instead of transfer for better compatibility
-            (bool success, ) = payable(feeRecipient).call{ value: platformFee }(
-              ""
-            );
+            payable(feeRecipient).call{ value: platformFee }("");
             // If transfer fails, continue anyway (fees are optional)
             // require(success, "Fee transfer failed");
           }
@@ -1126,6 +1180,14 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
     address paymentToken,
     string memory transactionHash
   ) internal {
+    // Debug: Emit event to confirm this function is called
+    emit XMTPUserAccessGranted(
+      user,
+      string(abi.encodePacked("DEBUG: _recordXMTPPurchase called")),
+      tokenId,
+      totalPrice
+    );
+
     string memory userInboxId = userInboxIds[user];
 
     // Calculate expiry
@@ -1478,14 +1540,28 @@ contract XMTPAuthERC1155 is EVMAuth1155, IXMTP, IExtensionRegistry {
    */
   function _getMegapotExtension() internal view returns (address) {
     bytes32 megapotId = keccak256("MEGAPOT_EXTENSION");
-    return extensions[megapotId];
+    address ext = extensions[megapotId];
+    return ext;
   }
 
   /**
    * @dev Get Megapot funding percentage (default 2.5% = 250 basis points)
    */
-  function _getMegapotPercentage() internal pure returns (uint256) {
-    return 250; // 2.5% in basis points
+  function _getMegapotPercentage() internal view returns (uint256) {
+    // Return configurable Megapot percentage (default 2.5% = 250 basis points)
+    address megapotExtension = _getMegapotExtension();
+    if (megapotExtension != address(0)) {
+      // Try to get the configured percentage from the extension
+      try IMegapotExtension(megapotExtension).getFundingPercentage() returns (
+        uint256 percentage
+      ) {
+        return percentage;
+      } catch {
+        // Fallback to default 2.5%
+        return 250;
+      }
+    }
+    return 0;
   }
 
   /**

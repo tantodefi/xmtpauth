@@ -122,9 +122,9 @@ contract MockExtension is IExtension {
   }
 
   function onTokenConfigUpdated(
-    uint256 tokenId,
-    uint256 newPrice,
-    string memory newURI
+    uint256 /* tokenId */,
+    uint256 /* newPrice */,
+    string memory /* newURI */
   ) external {
     onTokenConfigUpdatedCalled = true;
     // Mock implementation - just set the flag

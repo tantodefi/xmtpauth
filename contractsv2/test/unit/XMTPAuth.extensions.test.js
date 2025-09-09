@@ -385,7 +385,7 @@ describe("XMTPAuthERC1155 - Extension System", function () {
       const { authContract, mocks, factory } = contracts;
       const { owner, treasury, user1: buyer } = accounts;
 
-      // Setup factory fees
+      // Setup factory fees (2.5% platform fee)
       await factory.connect(owner).setFeeBasisPoints(250); // 2.5%
       await factory
         .connect(owner)
@@ -419,9 +419,12 @@ describe("XMTPAuthERC1155 - Extension System", function () {
         .connect(treasury)
         .setERC20Price(1, tokenAddress, tokenPrice);
 
-      // Setup buyer with USDC and allowance
-      await mocks.erc20.mint(buyer.address, tokenPrice);
-      await mocks.erc20.connect(buyer).approve(authContract.target, tokenPrice);
+      // Setup buyer with USDC and allowance (need extra for fees)
+      const totalAllowance = tokenPrice + ethers.parseUnits("10", 6); // $100 + $10 buffer
+      await mocks.erc20.mint(buyer.address, totalAllowance);
+      await mocks.erc20
+        .connect(buyer)
+        .approve(authContract.target, totalAllowance);
 
       // Track balances before purchase
       const initialTreasuryBalance = await mocks.erc20.balanceOf(
@@ -457,22 +460,21 @@ describe("XMTPAuthERC1155 - Extension System", function () {
       const megapotIncrease = finalMegapotBalance - initialMegapotBalance;
 
       // Check ticket purchases occurred with direct funding
-      const userTickets = await megapotExtension.userTicketsPurchased(
-        buyer.address,
-      );
+      // Tickets are now assigned to the extension owner (group/community)
+      const extensionOwner = await megapotExtension.owner();
+      const groupTickets =
+        await megapotExtension.userTicketsPurchased(extensionOwner);
 
-      // Verify 3-way split: 95% treasury, 2.5% platform, 2.5% to megapot (which buys tickets)
+      // Verify 3-way split: 95% treasury, 2.5% platform, 2.5% to megapot
       expect(treasuryIncrease).to.equal(ethers.parseUnits("95", 6));
       expect(platformIncrease).to.equal(ethers.parseUnits("2.5", 6));
 
-      // Verify tickets were purchased with direct funding
-      expect(userTickets).to.equal(2n); // Should buy 2 tickets with $2.5 funding
+      // Verify tickets were purchased with direct funding and assigned to group
+      expect(groupTickets).to.equal(2n); // Should buy 2 tickets with $2.5 funding
 
       // Megapot balance should increase by: funding_received - tickets_cost
       // $2.5 funding - (2 tickets * $1) = $0.5 remaining
-      const expectedMegapotIncrease =
-        ethers.parseUnits("2.5", 6) - userTickets * ethers.parseUnits("1", 6);
-      expect(megapotIncrease).to.equal(expectedMegapotIncrease);
+      expect(megapotIncrease).to.equal(ethers.parseUnits("0.5", 6));
     });
   });
 });

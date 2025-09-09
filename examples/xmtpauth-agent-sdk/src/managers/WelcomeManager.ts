@@ -131,6 +131,11 @@ Choose your next step:`,
           style: "secondary",
         },
         {
+          id: "setup-lottery",
+          label: "🎰 Setup Lottery",
+          style: "primary",
+        },
+        {
           id: "creator-guide",
           label: "📖 Creator Guide",
           style: "secondary",
@@ -145,7 +150,7 @@ Choose your next step:`,
   createHelpMessage(): ActionsContent {
     return {
       id: `help-${Date.now()}`,
-      description: `🤖 EVMAuth Groups Agent v2
+      description: `🤖 XMTPAuth Agent
 
 Create and monetize premium XMTP groups with time-bound NFT access tokens on Base network.
 
