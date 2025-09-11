@@ -2,10 +2,10 @@ services:
   # XMTPAuth Agent SDK (Background Worker)
   - type: worker
     name: xmtp-auth-agent-sdk
-    env: node
+    env: docker
     plan: starter
-    buildCommand: cd examples/xmtpauth-agent-sdk && yarn install --no-immutable && yarn build
-    startCommand: yarn render:agent
+    dockerfilePath: examples/xmtpauth-agent-sdk/Dockerfile
+    startCommand: yarn start
     disk:
       name: xmtp-agent-data
       mountPath: /app/data
