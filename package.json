@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "examples/*"
+    "examples/xmtpauth-agent-sdk"
   ],
   "scripts": {
     "build": "echo 'Build completed - using TSX for runtime compilation'",
