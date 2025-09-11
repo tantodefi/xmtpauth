@@ -344,10 +344,17 @@ async function shareWinningsWithGroups(
 
 async function main() {
   console.log("🚀 Starting XMTPAuth Agent with Agent SDK...");
+  console.log("🌍 Environment:", process.env.NODE_ENV);
+  console.log("🔧 XMTP_ENV:", process.env.XMTP_ENV);
+  console.log("💾 XMTP_DB_PATH:", process.env.XMTP_DB_PATH);
 
   console.log(
     "🔑 XMTP_WALLET_KEY loaded:",
     process.env.XMTP_WALLET_KEY ? "YES" : "NO",
+  );
+  console.log(
+    "🔐 XMTP_DB_ENCRYPTION_KEY loaded:",
+    process.env.XMTP_DB_ENCRYPTION_KEY ? "YES" : "NO",
   );
 
   // Track used button sets to prevent multiple clicks (declared early)
@@ -478,11 +485,11 @@ async function main() {
   }
 
   try {
-    // Create a minimal agent first to test basic functionality
-    console.log("🔧 Creating minimal agent...");
+    // Create agent with production configuration
+    console.log("🔧 Creating production agent...");
     const agent = await Agent.create(undefined, {
-      env: "dev",
-      dbPath: null, // in-memory
+      env: (process.env.XMTP_ENV as "dev" | "production") || "dev",
+      dbPath: process.env.XMTP_DB_PATH || null,
       codecs: [
         new ReactionCodec(),
         new RemoteAttachmentCodec(),
@@ -563,18 +570,21 @@ async function main() {
       try {
         console.log(`🔍 Resolving display name for: ${address}`);
 
-        // Try Neynar API lookup by custody address (wallet address)
+        // Always try Neynar API first (it might work even with test key for some addresses)
         try {
-          console.log(`📡 Trying Neynar lookupUserByCustodyAddress...`);
-          const response = await neynar.lookupUserByCustodyAddress({
-            custodyAddress: address,
+          console.log(`📡 Attempting Neynar API call for address: ${address}`);
+          const userResponse = await neynar.fetchBulkUsers({
+            addresses: [address],
           });
 
-          console.log(`📡 Neynar response:`, JSON.stringify(response, null, 2));
+          console.log(
+            `📡 Neynar response received:`,
+            JSON.stringify(userResponse, null, 2),
+          );
 
-          if (response.result?.user) {
-            const user = response.result.user;
-            console.log(`👤 Found user:`, JSON.stringify(user, null, 2));
+          if (userResponse.users && userResponse.users.length > 0) {
+            const user = userResponse.users[0];
+            console.log(`👤 Found user data:`, JSON.stringify(user, null, 2));
 
             if (user.display_name && user.display_name.trim()) {
               console.log(`✅ Using display_name: ${user.display_name}`);
@@ -582,28 +592,30 @@ async function main() {
             } else if (user.username && user.username.trim()) {
               console.log(`✅ Using username: @${user.username}`);
               return `@${user.username}`;
+            } else {
+              console.log(
+                `⚠️ User found but no display_name or username available`,
+              );
             }
+          } else {
+            console.log(
+              `❌ No users found in Neynar response for address: ${address}`,
+            );
           }
-
-          console.log(`❌ No user found for custody address: ${address}`);
         } catch (neynarError) {
-          console.warn(
-            "❌ Neynar lookupUserByCustodyAddress failed:",
-            neynarError.message,
-          );
-          console.warn(
-            "This might be due to invalid API key or network issues",
-          );
+          console.warn("❌ Neynar API call failed:", neynarError.message);
+          console.warn("Full error:", neynarError);
         }
 
-        // Fallback to basename format when Neynar is unavailable
-        const baseName = `${address.slice(0, 6)}...${address.slice(-4)}`;
-        console.log(`🔄 Using basename fallback: ${baseName}`);
-        return baseName;
+        // Try to create a more readable Base-style name
+        const readableName = `${address.slice(0, 6)}...${address.slice(-4)}`;
+        console.log(`🔄 Using readable format: ${readableName}`);
+        return readableName;
       } catch (error) {
         console.warn("❌ Could not resolve display name:", error);
-        // Final fallback to truncated address
-        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+        // Final fallback - just show the full address for debugging
+        console.log(`💥 Final fallback - using full address for debugging`);
+        return address;
       }
     }
 
@@ -618,13 +630,26 @@ async function main() {
     // Message handlers for text and intent messages
     console.log("🔧 Setting up message handlers...");
 
+    // Debug: Catch ALL messages first
+    console.log("🔍 Setting up debug message handler for ALL messages...");
+    agent.on("message", async (ctx) => {
+      console.log(
+        `🎯 RECEIVED ANY MESSAGE: ${ctx.message.contentType?.typeId || "unknown"} from ${ctx.message.senderInboxId}`,
+      );
+      console.log(`📝 Content:`, ctx.message.content);
+    });
+
     // Handle text messages
+    console.log("🎧 Setting up text message handler...");
     agent.on(
       "message",
       withFilter(f.and(f.notFromSelf, f.textOnly), async (ctx) => {
         const content = ctx.message.content as string;
         console.log(
           `📨 Processing text message: "${content}" from ${ctx.message.senderInboxId}`,
+        );
+        console.log(
+          `🔍 Message type: ${typeof content}, length: ${content.length}`,
         );
 
         // Add a reaction to the message we just received (Unicode emoji) - non-blocking
@@ -679,7 +704,6 @@ async function main() {
         } else if (content.startsWith("/megapot-status")) {
           console.log("📨 Handling /megapot-status");
           await handleMegaPotStatusCommand(
-            agent.client,
             ctx.conversation,
             ctx.message.senderInboxId,
           );
@@ -927,7 +951,7 @@ async function main() {
             `🏪 Sales Group: ${groupResult.salesGroup.id}\n` +
             `💎 Premium Group: ${groupResult.premiumGroup.id}\n\n` +
             `🎉 Your premium community is ready! Check your conversations.\n\n` +
-            `⚙️ Next Step: Set up access tiers to start monetizing!\n` +
+            `⚙️ **Next Step**: Set up access tiers to start monetizing!\n` +
             `Use: \`/setup-tiers ${groupResult.contractAddress}\``,
         );
 
@@ -1265,7 +1289,6 @@ async function main() {
               // Clear any existing active buttons for this user before sending new menu
               clearActiveButtons(ctx.message.senderInboxId);
               await handleMegaPotStatusCommand(
-                agent.client,
                 ctx.conversation,
                 ctx.message.senderInboxId,
                 groupInfo,
@@ -1683,176 +1706,31 @@ The lottery runs on a schedule and winners are paid directly to ticket holders.`
     }
 
     async function handleMegaPotStatusCommand(
-      client: any,
       conversation: any,
       senderInboxId?: string,
       groupInfo?: any,
     ) {
       try {
-        // Get user address from conversation for personalized stats
-        let userAddress: string | undefined;
-        try {
-          console.log(`🎫 Resolving address for inbox: ${senderInboxId}`);
-
-          // Use XMTP client to resolve address from inbox ID
-          console.log(
-            `🎫 Calling inboxStateFromInboxIds for: ${senderInboxId}`,
-          );
-          const inboxState = await client.preferences.inboxStateFromInboxIds([
-            senderInboxId,
-          ]);
-          // Log inboxState safely (handling BigInt serialization)
-          try {
-            console.log(`🎫 inboxStateFromInboxIds result:`, inboxState);
-          } catch (logError) {
-            console.log(
-              `🎫 inboxStateFromInboxIds result: [Object with BigInt values]`,
-            );
-          }
-
-          if (
-            inboxState &&
-            inboxState.length > 0 &&
-            inboxState[0].identifiers
-          ) {
-            console.log(
-              `🎫 Found ${inboxState[0].identifiers.length} identifiers`,
-            );
-            console.log(`🎫 Raw identifiers:`, inboxState[0].identifiers);
-
-            // Try different ways to access the ETH identifier
-            let ethIdentifier = null;
-
-            // Method 1: Check if it's already an ETH identifier (identifierKind === 0 for Ethereum)
-            if (
-              inboxState[0].identifiers[0] &&
-              inboxState[0].identifiers[0].identifierKind === 0
-            ) {
-              ethIdentifier = inboxState[0].identifiers[0];
-              console.log(`🎫 Found ETH identifier (method 1):`, ethIdentifier);
-            }
-
-            // Method 2: Look for recovery identifier
-            if (
-              !ethIdentifier &&
-              inboxState[0].recoveryIdentifier &&
-              inboxState[0].recoveryIdentifier.identifierKind === 0
-            ) {
-              ethIdentifier = inboxState[0].recoveryIdentifier;
-              console.log(
-                `🎫 Found ETH identifier from recovery (method 2):`,
-                ethIdentifier,
-              );
-            }
-
-            // Method 3: Try finding by identifierKind (both string and number)
-            if (!ethIdentifier) {
-              ethIdentifier = inboxState[0].identifiers.find(
-                (id: any) =>
-                  id.identifierKind === 0 || id.identifierKind === "Ethereum",
-              );
-              console.log(`🎫 Found ETH identifier (method 3):`, ethIdentifier);
-            }
-
-            if (ethIdentifier && ethIdentifier.identifier) {
-              userAddress = ethIdentifier.identifier.toLowerCase();
-              console.log(`✅ Resolved address: ${userAddress}`);
-            } else {
-              console.warn(`⚠️ No valid Ethereum identifier found`);
-              console.warn(
-                `⚠️ Available identifiers:`,
-                inboxState[0].identifiers,
-              );
-              console.warn(
-                `⚠️ Recovery identifier:`,
-                inboxState[0].recoveryIdentifier,
-              );
-            }
-          } else {
-            console.warn(
-              `⚠️ No inbox state or identifiers found for inbox: ${senderInboxId}`,
-            );
-          }
-
-          if (!userAddress) {
-            console.warn(
-              `⚠️ Could not resolve address for inbox: ${senderInboxId}`,
-            );
-          }
-        } catch (addrError) {
-          console.warn(
-            "Could not determine user address for stats:",
-            addrError,
-          );
-        }
-
-        const stats = await megaPotManager.getStats(userAddress);
-        const hasWinnings =
-          await megaPotManager.hasWinningsToClaim(userAddress);
-        // Format time remaining
-        const timeRemaining = stats.endTime
-          ? (() => {
-              const now = new Date();
-              const diff = stats.endTime.getTime() - now.getTime();
-              if (diff <= 0) return "Ended";
-              const hours = Math.floor(diff / (1000 * 60 * 60));
-              const minutes = Math.floor(
-                (diff % (1000 * 60 * 60)) / (1000 * 60),
-              );
-              return `${hours}h ${minutes}m`;
-            })()
-          : "Unknown";
-
-        // Format jackpot pool
-        const jackpotFormatted = stats.jackpotPool
-          ? `$${parseFloat(stats.jackpotPool).toLocaleString()}`
-          : stats.currentDraw.jackpot;
-
+        const stats = await megaPotManager.getStats();
+        const hasWinnings = await megaPotManager.hasWinningsToClaim();
         const statusContent: ActionsContent = {
           id: `megapot-status-${Date.now()}`,
-          description: `🎰 MegaPot Lottery Status
+          description: `🎰 MegaPot Status
+📊 Your Stats:• Tickets Purchased: ${stats.totalTicketsPurchased}
+• Total Spent: ${stats.totalSpent}
+• Total Winnings: ${stats.totalWinnings}
 
-💰 Current Jackpot: ${jackpotFormatted}
-⏰ Time Remaining: ${timeRemaining}
-🎫 Ticket Price: $${stats.ticketPrice || stats.currentDraw.ticketPrice}
-👥 Active Players: ${stats.activePlayers || "N/A"}
-🎫 Tickets Sold: ${stats.ticketsSoldRound || "N/A"}
+🎯 Current Draw:• Draw ID: ${stats.currentDraw.drawId}
+• Jackpot: ${stats.currentDraw.jackpot}
+• Ticket Price: ${stats.currentDraw.ticketPrice}
+• Status: ${stats.currentDraw.isActive ? "🟢 Active" : "🔴 Ended"}
 
-${
-  stats.totalTicketsPurchased > 0 || stats.groupPurchases.length > 0
-    ? `
-🏆 Your Stats:
-• Individual Tickets: ${stats.individualTicketsPurchased || 0}
-• Group Tickets: ${stats.groupTicketsPurchased || 0}
-• Total Tickets: ${stats.totalTicketsPurchased || 0}
-• Total Spent: $${parseFloat(stats.totalSpent).toFixed(2)}
-• Your Odds: ${stats.userOdds ? `1 in ${stats.userOdds}` : "Calculate after purchase"}
-• Total Winnings: $${parseFloat(stats.totalWinnings).toFixed(2)}
-`
-    : `
-🏆 Your Stats: No tickets purchased yet
-`
-}
+⚙️ Configuration:• Auto-Purchase: ${megaPotManager.getConfig().autoPurchaseEnabled ? "✅ On" : "❌ Off"}
+• Group Share Winnings: ${megaPotManager.getConfig().groupShareWinnings ? "✅ On" : "❌ Off"}
 
-⚙️ Configuration:
-• Auto-Purchase: ${megaPotManager.getConfig().autoPurchaseEnabled ? "✅ On" : "❌ Off"}
-• Group Share: ${megaPotManager.getConfig().groupShareWinnings ? "✅ On" : "❌ Off"}
-
-💡 How It Works:
-• Buy tickets with USDC on Base network
-• ${
-            megaPotManager.getConfig().groupShareWinnings
-              ? "Group purchases contribute to shared winnings"
-              : "Individual purchases = personal winnings only"
-          }
-• Higher ticket count = better odds to win!
-• Jackpot grows with each ticket sold
-
-${
-  stats.groupPurchases.length > 0
-    ? `📊 Group Activity:\n• ${stats.groupPurchases.length} group purchases\n• Total group tickets: ${stats.groupPurchases.reduce((sum, purchase) => sum + purchase.tickets, 0)}`
-    : ""
-}`,
+💡 Purchase Behavior:• When group sharing is ON: Purchases in groups contribute to group winnings
+• When group sharing is OFF: All purchases are individual (personal winnings only)
+• All tickets use USDC on Base network`,
           actions: [
             {
               id: "buy-one-ticket",
@@ -2649,7 +2527,7 @@ Ready to begin the setup process?`,
           const maxSupply = tier.maxSupply || "Unlimited";
 
           infoMessage +=
-            `${index + 1}. ${tier.name}\n` +
+            `${index + 1}. **${tier.name}**\n` +
             `   💰 Price: $${priceUSD}\n` +
             `   ⏰ Duration: ${durationDays} days\n` +
             `   📊 Max Supply: ${maxSupply}\n`;
