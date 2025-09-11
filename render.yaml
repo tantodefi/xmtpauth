@@ -4,7 +4,7 @@ services:
     name: xmtp-auth-agent-sdk
     env: node
     plan: starter
-    buildCommand: yarn install --immutable
+    buildCommand: yarn install
     startCommand: yarn render:agent
     disk:
       name: xmtp-agent-data
