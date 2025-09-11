@@ -4,11 +4,7 @@ services:
     name: xmtp-auth-agent-sdk
     env: node
     plan: starter
-    buildCommand: |
-      cd examples/xmtpauth-agent-sdk && \
-      yarn config set nodeLinker node-modules && \
-      yarn install --no-immutable && \
-      yarn build
+    buildCommand: cd examples/xmtpauth-agent-sdk && yarn install --no-immutable && yarn build
     startCommand: yarn render:agent
     disk:
       name: xmtp-agent-data
