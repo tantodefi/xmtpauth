@@ -238,7 +238,7 @@ export class JSONDatabase {
    */
   getStats(): { totalGroups: number; totalTiers: number; lastUpdated: string } {
     const totalTiers = this.data.groups.reduce(
-      (sum, group) => sum + group.tiers.length,
+      (sum, group) => sum + (group.tiers?.length || 0),
       0,
     );
 
