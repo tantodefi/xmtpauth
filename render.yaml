@@ -1,7 +1,7 @@
 services:
-  # Existing XMTP Agent (Background Worker)
+  # XMTPAuth Agent SDK (Background Worker)
   - type: worker
-    name: xmtp-evmauth-agent
+    name: xmtp-auth-agent-sdk
     env: node
     plan: starter
     buildCommand: yarn install --immutable
@@ -13,23 +13,32 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # XMTP Agent SDK Configuration
       - key: XMTP_ENV
         value: production
-      - key: EVMAUTH_FACTORY_ADDRESS
-        value: 0xa8830A603aE5143a1f8BAA46e28C36e4765EC754
+      - key: XMTP_DB_PATH
+        value: /app/data/xmtp
+      # Base Network Configuration
       - key: BASE_RPC_URL
         value: https://mainnet.base.org
+      - key: EVMAUTH_FACTORY_ADDRESS
+        value: 0xa8830A603aE5143a1f8BAA46e28C36e4765EC754
       - key: USDC_ADDRESS
         value: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
-      - key: FEE_BASIS_POINTS
-        value: 250
-      # NEW: Connect to indexer service
+      # MegaPot Lottery Configuration (Mainnet)
+      - key: MEGAPOT_CONTRACT_ADDRESS
+        value: 0xbEDd4F2beBE9E3E636161E644759f3cbe3d51B95
+      - key: MEGAPOT_USDC_ADDRESS
+        value: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      # Indexer Integration
       - key: INDEXER_URL
         value: https://xmtp-indexer.onrender.com/graphql
     # Environment variables that need to be set in Render dashboard:
-    # WALLET_KEY - Agent's private key
-    # ENCRYPTION_KEY - XMTP database encryption key
-    # FEE_RECIPIENT - Address to receive platform fees
+    # XMTP_WALLET_KEY - Agent's private key (agent-sdk format)
+    # XMTP_DB_ENCRYPTION_KEY - XMTP database encryption key
+    # PINATA_JWT - Optional: for IPFS metadata uploads
+    # NEYNAR_API_KEY - Optional: for enhanced user mentions
+    # MEGAPOT_DATA_API_KEY - Optional: for real-time lottery stats
 
   # NEW: SQD Indexer Service (Web Service with GraphQL API)
   - type: web

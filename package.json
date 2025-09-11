@@ -17,10 +17,10 @@
     "format:check": "prettier -c .",
     "gen:keys": "tsx scripts/generateKeys.ts",
     "lint": "eslint .",
-    "render:agent": "cd examples/xmtp-evmauth-groups && NODE_ENV=production tsx index.ts",
+    "render:agent": "cd examples/xmtpauth-agent-sdk && NODE_ENV=production tsx src/index.ts",
     "revoke": "tsx scripts/revokeInstallations.ts",
-    "start": "cd examples/xmtp-evmauth-groups && tsx index.ts",
-    "start:prod": "cd examples/xmtp-evmauth-groups && NODE_ENV=production tsx index.ts",
+    "start": "cd examples/xmtpauth-agent-sdk && tsx src/index.ts",
+    "start:prod": "cd examples/xmtpauth-agent-sdk && NODE_ENV=production tsx src/index.ts",
     "typecheck": "tsc"
   },
   "resolutions": {
